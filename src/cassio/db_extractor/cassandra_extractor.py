@@ -28,13 +28,10 @@ class CassandraExtractor():
         # TODOs:
         #   move this getter creation someplace else
         #   query a table only once (grouping required variables by source table, selecting only those unless function passed)
-        #   ignore 'deps' probably is better (we have access to session/ks anyway)
-        def _getter(deps, **kwargs):
-            _session = deps['session']
-            _keyspace = deps['keyspace']
-            def _retrieve_field(_session2, _keyspace2, _tableName2, _keyColumns, _columnOrExtractor, _keyValueMap):
+        def _getter(**kwargs):
+            def _retrieve_field(_tableName2, _keyColumns, _columnOrExtractor, _keyValueMap):
                 selector = 'SELECT * FROM {keyspace}.{tableName} WHERE {whereClause} LIMIT 1;'.format(
-                    keyspace=_keyspace2,
+                    keyspace=keyspace,
                     tableName=_tableName2,
                     whereClause=' AND '.join(
                         f'{kc} = %s'
@@ -45,7 +42,7 @@ class CassandraExtractor():
                     _keyValueMap[kc]
                     for kc in _keyColumns
                 ])
-                row = _session2.execute(selector, values).one()
+                row = session.execute(selector, values).one()
                 if row:
                     if callable(_columnOrExtractor):
                         return _columnOrExtractor(row)
@@ -57,15 +54,15 @@ class CassandraExtractor():
                     else:
                         raise ValueError('No data found for %s from %s.%s' % (
                             str(_columnOrExtractor),
-                            _keyspace2,
+                            keyspace,
                             _tableName2,
                         ))
             
             return {
-                field: _retrieve_field(_session, _keyspace, tableName, self.primaryKeyMap[tableName], columnOrExtractor, kwargs)
+                field: _retrieve_field(tableName, self.primaryKeyMap[tableName], columnOrExtractor, kwargs)
                 for field, (tableName, columnOrExtractor) in field_mapper.items()
             }
         self.getter = _getter
 
-    def __call__(self, deps, **kwargs):
-        return self.getter(deps, **kwargs)
+    def __call__(self, *pargs, **kwargs):
+        return self.getter(*pargs, **kwargs)

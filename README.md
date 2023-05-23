@@ -2,17 +2,17 @@
 
 A framework-agnostic Python library to seamlessly integrate Apache Cassandra with ML/LLM/genAI workloads.
 
-## Install in dev mode
-
-`python setup.py -e .`
+## Developing
 
 ### Developing
 
-You need the full `langchain` + `cassio` stack, i.e.
+To develop `cassio`, use the `requirements-dev.txt`.
 
-- clone `https://github.com/hemidactylus/cassio` and `pip install -e .`;
-- clone `https://github.com/hemidactylus/langchain` _in the `cassio` branch_ and `pip install -e .`;
+To use the dev version in an integration (e.g. your branch of LangChain),
 
+- `pip install -e .` in this `cassio`;
+- `pip install -e .` in the LangChain `branch`;
+- plus any additional requirement files specific to the examples you're running (such as Jupyter)
 
 ## Unit testing
 
