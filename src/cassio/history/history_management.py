@@ -3,6 +3,8 @@ management of "history" of stored blobs, grouped
 by some 'session id'. Overwrites are not supported by design.
 """
 
+from cassandra.query import SimpleStatement
+
 _createTableCQLTemplate = """
 CREATE TABLE IF NOT EXISTS {keyspace}.{tableName} (
     session_id TEXT,
@@ -39,10 +41,10 @@ class StoredBlobHistory():
         self.keyspace = keyspace
         self.tableName = tableName
         # Schema creation, if needed
-        createTableCQL = _createTableCQLTemplate.format(
+        createTableCQL = SimpleStatement(_createTableCQLTemplate.format(
             keyspace=self.keyspace,
             tableName=self.tableName,
-        )
+        ))
         session.execute(createTableCQL)
 
     def store(self, sessionId, blob, ttlSeconds):
@@ -51,11 +53,11 @@ class StoredBlobHistory():
         else:
             ttlSpec = ''
         #
-        storeSessionBlobCQL = _storeSessionBlobCQLTemplate.format(
+        storeSessionBlobCQL = SimpleStatement(_storeSessionBlobCQLTemplate.format(
             keyspace=self.keyspace,
             tableName=self.tableName,
             ttlSpec=ttlSpec,
-        )
+        ))
         self.session.execute(
             storeSessionBlobCQL,
             (
@@ -66,10 +68,10 @@ class StoredBlobHistory():
 
     def retrieve(self, sessionId, maxCount=None):
         pass
-        getSessionBlobsCQL = _getSessionBlobsCQLTemplate.format(
+        getSessionBlobsCQL = SimpleStatement(_getSessionBlobsCQLTemplate.format(
             keyspace=self.keyspace,
             tableName=self.tableName,
-        )
+        ))
         blobRows = self.session.execute(
             getSessionBlobsCQL,
             (sessionId, )
@@ -81,8 +83,8 @@ class StoredBlobHistory():
 
     def clearSessionId(self, sessionId):
         pass
-        clearSessionCQL = _clearSessionCQLTemplate.format(
+        clearSessionCQL = SimpleStatement(_clearSessionCQLTemplate.format(
             keyspace=self.keyspace,
             tableName=self.tableName,
-        )
+        ))
         self.session.execute(clearSessionCQL, (sessionId, ))

@@ -5,6 +5,8 @@ a keyspace, with a fair amount of metadata inspection.
 
 from functools import reduce
 
+from cassandra.query import SimpleStatement
+
 from cassio.inspection import (
     _table_primary_key_columns,
 )
@@ -30,14 +32,14 @@ class CassandraExtractor():
         #   query a table only once (grouping required variables by source table, selecting only those unless function passed)
         def _getter(**kwargs):
             def _retrieve_field(_tableName2, _keyColumns, _columnOrExtractor, _keyValueMap):
-                selector = 'SELECT * FROM {keyspace}.{tableName} WHERE {whereClause} LIMIT 1;'.format(
+                selector = SimpleStatement('SELECT * FROM {keyspace}.{tableName} WHERE {whereClause} LIMIT 1;'.format(
                     keyspace=keyspace,
                     tableName=_tableName2,
                     whereClause=' AND '.join(
                         f'{kc} = %s'
                         for kc in _keyColumns
                     ),
-                )
+                ))
                 values = tuple([
                     _keyValueMap[kc]
                     for kc in _keyColumns

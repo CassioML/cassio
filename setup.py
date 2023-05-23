@@ -21,7 +21,12 @@ setup(
     long_description=(here / "README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
     install_requires=[
-        "cassandra-driver>=3.24.*",
+        "numpy>=1.*",
+        # "cassandra-driver>=3.24.*",
+        #
+        # Experimental support for VectorSimilaritySearch
+        # git+https://github.com/datastax/python-driver.git@cep-vsearch#egg=cassandra-driver
+        "cassandra-driver @ git+https://github.com/datastax/python-driver.git@cep-vsearch",
     ],
     python_requires=">=3.8.*",
     classifiers=[
