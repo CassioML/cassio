@@ -7,6 +7,7 @@ import json
 
 from cassandra.cluster import Session
 from cassandra.query import SimpleStatement
+from cassandra import ReadFailure
 
 from cassio.globals.globals import globals
 from cassio.utils.vector.distance_metrics import distanceMetricsMap
@@ -61,6 +62,9 @@ _deleteVectorDBTableItemCQLTemplate = """
 DELETE FROM {keyspace}.{tableName}
 WHERE document_id = %s;
 """
+_countRowsCQLTemplate = """
+    SELECT COUNT(*) FROM {keyspace}.{tableName};
+"""
 
 
 class VectorDBMixin():
@@ -75,11 +79,35 @@ class VectorDBMixin():
         self._executeCQL(createVectorDBTableIndexCQL, tuple())
 
     def ANNSearch(self, embedding_vector, numRows):
-        searchVectorDBTableItemCQL = SimpleStatement(_searchVectorDBTableItemCQLTemplate.format(
+        """
+        Current versions of vector-search Cassandra fail when more rows than
+        present in the table are asked in the LIMIT clause.
+        The solution below tries to fix that.
+        """
+        try:
+            searchVectorDBTableItemCQL = SimpleStatement(_searchVectorDBTableItemCQLTemplate.format(
+                keyspace=self.keyspace,
+                tableName=self.tableName
+            ))
+            return self._executeCQL(searchVectorDBTableItemCQL, (embedding_vector, numRows))
+        except ReadFailure:
+            # likely a count issue. Let's count the rows (it's a small number)
+            rowCount = self._countRows()
+            if rowCount < numRows:
+                if rowCount:
+                    return self.ANNSearch(embedding_vector, min(numRows, rowCount))
+                else:
+                    return []
+            else:
+                # a repeated error, likely another reason. Reraise
+                raise
+
+    def _countRows(self):
+        countRowsCQL = SimpleStatement(_countRowsCQLTemplate.format(
             keyspace=self.keyspace,
             tableName=self.tableName
         ))
-        return self._executeCQL(searchVectorDBTableItemCQL, (embedding_vector, numRows))
+        return self._executeCQL(countRowsCQL, tuple()).one().count
 
 
 class VectorDBTable(VectorDBMixin):
