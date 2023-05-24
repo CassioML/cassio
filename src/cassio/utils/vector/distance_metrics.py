@@ -51,7 +51,11 @@ def distance_max(embeddingVectors: List[List[float]], referenceEmbeddingVector: 
         return list(np.linalg.norm(v1s - v2, axis=1, ord=np.inf))
 
 
-# function, sorting 'reverse' argument, nearest-to-farthest
+# The tuple is:
+#   (
+#       function,
+#       sorting 'reverse' argument, nearest-to-farthest
+#   )
 # (i.e. True means that:
 #     - in that metric higher is closer and that
 #     - cutoff should be metric > threshold)

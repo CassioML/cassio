@@ -57,6 +57,10 @@ FROM {keyspace}.{tableName}
 _truncateVectorDBTableCQLTemplate = """
 TRUNCATE TABLE {keyspace}.{tableName};
 """
+_deleteVectorDBTableItemCQLTemplate = """
+DELETE FROM {keyspace}.{tableName}
+WHERE document_id = %s;
+"""
 
 
 class VectorDBMixin():
@@ -125,6 +129,14 @@ class VectorDBTable(VectorDBMixin):
             else:
                 return None
 
+    def delete(self, document_id) -> None:
+        """This operation goes through even if the doc does not exist."""
+        deleteVectorDBTableItemCQL = SimpleStatement(_deleteVectorDBTableItemCQLTemplate.format(
+            keyspace=self.keyspace,
+            tableName=self.tableName,
+        ))
+        self._executeCQL(deleteVectorDBTableItemCQL, (document_id, ))
+
     def search(self, embedding_vector, topK, maxRowsToRetrieve, metric, metricThreshold):
         # get rows by ANN
         rows = list(self.ANNSearch(embedding_vector, maxRowsToRetrieve))
@@ -142,11 +154,15 @@ class VectorDBTable(VectorDBMixin):
                 distanceFunction[0](rowEmbeddings, embedding_vector),
                 rows,
             ))
-            # sort rows by metric score
-            if distanceFunction[1]:
-                def _thresholder(mtx, thr): return mtx >= thr
+            # sort rows by metric score. First handle metric/threshold
+            if metricThreshold is not None:
+                if distanceFunction[1]:
+                    def _thresholder(mtx, thr): return mtx >= thr
+                else:
+                    def _thresholder(mtx, thr): return mtx <= thr
             else:
-                def _thresholder(mtx, thr): return mtx <= thr
+                # no hits are discarded
+                def _thresholder(mtx, thr): return True
             #
             sortedPassingWinners = sorted(
                 (
@@ -159,18 +175,25 @@ class VectorDBTable(VectorDBMixin):
             )[:topK]
             # we discard the scores and return an iterable of hits (as JSONs)
             return [
-                VectorDBTable._jsonifyHit(hit)
-                for _, hit in sortedPassingWinners
+                VectorDBTable._jsonifyHit(hit, distance)
+                for distance, hit in sortedPassingWinners
             ]
         else:
             return []
 
     @staticmethod
-    def _jsonifyHit(hit):
+    def _jsonifyHit(hit, distance=None):
+        if distance is not None:
+            distDict = {'distance': distance}
+        else:
+            distDict = {}
         return {
-            'metadata': json.loads(hit.metadata_blob),
-            'document': hit.document,
-            'embedding_vector': hit.embedding_vector,
+            **{
+                'metadata': json.loads(hit.metadata_blob),
+                'document': hit.document,
+                'embedding_vector': hit.embedding_vector,
+            },
+            **distDict,
         }
 
     def clear(self):
