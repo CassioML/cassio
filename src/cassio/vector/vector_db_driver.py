@@ -40,7 +40,7 @@ INSERT INTO {keyspace}.{tableName} (
     %s,
     %s,
     %s
-);
+){ttlSpec};
 """
 _getVectorDBTableItemCQLTemplate = """
 SELECT
@@ -50,7 +50,7 @@ FROM {keyspace}.{tableName}
 """
 _searchVectorDBTableItemCQLTemplate = """
 SELECT
-    embedding_vector, document, metadata_blob
+    document_id, embedding_vector, document, metadata_blob
 FROM {keyspace}.{tableName}
     WHERE embedding_vector ANN OF %s
     LIMIT %s
@@ -112,7 +112,7 @@ class VectorDBMixin():
 
 class VectorDBTable(VectorDBMixin):
 
-    def __init__(self, session: Session, keyspace: str, tableName: str, embeddingDimension: int, autoID: bool = True):
+    def __init__(self, session: Session, keyspace: str, tableName: str, embeddingDimension: int, autoID: bool):
         if not globals.experimentalVectorSearch:
             raise RuntimeError(EXPERIMENTAL_VECTOR_SEARCH_ERROR)
         #
@@ -126,18 +126,24 @@ class VectorDBTable(VectorDBMixin):
         self._createTable()
         self._createIndex()
 
-    def put(self, document, embedding_vector, document_id=None, metadata={}):
+    def put(self, document, embedding_vector, document_id, metadata, ttlSeconds):
         # document_id, if not autoID, must be str
         if not self.autoID and document_id is None:
             raise ValueError('\'document_id\' must be specified unless autoID')
         if self.autoID and document_id is not None:
             raise ValueError('\'document_id\' cannot be passes if autoID')
+        if ttlSeconds:
+            ttlSpec = f' USING TTL {ttlSeconds}'
+        else:
+            ttlSpec = ''
         storeCachedVSSItemCQL = SimpleStatement(_storeCachedVSSItemCQLTemplate.format(
             keyspace=self.keyspace,
             tableName=self.tableName,
             documentIdPlaceholder='now()' if self.autoID else '%s',
+            ttlSpec=ttlSpec,
         ))
         metadataBlob = json.dumps(metadata)
+        # depending on autoID, the size of the values tuple changes:
         values0 = (embedding_vector, document, metadataBlob)
         values = values0 if self.autoID else tuple([document_id] + list(values0))
         self._executeCQL(storeCachedVSSItemCQL, values)
@@ -153,12 +159,12 @@ class VectorDBTable(VectorDBMixin):
             hits = self._executeCQL(getVectorDBTableItemCQL, (document_id, ))
             hit = hits.one()
             if hit:
-                return VectorDBTable._jsonifyHit(hit)
+                return VectorDBTable._jsonifyHit(hit, distance=None)
             else:
                 return None
 
     def delete(self, document_id) -> None:
-        """This operation goes through even if the doc does not exist."""
+        """This operation goes through even if the row does not exist."""
         deleteVectorDBTableItemCQL = SimpleStatement(_deleteVectorDBTableItemCQLTemplate.format(
             keyspace=self.keyspace,
             tableName=self.tableName,
@@ -203,20 +209,21 @@ class VectorDBTable(VectorDBMixin):
             )[:topK]
             # we discard the scores and return an iterable of hits (as JSONs)
             return [
-                VectorDBTable._jsonifyHit(hit, distance)
+                VectorDBTable._jsonifyHit(hit, distance=distance)
                 for distance, hit in sortedPassingWinners
             ]
         else:
             return []
 
     @staticmethod
-    def _jsonifyHit(hit, distance=None):
+    def _jsonifyHit(hit, distance):
         if distance is not None:
             distDict = {'distance': distance}
         else:
             distDict = {}
         return {
             **{
+                'document_id': hit.document_id,
                 'metadata': json.loads(hit.metadata_blob),
                 'document': hit.document,
                 'embedding_vector': hit.embedding_vector,

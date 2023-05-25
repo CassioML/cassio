@@ -22,6 +22,11 @@ SELECT cache_value
 WHERE key_desc=%s
     AND cache_key=%s;
 """
+_deleteCachedItemCQLTemplate = """
+DELETE FROM {keyspace}.{tableName}
+WHERE key_desc=%s
+    AND cache_key=%s;
+"""
 _storeCachedItemCQLTemplate = """
 INSERT INTO {keyspace}.{tableName} (
     key_desc,
@@ -102,6 +107,21 @@ class KVCache():
             return foundRow.cache_value
         else:
             return None
+
+    def delete(self, keyDict) -> None:
+        """ Will not complain if the row does not exist. """
+        cacheKey = self._serializeKey([
+            keyDict[k]
+            for k in self.keys
+        ])
+        deleteCachedItemCQL = _deleteCachedItemCQLTemplate.format(
+            keyspace=self.keyspace,
+            tableName=self.tableName,
+        )
+        self.session.execute(
+            deleteCachedItemCQL,
+            (self.keyDesc, cacheKey),
+        )
 
     def _serializeKey(self, keys: List[str]):
         return str(keys)
