@@ -21,14 +21,14 @@ setup(
     long_description=(here / "README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
     install_requires=[
-        "numpy>=1.*",
-        # "cassandra-driver>=3.24.*",
+        "numpy>=1.0",
+        "cassandra-driver>=3.24.0",
         #
-        # Experimental support for VectorSimilaritySearch
+        # Experimental support for VectorSimilaritySearch. Cannot be used if publishing to PyPI.
         # git+https://github.com/datastax/python-driver.git@cep-vsearch#egg=cassandra-driver
-        "cassandra-driver @ git+https://github.com/datastax/python-driver.git@cep-vsearch",
+        # "cassandra-driver @ git+https://github.com/datastax/python-driver.git@cep-vsearch",
     ],
-    python_requires=">=3.8.*",
+    python_requires=">=3.8",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Developers",
