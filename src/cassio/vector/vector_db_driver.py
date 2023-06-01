@@ -7,7 +7,7 @@ import json
 
 from cassandra.cluster import Session
 from cassandra.query import SimpleStatement
-from cassandra import ReadFailure
+from cassandra.protocol import SyntaxException
 
 from cassio.globals.globals import globals
 from cassio.utils.vector.distance_metrics import distanceMetricsMap
@@ -20,7 +20,7 @@ EXPERIMENTAL_VECTOR_SEARCH_ERROR = (
 _createVectorDBTableCQLTemplate = """
 CREATE TABLE IF NOT EXISTS {keyspace}.{tableName} (
     document_id {idType} PRIMARY KEY,
-    embedding_vector FLOAT VECTOR[{embeddingDimension}],
+    embedding_vector VECTOR<FLOAT, {embeddingDimension}>,
     document TEXT,
     metadata_blob TEXT
 );
@@ -48,13 +48,26 @@ SELECT
 FROM {keyspace}.{tableName}
     WHERE document_id=%s;
 """
-_searchVectorDBTableItemCQLTemplate = """
+
+# For some time, this is still the one for Astra DB
+_searchVectorDBTableItemCQLTemplateLegacy = """
 SELECT
     document_id, embedding_vector, document, metadata_blob
 FROM {keyspace}.{tableName}
     WHERE embedding_vector ANN OF %s
     LIMIT %s
+    ALLOW FILTERING;
 """
+# ... while this is the final syntax:
+_searchVectorDBTableItemCQLTemplate = """
+SELECT
+    document_id, embedding_vector, document, metadata_blob
+FROM {keyspace}.{tableName}
+    ORDER BY embedding_vector ANN OF %s
+    LIMIT %s
+    ALLOW FILTERING;
+"""
+
 _truncateVectorDBTableCQLTemplate = """
 TRUNCATE TABLE {keyspace}.{tableName};
 """
@@ -90,17 +103,13 @@ class VectorDBMixin():
                 tableName=self.tableName
             ))
             return self._executeCQL(searchVectorDBTableItemCQL, (embedding_vector, numRows))
-        except ReadFailure:
-            # likely a count issue. Let's count the rows (it's a small number)
-            rowCount = self._countRows()
-            if rowCount < numRows:
-                if rowCount:
-                    return self.ANNSearch(embedding_vector, min(numRows, rowCount))
-                else:
-                    return []
-            else:
-                # a repeated error, likely another reason. Reraise
-                raise
+        except SyntaxException as e:
+            # we try the legacy syntax (transitional workaround)
+            searchVectorDBTableItemCQL = SimpleStatement(_searchVectorDBTableItemCQLTemplateLegacy.format(
+                keyspace=self.keyspace,
+                tableName=self.tableName
+            ))
+            return self._executeCQL(searchVectorDBTableItemCQL, (embedding_vector, numRows))
 
     def _countRows(self):
         countRowsCQL = SimpleStatement(_countRowsCQLTemplate.format(
