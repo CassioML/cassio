@@ -48,17 +48,6 @@ SELECT
 FROM {keyspace}.{tableName}
     WHERE document_id=%s;
 """
-
-# For some time, this is still the one for Astra DB
-_searchVectorDBTableItemCQLTemplateLegacy = """
-SELECT
-    document_id, embedding_vector, document, metadata_blob
-FROM {keyspace}.{tableName}
-    WHERE embedding_vector ANN OF %s
-    LIMIT %s
-    ALLOW FILTERING;
-"""
-# ... while this is the final syntax:
 _searchVectorDBTableItemCQLTemplate = """
 SELECT
     document_id, embedding_vector, document, metadata_blob
@@ -92,24 +81,11 @@ class VectorDBMixin():
         self._executeCQL(createVectorDBTableIndexCQL, tuple())
 
     def ANNSearch(self, embedding_vector, numRows):
-        """
-        Current versions of vector-search Cassandra fail when more rows than
-        present in the table are asked in the LIMIT clause.
-        The solution below tries to fix that.
-        """
-        try:
-            searchVectorDBTableItemCQL = SimpleStatement(_searchVectorDBTableItemCQLTemplate.format(
-                keyspace=self.keyspace,
-                tableName=self.tableName
-            ))
-            return self._executeCQL(searchVectorDBTableItemCQL, (embedding_vector, numRows))
-        except SyntaxException as e:
-            # we try the legacy syntax (transitional workaround)
-            searchVectorDBTableItemCQL = SimpleStatement(_searchVectorDBTableItemCQLTemplateLegacy.format(
-                keyspace=self.keyspace,
-                tableName=self.tableName
-            ))
-            return self._executeCQL(searchVectorDBTableItemCQL, (embedding_vector, numRows))
+        searchVectorDBTableItemCQL = SimpleStatement(_searchVectorDBTableItemCQLTemplate.format(
+            keyspace=self.keyspace,
+            tableName=self.tableName
+        ))
+        return self._executeCQL(searchVectorDBTableItemCQL, (embedding_vector, numRows))
 
     def _countRows(self):
         countRowsCQL = SimpleStatement(_countRowsCQLTemplate.format(
