@@ -6,21 +6,20 @@ A framework-agnostic Python library to seamlessly integrate Apache Cassandra wit
 
 ## Users
 
-Step 1: `pip install cassio`.
+Installation is as simple as:
 
-Step 2: for example usages and integration with higher-level LLM frameworks
+```
+pip install cassio
+```
+
+For example usages and integration with higher-level LLM frameworks
 such as LangChain, please visit [cassio.org](https://cassio.org).
-
-Step 3: if you need the (experimental) Vector Search capabilities, you'll
-have to install custom Cassandra drivers on top of the one shipping with
-the package. Check `requirements-dev.txt` to find out how to do it.
 
 ## CassIO developers
 
 ### Developing
 
-To develop `cassio`, use the `requirements-dev.txt` (which also builds
-the experimental vector support for the Python drivers).
+To develop `cassio`, use the `requirements-dev.txt`.
 
 To use the dev version in an integration (e.g. your branch of LangChain),
 
@@ -47,4 +46,3 @@ pytest
 ```
 
 (there's not ... much yet in the way of testing).
-

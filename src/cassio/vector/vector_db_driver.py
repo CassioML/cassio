@@ -9,13 +9,7 @@ from cassandra.cluster import Session
 from cassandra.query import SimpleStatement
 from cassandra.protocol import SyntaxException
 
-from cassio.globals.globals import globals
 from cassio.utils.vector.distance_metrics import distanceMetricsMap
-
-EXPERIMENTAL_VECTOR_SEARCH_ERROR = (
-    "Vector search is an experimental feature and should "
-    "be first enabled with 'cassio.globals.enableExperimentalVectorSearch()`"
-)
 
 _createVectorDBTableCQLTemplate = """
 CREATE TABLE IF NOT EXISTS {keyspace}.{tableName} (
@@ -98,9 +92,6 @@ class VectorDBMixin():
 class VectorDBTable(VectorDBMixin):
 
     def __init__(self, session: Session, keyspace: str, tableName: str, embeddingDimension: int, autoID: bool):
-        if not globals.experimentalVectorSearch:
-            raise RuntimeError(EXPERIMENTAL_VECTOR_SEARCH_ERROR)
-        #
         self.session = session
         self.keyspace = keyspace
         self.tableName = tableName
