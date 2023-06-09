@@ -1,0 +1,5 @@
+v 0.0.4
+=======
+
+* Switch to PyPI Cassandra driver v3.28.0+
+* Start deprecating the 'experimentalVectorSearch' flag

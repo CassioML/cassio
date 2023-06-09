@@ -1,3 +1,9 @@
+### CUSTOM GITIGNORE HERE
+
+# Environments
+.env
+.testing.env
+
 ### (abridged) BOILERPLATE STARTS HERE
 
 # Byte-compiled / optimized / DLL files
@@ -51,6 +57,3 @@ ipython_config.py
 
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
 __pypackages__/
-
-# Environments
-.env

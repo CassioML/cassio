@@ -37,12 +37,32 @@ twine upload dist/*
 # (login to PyPI ...)
 ```
 
-### Unit testing
+### Testing
 
-In a virtualenv with the `requirements-dev.txt` installed, run:
+#### Unit testing
+
+You need a virtualenv with the `requirements-dev.txt` installed.
 
 ```
-pytest
+pytest tests/unit
 ```
 
-(there's not ... much yet in the way of testing).
+#### Integration with the DB
+
+You need a virtualenv with the `requirements-dev.txt` installed.
+
+Create the DB connection settings file, `cp TEMPLATE.testing.env .testing.env`
+and then edit the properties. You need at least one of either Astra DB or a
+Cassandra cluster to use, with vector-search support.
+
+Source with `. .testing.env`.
+
+Launch the tests with
+
+```
+pytest tests/integration
+```
+
+(you can specify `TEST_DB_MODE` in the env file or override it by prepending
+the above command with `TEST_DB_MODE=LOCAL_CASSANDRA` or `ASTRA_DB` for
+easy switching).
