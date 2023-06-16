@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS {keyspace}.{tableName} (
     embedding_vector VECTOR<FLOAT, {embeddingDimension}>,
     document TEXT,
     metadata_blob TEXT
-);
+)
 """
 _create_vector_db_table_index_cql_template = """
 CREATE CUSTOM INDEX IF NOT EXISTS {indexName} ON {keyspace}.{tableName} (embedding_vector)
@@ -33,13 +33,13 @@ INSERT INTO {keyspace}.{tableName} (
     %s,
     %s,
     %s
-){ttlSpec};
+){ttlSpec}
 """
 _get_vector_db_table_item_cql_template = """
 SELECT
     document_id, embedding_vector, document, metadata_blob
 FROM {keyspace}.{tableName}
-    WHERE document_id=%s;
+    WHERE document_id=%s
 """
 _search_vector_db_table_item_cql_template = """
 SELECT
@@ -47,7 +47,7 @@ SELECT
 FROM {keyspace}.{tableName}
     ORDER BY embedding_vector ANN OF %s
     LIMIT %s
-    ALLOW FILTERING;
+    ALLOW FILTERING
 """
 
 _truncate_vector_db_table_cql_template = """
@@ -55,10 +55,10 @@ TRUNCATE TABLE {keyspace}.{tableName};
 """
 _delete_vector_db_table_item_cql_template = """
 DELETE FROM {keyspace}.{tableName}
-WHERE document_id = %s;
+WHERE document_id = %s
 """
 _count_rows_cql_template = """
-    SELECT COUNT(*) FROM {keyspace}.{tableName};
+    SELECT COUNT(*) FROM {keyspace}.{tableName}
 """
 
 

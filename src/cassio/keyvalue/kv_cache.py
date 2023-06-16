@@ -14,18 +14,18 @@ CREATE TABLE IF NOT EXISTS {keyspace}.{table_name} (
     cache_key TEXT,
     cache_value TEXT,
     PRIMARY KEY (( key_desc, cache_key ))
-);
+)
 """
 _get_cached_item_cql_template = """
 SELECT cache_value
     FROM {keyspace}.{table_name}
 WHERE key_desc=%s
-    AND cache_key=%s;
+    AND cache_key=%s
 """
 _delete_cached_item_cql_template = """
 DELETE FROM {keyspace}.{table_name}
 WHERE key_desc=%s
-    AND cache_key=%s;
+    AND cache_key=%s
 """
 _storeCachedItemCQLTemplate = """
 INSERT INTO {keyspace}.{table_name} (
@@ -36,10 +36,10 @@ INSERT INTO {keyspace}.{table_name} (
     %s,
     %s,
     %s
-){ttlSpec};
+){ttlSpec}
 """
 _truncate_table_cql_template = """
-TRUNCATE TABLE {keyspace}.{table_name};
+TRUNCATE TABLE {keyspace}.{table_name}
 """
 
 

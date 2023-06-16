@@ -11,12 +11,12 @@ CREATE TABLE IF NOT EXISTS {keyspace}.{tableName} (
     blob_id TIMEUUID,
     blob TEXT,
     PRIMARY KEY (( session_id ) , blob_id )
-) WITH CLUSTERING ORDER BY (blob_id ASC);
+) WITH CLUSTERING ORDER BY (blob_id ASC)
 """
 _get_session_blobs_cql_template = """
 SELECT blob
     FROM {keyspace}.{tableName}
-WHERE session_id=%s;
+WHERE session_id=%s
 """
 _store_session_blob_cql_template = """
 INSERT INTO {keyspace}.{tableName} (
@@ -27,10 +27,10 @@ INSERT INTO {keyspace}.{tableName} (
     %s,
     now(),
     %s
-){ttlSpec};
+){ttlSpec}
 """
 _clear_session_cql_template = """
-DELETE FROM {keyspace}.{tableName} WHERE session_id = %s;
+DELETE FROM {keyspace}.{tableName} WHERE session_id = %s
 """
 
 

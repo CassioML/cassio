@@ -11,6 +11,8 @@ from cassio.inspection import (
     _table_primary_key_columns,
 )
 
+_retrieve_one_row_cql_template = 'SELECT * FROM {keyspace}.{tableName} WHERE {whereClause} LIMIT 1'
+
 
 class CassandraExtractor:
 
@@ -34,7 +36,7 @@ class CassandraExtractor:
         #   selecting only those unless function passed)
         def _getter(**kwargs):
             def _retrieve_field(_table_name2, _key_columns, _column_or_extractor, _key_value_map):
-                selector = SimpleStatement('SELECT * FROM {keyspace}.{tableName} WHERE {whereClause} LIMIT 1;'.format(
+                selector = SimpleStatement(_retrieve_one_row_cql_template.format(
                     keyspace=keyspace,
                     tableName=_table_name2,
                     whereClause=' AND '.join(
