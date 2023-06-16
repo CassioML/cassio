@@ -4,7 +4,7 @@ A common driver to operate on tables with vector-similarity-search indices.
 
 import json
 from operator import itemgetter
-from typing import List, Optional, Union, Dict, Any
+from typing import List, Optional, Union, Dict, Any, NamedTuple
 
 from cassandra.cluster import Session
 from cassandra.query import SimpleStatement
@@ -149,7 +149,7 @@ class VectorTable(VectorMixin):
         ]
 
     @staticmethod
-    def _jsonify_hit(hit, distance: float):
+    def _jsonify_hit(hit: NamedTuple, distance: float):
         d = {
             'document_id': hit.document_id,
             'metadata': json.loads(hit.metadata_blob),
