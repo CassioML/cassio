@@ -150,19 +150,15 @@ class VectorTable(VectorMixin):
 
     @staticmethod
     def _jsonify_hit(hit, distance: float):
-        if distance is not None:
-            dist_dict = {'distance': distance}
-        else:
-            dist_dict = {}
-        return {
-            **{
-                'document_id': hit.document_id,
-                'metadata': json.loads(hit.metadata_blob),
-                'document': hit.document,
-                'embedding_vector': hit.embedding_vector,
-            },
-            **dist_dict,
+        d = {
+            'document_id': hit.document_id,
+            'metadata': json.loads(hit.metadata_blob),
+            'document': hit.document,
+            'embedding_vector': hit.embedding_vector,
         }
+        if distance is not None:
+            d['distance'] = distance
+        return d
 
     def clear(self):
         st = SimpleStatement(cassio.cql.truncate_vector_table.format(
