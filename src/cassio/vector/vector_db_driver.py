@@ -2,16 +2,15 @@
 A common driver to operate on tables with vector-similarity-search indices.
 """
 
-from operator import itemgetter
 import json
+from operator import itemgetter
 
 from cassandra.cluster import Session
 from cassandra.query import SimpleStatement
-from cassandra.protocol import SyntaxException
 
 from cassio.utils.vector.distance_metrics import distanceMetricsMap
 
-_createVectorDBTableCQLTemplate = """
+_create_vector_db_table_cql_template = """
 CREATE TABLE IF NOT EXISTS {keyspace}.{tableName} (
     document_id {idType} PRIMARY KEY,
     embedding_vector VECTOR<FLOAT, {embeddingDimension}>,
@@ -19,11 +18,11 @@ CREATE TABLE IF NOT EXISTS {keyspace}.{tableName} (
     metadata_blob TEXT
 );
 """
-_createVectorDBTableIndexCQLTemplate = """
+_create_vector_db_table_index_cql_template = """
 CREATE CUSTOM INDEX IF NOT EXISTS {indexName} ON {keyspace}.{tableName} (embedding_vector)
 USING 'org.apache.cassandra.index.sai.StorageAttachedIndex' ;
 """
-_storeCachedVSSItemCQLTemplate = """
+_store_cached_vss_item_cql_template = """
 INSERT INTO {keyspace}.{tableName} (
     document_id,
     embedding_vector,
@@ -36,13 +35,13 @@ INSERT INTO {keyspace}.{tableName} (
     %s
 ){ttlSpec};
 """
-_getVectorDBTableItemCQLTemplate = """
+_get_vector_db_table_item_cql_template = """
 SELECT
     document_id, embedding_vector, document, metadata_blob
 FROM {keyspace}.{tableName}
     WHERE document_id=%s;
 """
-_searchVectorDBTableItemCQLTemplate = """
+_search_vector_db_table_item_cql_template = """
 SELECT
     document_id, embedding_vector, document, metadata_blob
 FROM {keyspace}.{tableName}
@@ -51,105 +50,104 @@ FROM {keyspace}.{tableName}
     ALLOW FILTERING;
 """
 
-_truncateVectorDBTableCQLTemplate = """
+_truncate_vector_db_table_cql_template = """
 TRUNCATE TABLE {keyspace}.{tableName};
 """
-_deleteVectorDBTableItemCQLTemplate = """
+_delete_vector_db_table_item_cql_template = """
 DELETE FROM {keyspace}.{tableName}
 WHERE document_id = %s;
 """
-_countRowsCQLTemplate = """
+_count_rows_cql_template = """
     SELECT COUNT(*) FROM {keyspace}.{tableName};
 """
 
 
-class VectorDBMixin():
-
-    def _createIndex(self):
-        indexName = f'{self.tableName}_embedding_idx'
-        createVectorDBTableIndexCQL = SimpleStatement(_createVectorDBTableIndexCQLTemplate.format(
-            indexName=indexName,
+class VectorMixin:
+    def _create_index(self):
+        index_name = f'{self.table_name}_embedding_idx'
+        cql = SimpleStatement(_create_vector_db_table_index_cql_template.format(
+            indexName=index_name,
             keyspace=self.keyspace,
-            tableName=self.tableName
+            tableName=self.table_name
         ))
-        self._executeCQL(createVectorDBTableIndexCQL, tuple())
+        self._execute_cql(cql, tuple())
 
-    def ANNSearch(self, embedding_vector, numRows):
-        searchVectorDBTableItemCQL = SimpleStatement(_searchVectorDBTableItemCQLTemplate.format(
+    def ann_search(self, embedding_vector, numRows):
+        cql = SimpleStatement(_search_vector_db_table_item_cql_template.format(
             keyspace=self.keyspace,
-            tableName=self.tableName
+            tableName=self.table_name
         ))
-        return self._executeCQL(searchVectorDBTableItemCQL, (embedding_vector, numRows))
+        return self._execute_cql(cql, (embedding_vector, numRows))
 
-    def _countRows(self):
-        countRowsCQL = SimpleStatement(_countRowsCQLTemplate.format(
+    def _count_rows(self):
+        cql = SimpleStatement(_count_rows_cql_template.format(
             keyspace=self.keyspace,
-            tableName=self.tableName
+            tableName=self.table_name
         ))
-        return self._executeCQL(countRowsCQL, tuple()).one().count
+        return self._execute_cql(cql, tuple()).one().count
 
 
-class VectorDBTable(VectorDBMixin):
+class VectorTable(VectorMixin):
 
-    def __init__(self, session: Session, keyspace: str, tableName: str, embeddingDimension: int, autoID: bool):
+    def __init__(self, session: Session, keyspace: str, table_name: str, embedding_dimension: int, auto_id: bool):
         self.session = session
         self.keyspace = keyspace
-        self.tableName = tableName
-        self.embeddingDimension = embeddingDimension
+        self.table_name = table_name
+        self.embedding_dimension = embedding_dimension
         #
-        self.autoID = autoID
+        self.auto_id = auto_id
         #
-        self._createTable()
-        self._createIndex()
+        self._create_table()
+        self._create_index()
 
-    def put(self, document, embedding_vector, document_id, metadata, ttlSeconds):
+    def put(self, document, embedding_vector, document_id, metadata, ttl_seconds):
         # document_id, if not autoID, must be str
-        if not self.autoID and document_id is None:
+        if not self.auto_id and document_id is None:
             raise ValueError('\'document_id\' must be specified unless autoID')
-        if self.autoID and document_id is not None:
+        if self.auto_id and document_id is not None:
             raise ValueError('\'document_id\' cannot be passes if autoID')
-        if ttlSeconds:
-            ttlSpec = f' USING TTL {ttlSeconds}'
+        if ttl_seconds:
+            ttl_spec = f' USING TTL {ttl_seconds}'
         else:
-            ttlSpec = ''
-        storeCachedVSSItemCQL = SimpleStatement(_storeCachedVSSItemCQLTemplate.format(
+            ttl_spec = ''
+        cql = SimpleStatement(_store_cached_vss_item_cql_template.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
-            documentIdPlaceholder='now()' if self.autoID else '%s',
-            ttlSpec=ttlSpec,
+            tableName=self.table_name,
+            documentIdPlaceholder='now()' if self.auto_id else '%s',
+            ttlSpec=ttl_spec,
         ))
-        metadataBlob = json.dumps(metadata)
+        metadata_blob = json.dumps(metadata)
         # depending on autoID, the size of the values tuple changes:
-        values0 = (embedding_vector, document, metadataBlob)
-        values = values0 if self.autoID else tuple([document_id] + list(values0))
-        self._executeCQL(storeCachedVSSItemCQL, values)
+        values0 = (embedding_vector, document, metadata_blob)
+        values = values0 if self.auto_id else tuple([document_id] + list(values0))
+        self._execute_cql(cql, values)
 
     def get(self, document_id):
-        if self.autoID:
+        if self.auto_id:
             raise ValueError('\'get\' not supported if autoID')
         else:
-            getVectorDBTableItemCQL = SimpleStatement(_getVectorDBTableItemCQLTemplate.format(
+            cql = SimpleStatement(_get_vector_db_table_item_cql_template.format(
                 keyspace=self.keyspace,
-                tableName=self.tableName,
+                tableName=self.table_name,
             ))
-            hits = self._executeCQL(getVectorDBTableItemCQL, (document_id, ))
+            hits = self._execute_cql(cql, (document_id, ))
             hit = hits.one()
             if hit:
-                return VectorDBTable._jsonifyHit(hit, distance=None)
+                return VectorTable._jsonifyHit(hit, distance=None)
             else:
                 return None
 
     def delete(self, document_id) -> None:
         """This operation goes through even if the row does not exist."""
-        deleteVectorDBTableItemCQL = SimpleStatement(_deleteVectorDBTableItemCQLTemplate.format(
+        cql = SimpleStatement(_delete_vector_db_table_item_cql_template.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
+            tableName=self.table_name,
         ))
-        self._executeCQL(deleteVectorDBTableItemCQL, (document_id, ))
+        self._execute_cql(cql, (document_id, ))
 
-    def search(self, embedding_vector, topK, maxRowsToRetrieve, metric, metricThreshold):
+    def search(self, embedding_vector, top_k, max_rows_to_retrieve, metric, metric_threshold):
         # get rows by ANN
-        rows = list(self.ANNSearch(embedding_vector, maxRowsToRetrieve))
+        rows = list(self.ann_search(embedding_vector, max_rows_to_retrieve))
         if rows:
             # sort, cut, validate and prepare for returning (if any)
             #
@@ -165,7 +163,7 @@ class VectorDBTable(VectorDBMixin):
                 rows,
             ))
             # sort rows by metric score. First handle metric/threshold
-            if metricThreshold is not None:
+            if metric_threshold is not None:
                 if distanceFunction[1]:
                     def _thresholder(mtx, thr): return mtx >= thr
                 else:
@@ -178,14 +176,14 @@ class VectorDBTable(VectorDBMixin):
                 (
                     pair
                     for pair in rowsWithMetric
-                    if _thresholder(pair[0], metricThreshold)
+                    if _thresholder(pair[0], metric_threshold)
                 ),
                 key=itemgetter(0),
                 reverse=distanceFunction[1],
-            )[:topK]
+            )[:top_k]
             # we discard the scores and return an iterable of hits (as JSONs)
             return [
-                VectorDBTable._jsonifyHit(hit, distance=distance)
+                VectorTable._jsonifyHit(hit, distance=distance)
                 for distance, hit in sortedPassingWinners
             ]
         else:
@@ -208,20 +206,20 @@ class VectorDBTable(VectorDBMixin):
         }
 
     def clear(self):
-        truncateVectorDBTableCQL = SimpleStatement(_truncateVectorDBTableCQLTemplate.format(
+        cql = SimpleStatement(_truncate_vector_db_table_cql_template.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
+            tableName=self.table_name,
         ))
-        self._executeCQL(truncateVectorDBTableCQL, tuple())
+        self._execute_cql(cql, tuple())
 
-    def _createTable(self):
-        createVectorDBTableCQL = SimpleStatement(_createVectorDBTableCQLTemplate.format(
+    def _create_table(self):
+        cql = SimpleStatement(_create_vector_db_table_cql_template.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
-            idType='UUID' if self.autoID else 'TEXT',
-            embeddingDimension=self.embeddingDimension,
+            tableName=self.table_name,
+            idType='UUID' if self.auto_id else 'TEXT',
+            embeddingDimension=self.embedding_dimension,
         ))
-        self._executeCQL(createVectorDBTableCQL, tuple())
+        self._execute_cql(cql, tuple())
 
-    def _executeCQL(self, statement, params):
+    def _execute_cql(self, statement, params):
         return self.session.execute(statement, params)

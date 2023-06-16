@@ -5,7 +5,7 @@ by some 'session id'. Overwrites are not supported by design.
 
 from cassandra.query import SimpleStatement
 
-_createTableCQLTemplate = """
+_create_table_cql_template = """
 CREATE TABLE IF NOT EXISTS {keyspace}.{tableName} (
     session_id TEXT,
     blob_id TIMEUUID,
@@ -13,12 +13,12 @@ CREATE TABLE IF NOT EXISTS {keyspace}.{tableName} (
     PRIMARY KEY (( session_id ) , blob_id )
 ) WITH CLUSTERING ORDER BY (blob_id ASC);
 """
-_getSessionBlobsCQLTemplate = """
+_get_session_blobs_cql_template = """
 SELECT blob
     FROM {keyspace}.{tableName}
 WHERE session_id=%s;
 """
-_storeSessionBlobCQLTemplate = """
+_store_session_blob_cql_template = """
 INSERT INTO {keyspace}.{tableName} (
     session_id,
     blob_id,
@@ -29,62 +29,62 @@ INSERT INTO {keyspace}.{tableName} (
     %s
 ){ttlSpec};
 """
-_clearSessionCQLTemplate = """
+_clear_session_cql_template = """
 DELETE FROM {keyspace}.{tableName} WHERE session_id = %s;
 """
 
 
-class StoredBlobHistory():
+class StoredBlobHistory:
 
-    def __init__(self, session, keyspace, tableName):
+    def __init__(self, session, keyspace, table_name):
         self.session = session
         self.keyspace = keyspace
-        self.tableName = tableName
+        self.table_name = table_name
         # Schema creation, if needed
-        createTableCQL = SimpleStatement(_createTableCQLTemplate.format(
+        cql = SimpleStatement(_create_table_cql_template.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
+            tableName=self.table_name,
         ))
-        session.execute(createTableCQL)
+        session.execute(cql)
 
-    def store(self, sessionId, blob, ttlSeconds):
-        if ttlSeconds:
-            ttlSpec = f' USING TTL {ttlSeconds}'
+    def store(self, session_id, blob, ttl_seconds):
+        if ttl_seconds:
+            ttl_spec = f' USING TTL {ttl_seconds}'
         else:
-            ttlSpec = ''
+            ttl_spec = ''
         #
-        storeSessionBlobCQL = SimpleStatement(_storeSessionBlobCQLTemplate.format(
+        cql = SimpleStatement(_store_session_blob_cql_template.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
-            ttlSpec=ttlSpec,
+            tableName=self.table_name,
+            ttlSpec=ttl_spec,
         ))
         self.session.execute(
-            storeSessionBlobCQL,
+            cql,
             (
-                sessionId,
+                session_id,
                 blob,
             )
         )
 
-    def retrieve(self, sessionId, maxCount=None):
+    def retrieve(self, session_id, max_count=None):
         pass
-        getSessionBlobsCQL = SimpleStatement(_getSessionBlobsCQLTemplate.format(
+        cql = SimpleStatement(_get_session_blobs_cql_template.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
+            tableName=self.table_name,
         ))
-        blobRows = self.session.execute(
-            getSessionBlobsCQL,
-            (sessionId, )
+        rows = self.session.execute(
+            cql,
+            (session_id,)
         )
         return (
             row.blob
-            for row in blobRows
+            for row in rows
         )
 
-    def clearSessionId(self, sessionId):
+    def clear_session_id(self, session_id):
         pass
-        clearSessionCQL = SimpleStatement(_clearSessionCQLTemplate.format(
+        cql = SimpleStatement(_clear_session_cql_template.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
+            tableName=self.table_name,
         ))
-        self.session.execute(clearSessionCQL, (sessionId, ))
+        self.session.execute(cql, (session_id,))
