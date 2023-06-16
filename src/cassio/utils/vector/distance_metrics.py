@@ -2,9 +2,10 @@ from typing import List
 
 import numpy as np
 
+
 # distance definitions. These all work batched in the first argument.
-def distance_dotProduct(embeddingVectors: List[List[float]], referenceEmbeddingVector: List[float]) -> List[float]:
-        """
+def distance_dot_product(embedding_vectors: List[List[float]], reference_embedding_vector: List[float]) -> List[float]:
+    """
         Given a list [emb_i] and a reference rEmb vector,
         return a list [distance_i] where each distance is
             distance_i = distance(emb_i, rEmb)
@@ -13,42 +14,42 @@ def distance_dotProduct(embeddingVectors: List[List[float]], referenceEmbeddingV
 
         Not particularly optimized.
         """
-        v1s = np.array(embeddingVectors, dtype=float)
-        v2 = np.array(referenceEmbeddingVector, dtype=float)
-        return list(np.dot(
-            v1s,
-            v2.T,
-        ))
+    v1s = np.array(embedding_vectors, dtype=float)
+    v2 = np.array(reference_embedding_vector, dtype=float)
+    return list(np.dot(
+        v1s,
+        v2.T,
+    ))
 
 
-def distance_cosDifference(embeddingVectors: List[List[float]], referenceEmbeddingVector: List[float]) -> List[float]:
-    v1s = np.array(embeddingVectors, dtype=float)
-    v2 = np.array(referenceEmbeddingVector, dtype=float)
+def distance_cos_difference(embedding_vectors: List[List[float]], reference_embedding_vector: List[float]) -> List[float]:
+    v1s = np.array(embedding_vectors, dtype=float)
+    v2 = np.array(reference_embedding_vector, dtype=float)
     return list(np.dot(
         v1s,
         v2.T,
     ) / (
-        np.linalg.norm(v1s, axis=1)
-        * np.linalg.norm(v2)
-    ))
+                        np.linalg.norm(v1s, axis=1)
+                        * np.linalg.norm(v2)
+                ))
 
 
-def distance_L1(embeddingVectors: List[List[float]], referenceEmbeddingVector: List[float]) -> List[float]:
-        v1s = np.array(embeddingVectors, dtype=float)
-        v2 = np.array(referenceEmbeddingVector, dtype=float)
-        return list(np.linalg.norm(v1s - v2, axis=1, ord=1))
+def distance_l1(embedding_vectors: List[List[float]], reference_embedding_vector: List[float]) -> List[float]:
+    v1s = np.array(embedding_vectors, dtype=float)
+    v2 = np.array(reference_embedding_vector, dtype=float)
+    return list(np.linalg.norm(v1s - v2, axis=1, ord=1))
 
 
-def distance_L2(embeddingVectors: List[List[float]], referenceEmbeddingVector: List[float]) -> List[float]:
-        v1s = np.array(embeddingVectors, dtype=float)
-        v2 = np.array(referenceEmbeddingVector, dtype=float)
-        return list(np.linalg.norm(v1s - v2, axis=1, ord=2))
+def distance_l2(embedding_vectors: List[List[float]], reference_embedding_vector: List[float]) -> List[float]:
+    v1s = np.array(embedding_vectors, dtype=float)
+    v2 = np.array(reference_embedding_vector, dtype=float)
+    return list(np.linalg.norm(v1s - v2, axis=1, ord=2))
 
 
-def distance_max(embeddingVectors: List[List[float]], referenceEmbeddingVector: List[float]) -> List[float]:
-        v1s = np.array(embeddingVectors, dtype=float)
-        v2 = np.array(referenceEmbeddingVector, dtype=float)
-        return list(np.linalg.norm(v1s - v2, axis=1, ord=np.inf))
+def distance_max(embedding_vectors: List[List[float]], reference_embedding_vector: List[float]) -> List[float]:
+    v1s = np.array(embedding_vectors, dtype=float)
+    v2 = np.array(reference_embedding_vector, dtype=float)
+    return list(np.linalg.norm(v1s - v2, axis=1, ord=np.inf))
 
 
 # The tuple is:
@@ -61,19 +62,19 @@ def distance_max(embeddingVectors: List[List[float]], referenceEmbeddingVector: 
 #     - cutoff should be metric > threshold)
 distanceMetricsMap = {
     'cos': (
-        distance_cosDifference,
+        distance_cos_difference,
         True,
     ),
     'dot': (
-        distance_dotProduct,
+        distance_dot_product,
         True,
     ),
     'l1': (
-        distance_L1,
+        distance_l1,
         False,
     ),
     'l2': (
-        distance_L2,
+        distance_l2,
         False,
     ),
     'max': (
