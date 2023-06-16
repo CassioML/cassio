@@ -27,6 +27,21 @@ class MockDBSession():
         else:
             return self.statements[-n:]
 
+    @classmethod
+    def normalizeCQLStatement(statement: str) -> str:
+        _s = statement
+            .replace(';', ' ')
+            .replace('%s', ' %s ')
+            .replace('=', ' = ')
+        return ' '.join(
+            tok.lower()
+            for tok in (
+                _t.strip()
+                for _t in _s.split(' ')
+                if _t.strip()
+            )
+        )
+
 # DB session (as per settings detected in env vars)
 dbSession = None
 
