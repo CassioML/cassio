@@ -7,40 +7,7 @@ from typing import Union, List, Any
 
 from cassandra.cluster import Session
 
-# CQL templates
-_create_table_cql_template = """
-CREATE TABLE IF NOT EXISTS {keyspace}.{table_name} (
-    key_desc TEXT,
-    cache_key TEXT,
-    cache_value TEXT,
-    PRIMARY KEY (( key_desc, cache_key ))
-)
-"""
-_get_cached_item_cql_template = """
-SELECT cache_value
-    FROM {keyspace}.{table_name}
-WHERE key_desc=%s
-    AND cache_key=%s
-"""
-_delete_cached_item_cql_template = """
-DELETE FROM {keyspace}.{table_name}
-WHERE key_desc=%s
-    AND cache_key=%s
-"""
-_storeCachedItemCQLTemplate = """
-INSERT INTO {keyspace}.{table_name} (
-    key_desc,
-    cache_key,
-    cache_value
-) VALUES (
-    %s,
-    %s,
-    %s
-){ttlSpec}
-"""
-_truncate_table_cql_template = """
-TRUNCATE TABLE {keyspace}.{table_name}
-"""
+import cassio.cql
 
 
 class KVCache:
@@ -52,14 +19,14 @@ class KVCache:
         self.keys = keys
         self.key_desc = '/'.join(self.keys)
         # Schema creation, if needed
-        cql = _create_table_cql_template.format(
+        cql = cassio.cql.create_kv_table.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
         )
         session.execute(cql)
 
     def clear(self):
-        cql = _truncate_table_cql_template.format(
+        cql = cassio.cql.truncate_table.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
         )
@@ -76,7 +43,7 @@ class KVCache:
             key_dict[k]
             for k in self.keys
         ])
-        cql = _storeCachedItemCQLTemplate.format(
+        cql = cassio.cql.store_kv_item.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
             ttlSpec=ttl_spec,
@@ -95,7 +62,7 @@ class KVCache:
             key_dict[k]
             for k in self.keys
         ])
-        cql = _get_cached_item_cql_template.format(
+        cql = cassio.cql.get_kv_item.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
         )
@@ -114,7 +81,7 @@ class KVCache:
             key_dict[k]
             for k in self.keys
         ])
-        cql = _delete_cached_item_cql_template.format(
+        cql = cassio.cql.delete_kv_item.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
         )

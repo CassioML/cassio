@@ -8,81 +8,31 @@ from operator import itemgetter
 from cassandra.cluster import Session
 from cassandra.query import SimpleStatement
 
+import cassio.cql
 from cassio.utils.vector.distance_metrics import distanceMetricsMap
-
-_create_vector_db_table_cql_template = """
-CREATE TABLE IF NOT EXISTS {keyspace}.{tableName} (
-    document_id {idType} PRIMARY KEY,
-    embedding_vector VECTOR<FLOAT, {embeddingDimension}>,
-    document TEXT,
-    metadata_blob TEXT
-)
-"""
-_create_vector_db_table_index_cql_template = """
-CREATE CUSTOM INDEX IF NOT EXISTS {indexName} ON {keyspace}.{tableName} (embedding_vector)
-USING 'org.apache.cassandra.index.sai.StorageAttachedIndex' ;
-"""
-_store_cached_vss_item_cql_template = """
-INSERT INTO {keyspace}.{tableName} (
-    document_id,
-    embedding_vector,
-    document,
-    metadata_blob
-) VALUES (
-    {documentIdPlaceholder},
-    %s,
-    %s,
-    %s
-){ttlSpec}
-"""
-_get_vector_db_table_item_cql_template = """
-SELECT
-    document_id, embedding_vector, document, metadata_blob
-FROM {keyspace}.{tableName}
-    WHERE document_id=%s
-"""
-_search_vector_db_table_item_cql_template = """
-SELECT
-    document_id, embedding_vector, document, metadata_blob
-FROM {keyspace}.{tableName}
-    ORDER BY embedding_vector ANN OF %s
-    LIMIT %s
-    ALLOW FILTERING
-"""
-
-_truncate_vector_db_table_cql_template = """
-TRUNCATE TABLE {keyspace}.{tableName};
-"""
-_delete_vector_db_table_item_cql_template = """
-DELETE FROM {keyspace}.{tableName}
-WHERE document_id = %s
-"""
-_count_rows_cql_template = """
-    SELECT COUNT(*) FROM {keyspace}.{tableName}
-"""
 
 
 class VectorMixin:
     def _create_index(self):
         index_name = f'{self.table_name}_embedding_idx'
-        cql = SimpleStatement(_create_vector_db_table_index_cql_template.format(
+        cql = SimpleStatement(cassio.cql.create_vector_table_index.format(
             indexName=index_name,
             keyspace=self.keyspace,
-            tableName=self.table_name
+            table_name=self.table_name
         ))
         self._execute_cql(cql, tuple())
 
     def ann_search(self, embedding_vector, numRows):
-        cql = SimpleStatement(_search_vector_db_table_item_cql_template.format(
+        cql = SimpleStatement(cassio.cql.search_vector_table_item.format(
             keyspace=self.keyspace,
-            tableName=self.table_name
+            table_name=self.table_name
         ))
         return self._execute_cql(cql, (embedding_vector, numRows))
 
     def _count_rows(self):
-        cql = SimpleStatement(_count_rows_cql_template.format(
+        cql = SimpleStatement(cassio.cql.count_rows.format(
             keyspace=self.keyspace,
-            tableName=self.table_name
+            table_name=self.table_name
         ))
         return self._execute_cql(cql, tuple()).one().count
 
@@ -110,9 +60,9 @@ class VectorTable(VectorMixin):
             ttl_spec = f' USING TTL {ttl_seconds}'
         else:
             ttl_spec = ''
-        cql = SimpleStatement(_store_cached_vss_item_cql_template.format(
+        cql = SimpleStatement(cassio.cql.store_cached_vss_item.format(
             keyspace=self.keyspace,
-            tableName=self.table_name,
+            table_name=self.table_name,
             documentIdPlaceholder='now()' if self.auto_id else '%s',
             ttlSpec=ttl_spec,
         ))
@@ -126,9 +76,9 @@ class VectorTable(VectorMixin):
         if self.auto_id:
             raise ValueError('\'get\' not supported if autoID')
         else:
-            cql = SimpleStatement(_get_vector_db_table_item_cql_template.format(
+            cql = SimpleStatement(cassio.cql.get_vector_table_item.format(
                 keyspace=self.keyspace,
-                tableName=self.table_name,
+                table_name=self.table_name,
             ))
             hits = self._execute_cql(cql, (document_id, ))
             hit = hits.one()
@@ -139,9 +89,9 @@ class VectorTable(VectorMixin):
 
     def delete(self, document_id) -> None:
         """This operation goes through even if the row does not exist."""
-        cql = SimpleStatement(_delete_vector_db_table_item_cql_template.format(
+        cql = SimpleStatement(cassio.cql.delete_vector_table_item.format(
             keyspace=self.keyspace,
-            tableName=self.table_name,
+            table_name=self.table_name,
         ))
         self._execute_cql(cql, (document_id, ))
 
@@ -206,16 +156,16 @@ class VectorTable(VectorMixin):
         }
 
     def clear(self):
-        cql = SimpleStatement(_truncate_vector_db_table_cql_template.format(
+        cql = SimpleStatement(cassio.cql.truncate_vector_table.format(
             keyspace=self.keyspace,
-            tableName=self.table_name,
+            table_name=self.table_name,
         ))
         self._execute_cql(cql, tuple())
 
     def _create_table(self):
-        cql = SimpleStatement(_create_vector_db_table_cql_template.format(
+        cql = SimpleStatement(cassio.cql.create_vector_table.format(
             keyspace=self.keyspace,
-            tableName=self.table_name,
+            table_name=self.table_name,
             idType='UUID' if self.auto_id else 'TEXT',
             embeddingDimension=self.embedding_dimension,
         ))

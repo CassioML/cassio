@@ -7,11 +7,10 @@ from functools import reduce
 
 from cassandra.query import SimpleStatement
 
+import cassio.cql
 from cassio.inspection import (
     _table_primary_key_columns,
 )
-
-_retrieve_one_row_cql_template = 'SELECT * FROM {keyspace}.{tableName} WHERE {whereClause} LIMIT 1'
 
 
 class CassandraExtractor:
@@ -36,9 +35,9 @@ class CassandraExtractor:
         #   selecting only those unless function passed)
         def _getter(**kwargs):
             def _retrieve_field(_table_name2, _key_columns, _column_or_extractor, _key_value_map):
-                selector = SimpleStatement(_retrieve_one_row_cql_template.format(
+                selector = SimpleStatement(cassio.cql.retrieve_one_row.format(
                     keyspace=keyspace,
-                    tableName=_table_name2,
+                    table_name=_table_name2,
                     whereClause=' AND '.join(
                         f'{kc} = %s'
                         for kc in _key_columns
@@ -65,8 +64,8 @@ class CassandraExtractor:
                         ))
 
             return {
-                field: _retrieve_field(tableName, self.primary_key_map[tableName], columnOrExtractor, kwargs)
-                for field, (tableName, columnOrExtractor) in field_mapper.items()
+                field: _retrieve_field(table_name, self.primary_key_map[table_name], columnOrExtractor, kwargs)
+                for field, (table_name, columnOrExtractor) in field_mapper.items()
             }
 
         self.getter = _getter
