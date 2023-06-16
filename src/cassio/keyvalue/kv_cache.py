@@ -12,23 +12,23 @@ import cassio.cql
 
 class KVCache:
 
-    def __init__(self, session: Session, keyspace: str, table_name: str, keys: List[Any]):
+    def __init__(self, session: Session, keyspace: str, table: str, keys: List[Any]):
         self.session = session
         self.keyspace = keyspace
-        self.table_name = table_name
+        self.table = table
         self.keys = keys
         self.key_desc = '/'.join(self.keys)
         # Schema creation, if needed
         st = cassio.cql.create_kv_table.format(
             keyspace=self.keyspace,
-            table_name=self.table_name,
+            table=self.table,
         )
         session.execute(st)
 
     def clear(self):
         st = cassio.cql.truncate_table.format(
             keyspace=self.keyspace,
-            table_name=self.table_name,
+            table=self.table,
         )
         self.session.execute(st)
 
@@ -43,7 +43,7 @@ class KVCache:
         ])
         st = cassio.cql.store_kv_item.format(
             keyspace=self.keyspace,
-            table_name=self.table_name,
+            table=self.table,
             ttlSpec=ttl_spec,
         )
         self.session.execute(
@@ -58,7 +58,7 @@ class KVCache:
         ])
         st = cassio.cql.get_kv_item.format(
             keyspace=self.keyspace,
-            table_name=self.table_name,
+            table=self.table,
         )
         row = self.session.execute(
             st,
@@ -77,7 +77,7 @@ class KVCache:
         ])
         st = cassio.cql.delete_kv_item.format(
             keyspace=self.keyspace,
-            table_name=self.table_name,
+            table=self.table,
         )
         self.session.execute(
             st,

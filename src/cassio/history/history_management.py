@@ -10,14 +10,14 @@ import cassio.cql
 
 class StoredBlobHistory:
 
-    def __init__(self, session, keyspace, table_name):
+    def __init__(self, session, keyspace, table):
         self.session = session
         self.keyspace = keyspace
-        self.table_name = table_name
+        self.table = table
         # Schema creation, if needed
         st = SimpleStatement(cassio.cql.create_session_table.format(
             keyspace=self.keyspace,
-            table_name=self.table_name,
+            table=self.table,
         ))
         session.execute(st)
 
@@ -29,7 +29,7 @@ class StoredBlobHistory:
         #
         st = SimpleStatement(cassio.cql.store_session_blob.format(
             keyspace=self.keyspace,
-            table_name=self.table_name,
+            table=self.table,
             ttlSpec=ttl_spec,
         ))
         self.session.execute(
@@ -41,7 +41,7 @@ class StoredBlobHistory:
         pass
         st = SimpleStatement(cassio.cql.get_session_blobs.format(
             keyspace=self.keyspace,
-            table_name=self.table_name,
+            table=self.table,
         ))
         rows = self.session.execute(
             st,
@@ -56,6 +56,6 @@ class StoredBlobHistory:
         pass
         st = SimpleStatement(cassio.cql.clear_session.format(
             keyspace=self.keyspace,
-            table_name=self.table_name,
+            table=self.table,
         ))
         self.session.execute(st, (session_id,))

@@ -14,35 +14,35 @@ from cassio.utils.vector.distance_metrics import distance_metrics
 
 class VectorMixin:
     def _create_index(self):
-        index_name = f'{self.table_name}_embedding_idx'
+        index_name = f'{self.table}_embedding_idx'
         st = SimpleStatement(cassio.cql.create_vector_table_index.format(
             indexName=index_name,
             keyspace=self.keyspace,
-            table_name=self.table_name
+            table=self.table
         ))
         self._execute_cql(st, tuple())
 
     def ann_search(self, embedding_vector, numRows):
         st = SimpleStatement(cassio.cql.search_vector_table_item.format(
             keyspace=self.keyspace,
-            table_name=self.table_name
+            table=self.table
         ))
         return self._execute_cql(st, (embedding_vector, numRows))
 
     def _count_rows(self):
         st = SimpleStatement(cassio.cql.count_rows.format(
             keyspace=self.keyspace,
-            table_name=self.table_name
+            table=self.table
         ))
         return self._execute_cql(st, tuple()).one().count
 
 
 class VectorTable(VectorMixin):
 
-    def __init__(self, session: Session, keyspace: str, table_name: str, embedding_dimension: int, auto_id: bool):
+    def __init__(self, session: Session, keyspace: str, table: str, embedding_dimension: int, auto_id: bool):
         self.session = session
         self.keyspace = keyspace
-        self.table_name = table_name
+        self.table = table
         self.embedding_dimension = embedding_dimension
         #
         self.auto_id = auto_id
@@ -62,7 +62,7 @@ class VectorTable(VectorMixin):
             ttl_spec = ''
         st = SimpleStatement(cassio.cql.store_cached_vss_item.format(
             keyspace=self.keyspace,
-            table_name=self.table_name,
+            table=self.table,
             documentIdPlaceholder='now()' if self.auto_id else '%s',
             ttlSpec=ttl_spec,
         ))
@@ -78,7 +78,7 @@ class VectorTable(VectorMixin):
         else:
             st = SimpleStatement(cassio.cql.get_vector_table_item.format(
                 keyspace=self.keyspace,
-                table_name=self.table_name,
+                table=self.table,
             ))
             hits = self._execute_cql(st, (document_id, ))
             hit = hits.one()
@@ -91,7 +91,7 @@ class VectorTable(VectorMixin):
         """This operation goes through even if the row does not exist."""
         st = SimpleStatement(cassio.cql.delete_vector_table_item.format(
             keyspace=self.keyspace,
-            table_name=self.table_name,
+            table=self.table,
         ))
         self._execute_cql(st, (document_id, ))
 
@@ -158,14 +158,14 @@ class VectorTable(VectorMixin):
     def clear(self):
         st = SimpleStatement(cassio.cql.truncate_vector_table.format(
             keyspace=self.keyspace,
-            table_name=self.table_name,
+            table=self.table,
         ))
         self._execute_cql(st, tuple())
 
     def _create_table(self):
         st = SimpleStatement(cassio.cql.create_vector_table.format(
             keyspace=self.keyspace,
-            table_name=self.table_name,
+            table=self.table,
             idType='UUID' if self.auto_id else 'TEXT',
             embeddingDimension=self.embedding_dimension,
         ))

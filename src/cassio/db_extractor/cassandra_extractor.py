@@ -11,8 +11,8 @@ from cassandra.query import SimpleStatement
 import cassio.cql
 
 
-def _table_primary_key_columns(session, keyspace, table_name) -> List[str]:
-    table = session.cluster.metadata.keyspaces[keyspace].tables[table_name]
+def _table_primary_key_columns(session, keyspace, table) -> List[str]:
+    table = session.cluster.metadata.keyspaces[keyspace].tables[table]
     return [
         col.name for col in table.partition_key
     ] + [
@@ -30,8 +30,8 @@ class CassandraExtractor:
         # derived fields
         self.tables_needed = {fmv[0] for fmv in field_mapper.values()}
         self.primary_key_map = {
-            table_name: _table_primary_key_columns(self.session, self.keyspace, table_name)
-            for table_name in self.tables_needed
+            table: _table_primary_key_columns(self.session, self.keyspace, table)
+            for table in self.tables_needed
         }
         # all primary-key values needed across tables
         self.requiredParameters = list(reduce(lambda accum, nw: accum | set(nw), self.primary_key_map.values(), set()))
@@ -41,10 +41,10 @@ class CassandraExtractor:
         #   query a table only once (grouping required variables by source table,
         #   selecting only those unless function passed)
         def _getter(**kwargs):
-            def _retrieve_field(_table_name2, _key_columns, _column_or_extractor, _key_value_map):
+            def _retrieve_field(_table2, _key_columns, _column_or_extractor, _key_value_map):
                 selector = SimpleStatement(cassio.cql.retrieve_one_row.format(
                     keyspace=keyspace,
-                    table_name=_table_name2,
+                    table=_table2,
                     whereClause=' AND '.join(
                         f'{kc} = %s'
                         for kc in _key_columns
@@ -67,12 +67,12 @@ class CassandraExtractor:
                         raise ValueError('No data found for %s from %s.%s' % (
                             str(_column_or_extractor),
                             keyspace,
-                            _table_name2,
+                            _table2,
                         ))
 
             return {
-                field: _retrieve_field(table_name, self.primary_key_map[table_name], columnOrExtractor, kwargs)
-                for field, (table_name, columnOrExtractor) in field_mapper.items()
+                field: _retrieve_field(table, self.primary_key_map[table], columnOrExtractor, kwargs)
+                for field, (table, columnOrExtractor) in field_mapper.items()
             }
 
         self.getter = _getter
