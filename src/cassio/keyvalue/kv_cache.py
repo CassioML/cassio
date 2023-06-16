@@ -19,55 +19,49 @@ class KVCache:
         self.keys = keys
         self.key_desc = '/'.join(self.keys)
         # Schema creation, if needed
-        cql = cassio.cql.create_kv_table.format(
+        st = cassio.cql.create_kv_table.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
         )
-        session.execute(cql)
+        session.execute(st)
 
     def clear(self):
-        cql = cassio.cql.truncate_table.format(
+        st = cassio.cql.truncate_table.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
         )
-        self.session.execute(
-            cql
-        )
+        self.session.execute(st)
 
     def put(self, key_dict, cache_value, ttl_seconds):
         if ttl_seconds:
             ttl_spec = f' USING TTL {ttl_seconds}'
         else:
             ttl_spec = ''
-        cache_key = self._serializeKey([
+        cache_key = self._serialize_key([
             key_dict[k]
             for k in self.keys
         ])
-        cql = cassio.cql.store_kv_item.format(
+        st = cassio.cql.store_kv_item.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
             ttlSpec=ttl_spec,
         )
         self.session.execute(
-            cql,
-            (
-                self.key_desc,
-                cache_key,
-                cache_value,
-            ),
+            st,
+            (self.key_desc, cache_key, cache_value,),
         )
 
     def get(self, key_dict) -> Union[None, str]:
-        cache_key = self._serializeKey([
+        cache_key = self._serialize_key([
             key_dict[k]
             for k in self.keys
         ])
-        cql = cassio.cql.get_kv_item.format(
+        st = cassio.cql.get_kv_item.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
         )
         row = self.session.execute(
-            cql,
+            st,
             (self.key_desc, cache_key),
         ).one()
         if row:
@@ -77,18 +71,18 @@ class KVCache:
 
     def delete(self, key_dict) -> None:
         """ Will not complain if the row does not exist. """
-        cache_key = self._serializeKey([
+        cache_key = self._serialize_key([
             key_dict[k]
             for k in self.keys
         ])
-        cql = cassio.cql.delete_kv_item.format(
+        st = cassio.cql.delete_kv_item.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
         )
         self.session.execute(
-            cql,
+            st,
             (self.key_desc, cache_key),
         )
 
-    def _serializeKey(self, keys: List[str]):
+    def _serialize_key(self, keys: List[str]):
         return str(keys)

@@ -1,1 +1,1 @@
-from cassio.utils.vector import distanceMetricsMap
+from cassio.utils.vector import distance_metrics

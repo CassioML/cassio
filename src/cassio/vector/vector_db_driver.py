@@ -9,32 +9,32 @@ from cassandra.cluster import Session
 from cassandra.query import SimpleStatement
 
 import cassio.cql
-from cassio.utils.vector.distance_metrics import distanceMetricsMap
+from cassio.utils.vector.distance_metrics import distance_metrics
 
 
 class VectorMixin:
     def _create_index(self):
         index_name = f'{self.table_name}_embedding_idx'
-        cql = SimpleStatement(cassio.cql.create_vector_table_index.format(
+        st = SimpleStatement(cassio.cql.create_vector_table_index.format(
             indexName=index_name,
             keyspace=self.keyspace,
             table_name=self.table_name
         ))
-        self._execute_cql(cql, tuple())
+        self._execute_cql(st, tuple())
 
     def ann_search(self, embedding_vector, numRows):
-        cql = SimpleStatement(cassio.cql.search_vector_table_item.format(
+        st = SimpleStatement(cassio.cql.search_vector_table_item.format(
             keyspace=self.keyspace,
             table_name=self.table_name
         ))
-        return self._execute_cql(cql, (embedding_vector, numRows))
+        return self._execute_cql(st, (embedding_vector, numRows))
 
     def _count_rows(self):
-        cql = SimpleStatement(cassio.cql.count_rows.format(
+        st = SimpleStatement(cassio.cql.count_rows.format(
             keyspace=self.keyspace,
             table_name=self.table_name
         ))
-        return self._execute_cql(cql, tuple()).one().count
+        return self._execute_cql(st, tuple()).one().count
 
 
 class VectorTable(VectorMixin):
@@ -60,7 +60,7 @@ class VectorTable(VectorMixin):
             ttl_spec = f' USING TTL {ttl_seconds}'
         else:
             ttl_spec = ''
-        cql = SimpleStatement(cassio.cql.store_cached_vss_item.format(
+        st = SimpleStatement(cassio.cql.store_cached_vss_item.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
             documentIdPlaceholder='now()' if self.auto_id else '%s',
@@ -70,30 +70,30 @@ class VectorTable(VectorMixin):
         # depending on autoID, the size of the values tuple changes:
         values0 = (embedding_vector, document, metadata_blob)
         values = values0 if self.auto_id else tuple([document_id] + list(values0))
-        self._execute_cql(cql, values)
+        self._execute_cql(st, values)
 
     def get(self, document_id):
         if self.auto_id:
             raise ValueError('\'get\' not supported if autoID')
         else:
-            cql = SimpleStatement(cassio.cql.get_vector_table_item.format(
+            st = SimpleStatement(cassio.cql.get_vector_table_item.format(
                 keyspace=self.keyspace,
                 table_name=self.table_name,
             ))
-            hits = self._execute_cql(cql, (document_id, ))
+            hits = self._execute_cql(st, (document_id, ))
             hit = hits.one()
             if hit:
-                return VectorTable._jsonifyHit(hit, distance=None)
+                return VectorTable._jsonify_hit(hit, distance=None)
             else:
                 return None
 
     def delete(self, document_id) -> None:
         """This operation goes through even if the row does not exist."""
-        cql = SimpleStatement(cassio.cql.delete_vector_table_item.format(
+        st = SimpleStatement(cassio.cql.delete_vector_table_item.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
         ))
-        self._execute_cql(cql, (document_id, ))
+        self._execute_cql(st, (document_id, ))
 
     def search(self, embedding_vector, top_k, max_rows_to_retrieve, metric, metric_threshold):
         # get rows by ANN
@@ -102,19 +102,19 @@ class VectorTable(VectorMixin):
             # sort, cut, validate and prepare for returning (if any)
             #
             # evaluate metric
-            distanceFunction = distanceMetricsMap[metric]
-            rowEmbeddings = [
+            distance_function = distance_metrics[metric]
+            row_embeddings = [
                 row.embedding_vector
                 for row in rows
             ]
             # enrich with their metric score
-            rowsWithMetric = list(zip(
-                distanceFunction[0](rowEmbeddings, embedding_vector),
+            rows_with_metric = list(zip(
+                distance_function[0](row_embeddings, embedding_vector),
                 rows,
             ))
             # sort rows by metric score. First handle metric/threshold
             if metric_threshold is not None:
-                if distanceFunction[1]:
+                if distance_function[1]:
                     def _thresholder(mtx, thr): return mtx >= thr
                 else:
                     def _thresholder(mtx, thr): return mtx <= thr
@@ -122,29 +122,29 @@ class VectorTable(VectorMixin):
                 # no hits are discarded
                 def _thresholder(mtx, thr): return True
             #
-            sortedPassingWinners = sorted(
+            sorted_passing_winners = sorted(
                 (
                     pair
-                    for pair in rowsWithMetric
+                    for pair in rows_with_metric
                     if _thresholder(pair[0], metric_threshold)
                 ),
                 key=itemgetter(0),
-                reverse=distanceFunction[1],
+                reverse=distance_function[1],
             )[:top_k]
             # we discard the scores and return an iterable of hits (as JSONs)
             return [
-                VectorTable._jsonifyHit(hit, distance=distance)
-                for distance, hit in sortedPassingWinners
+                VectorTable._jsonify_hit(hit, distance=distance)
+                for distance, hit in sorted_passing_winners
             ]
         else:
             return []
 
     @staticmethod
-    def _jsonifyHit(hit, distance):
+    def _jsonify_hit(hit, distance):
         if distance is not None:
-            distDict = {'distance': distance}
+            dist_dict = {'distance': distance}
         else:
-            distDict = {}
+            dist_dict = {}
         return {
             **{
                 'document_id': hit.document_id,
@@ -152,24 +152,24 @@ class VectorTable(VectorMixin):
                 'document': hit.document,
                 'embedding_vector': hit.embedding_vector,
             },
-            **distDict,
+            **dist_dict,
         }
 
     def clear(self):
-        cql = SimpleStatement(cassio.cql.truncate_vector_table.format(
+        st = SimpleStatement(cassio.cql.truncate_vector_table.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
         ))
-        self._execute_cql(cql, tuple())
+        self._execute_cql(st, tuple())
 
     def _create_table(self):
-        cql = SimpleStatement(cassio.cql.create_vector_table.format(
+        st = SimpleStatement(cassio.cql.create_vector_table.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
             idType='UUID' if self.auto_id else 'TEXT',
             embeddingDimension=self.embedding_dimension,
         ))
-        self._execute_cql(cql, tuple())
+        self._execute_cql(st, tuple())
 
     def _execute_cql(self, statement, params):
         return self.session.execute(statement, params)

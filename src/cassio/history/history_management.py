@@ -15,11 +15,11 @@ class StoredBlobHistory:
         self.keyspace = keyspace
         self.table_name = table_name
         # Schema creation, if needed
-        cql = SimpleStatement(cassio.cql.create_session_table.format(
+        st = SimpleStatement(cassio.cql.create_session_table.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
         ))
-        session.execute(cql)
+        session.execute(st)
 
     def store(self, session_id, blob, ttl_seconds):
         if ttl_seconds:
@@ -27,27 +27,24 @@ class StoredBlobHistory:
         else:
             ttl_spec = ''
         #
-        cql = SimpleStatement(cassio.cql.store_session_blob.format(
+        st = SimpleStatement(cassio.cql.store_session_blob.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
             ttlSpec=ttl_spec,
         ))
         self.session.execute(
-            cql,
-            (
-                session_id,
-                blob,
-            )
+            st,
+            (session_id, blob,)
         )
 
     def retrieve(self, session_id, max_count=None):
         pass
-        cql = SimpleStatement(cassio.cql.get_session_blobs.format(
+        st = SimpleStatement(cassio.cql.get_session_blobs.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
         ))
         rows = self.session.execute(
-            cql,
+            st,
             (session_id,)
         )
         return (
@@ -57,8 +54,8 @@ class StoredBlobHistory:
 
     def clear_session_id(self, session_id):
         pass
-        cql = SimpleStatement(cassio.cql.clear_session.format(
+        st = SimpleStatement(cassio.cql.clear_session.format(
             keyspace=self.keyspace,
             table_name=self.table_name,
         ))
-        self.session.execute(cql, (session_id,))
+        self.session.execute(st, (session_id,))
