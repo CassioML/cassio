@@ -6,7 +6,7 @@ import json
 from operator import itemgetter
 from typing import List, Optional, Union, Dict, Any, NamedTuple
 
-from cassandra.cluster import Session
+from cassandra.cluster import Session, ResponseFuture, ResultSet
 from cassandra.query import SimpleStatement
 
 import cassio.cql
@@ -17,28 +17,28 @@ JSONType = Union[Dict[str, Any], List[Any], int, float, str, bool, None]
 
 
 class VectorMixin:
-    def _create_index(self):
+    def _create_index(self) -> None:
         index_name = f'{self.table}_embedding_idx'
         st = SimpleStatement(cassio.cql.create_vector_table_index.format(
             indexName=index_name,
             keyspace=self.keyspace,
             table=self.table
         ))
-        self._execute_cql(st, tuple())
+        self.session.execute(st, tuple())
 
-    def ann_search(self, embedding_vector, numRows):
+    def ann_search(self, embedding_vector: List[float], top_k: int) -> ResultSet:
         st = SimpleStatement(cassio.cql.search_vector_table_item.format(
             keyspace=self.keyspace,
             table=self.table
         ))
-        return self._execute_cql(st, (embedding_vector, numRows))
+        return self.session.execute(st, (embedding_vector, top_k))
 
-    def _count_rows(self):
+    def _count_rows(self) -> int:
         st = SimpleStatement(cassio.cql.count_rows.format(
             keyspace=self.keyspace,
             table=self.table
         ))
-        return self._execute_cql(st, tuple()).one().count
+        return self.session.execute(st, tuple()).one().count
 
 
 class VectorTable(VectorMixin):
@@ -56,11 +56,27 @@ class VectorTable(VectorMixin):
 
     def put(self,
             document: str,
-            embedding_vector:
-            List[float],
+            embedding_vector: List[float],
             document_id: Optional[str],
             metadata: JSONType,
-            ttl_seconds: int):
+            ttl_seconds: int) -> None:
+        self._put(False, document, embedding_vector, document_id, metadata, ttl_seconds)
+
+    def put_async(self,
+                  document: str,
+                  embedding_vector: List[float],
+                  document_id: Optional[str],
+                  metadata: JSONType,
+                  ttl_seconds: int) -> ResponseFuture:
+        return self._put(True, document, embedding_vector, document_id, metadata, ttl_seconds)
+
+    def _put(self,
+             is_async: bool,
+             document: str,
+             embedding_vector: List[float],
+             document_id: Optional[str],
+             metadata: JSONType,
+             ttl_seconds: int) -> Optional[ResponseFuture]:
         # document_id, if not autoID, must be str
         if not self.auto_id and document_id is None:
             raise ValueError('\'document_id\' must be specified unless autoID')
@@ -80,9 +96,12 @@ class VectorTable(VectorMixin):
         # depending on autoID, the size of the values tuple changes:
         values0 = (embedding_vector, document, metadata_blob)
         values = values0 if self.auto_id else tuple([document_id] + list(values0))
-        self.session.execute(st, values)
+        if is_async:
+            return self.session.execute_async(st, values)
+        else:
+            return self.session.execute(st, values)
 
-    def get(self, document_id: str):
+    def get(self, document_id: str) -> Dict[str: Any]:
         if self.auto_id:
             raise ValueError('\'get\' not supported if autoID')
         else:
@@ -111,7 +130,7 @@ class VectorTable(VectorMixin):
                embedding_vector: List[float],
                top_k: int,
                metric: str,
-               metric_threshold: float):
+               metric_threshold: float) -> List[Dict[str: Any]]:
         # get rows by ANN
         rows = list(self.ann_search(embedding_vector, top_k))
         if not rows:
@@ -151,7 +170,7 @@ class VectorTable(VectorMixin):
         ]
 
     @staticmethod
-    def _jsonify_hit(hit: NamedTuple, distance: float):
+    def _jsonify_hit(hit: NamedTuple, distance: Optional[float]) -> Dict[str: Any]:
         d = {
             'document_id': hit.document_id,
             'metadata': json.loads(hit.metadata_blob),
@@ -162,7 +181,7 @@ class VectorTable(VectorMixin):
             d['distance'] = distance
         return d
 
-    def clear(self):
+    def clear(self) -> None:
         st = SimpleStatement(cassio.cql.truncate_vector_table.format(
             keyspace=self.keyspace,
             table=self.table,
@@ -170,7 +189,7 @@ class VectorTable(VectorMixin):
         params = tuple()
         self.session.execute(st, params)
 
-    def _create_table(self):
+    def _create_table(self) -> None:
         st = SimpleStatement(cassio.cql.create_vector_table.format(
             keyspace=self.keyspace,
             table=self.table,
