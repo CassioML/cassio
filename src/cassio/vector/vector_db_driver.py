@@ -80,7 +80,7 @@ class VectorTable(VectorMixin):
         # depending on autoID, the size of the values tuple changes:
         values0 = (embedding_vector, document, metadata_blob)
         values = values0 if self.auto_id else tuple([document_id] + list(values0))
-        self._execute_cql(st, values)
+        self.session.execute(st, values)
 
     def get(self, document_id: str):
         if self.auto_id:
@@ -90,7 +90,8 @@ class VectorTable(VectorMixin):
                 keyspace=self.keyspace,
                 table=self.table,
             ))
-            hits = self._execute_cql(st, (document_id, ))
+            params = (document_id, )
+            hits = self.session.execute(st, params)
             hit = hits.one()
             if hit:
                 return VectorTable._jsonify_hit(hit, distance=None)
@@ -103,7 +104,8 @@ class VectorTable(VectorMixin):
             keyspace=self.keyspace,
             table=self.table,
         ))
-        self._execute_cql(st, (document_id, ))
+        params = (document_id, )
+        self.session.execute(st, params)
 
     def search(self,
                embedding_vector: List[float],
@@ -165,7 +167,8 @@ class VectorTable(VectorMixin):
             keyspace=self.keyspace,
             table=self.table,
         ))
-        self._execute_cql(st, tuple())
+        params = tuple()
+        self.session.execute(st, params)
 
     def _create_table(self):
         st = SimpleStatement(cassio.cql.create_vector_table.format(
@@ -174,7 +177,5 @@ class VectorTable(VectorMixin):
             idType='UUID' if self.auto_id else 'TEXT',
             embeddingDimension=self.embedding_dimension,
         ))
-        self._execute_cql(st, tuple())
-
-    def _execute_cql(self, statement, params: tuple):
-        return self.session.execute(statement, params)
+        params = tuple()
+        self.session.execute(st, params)
