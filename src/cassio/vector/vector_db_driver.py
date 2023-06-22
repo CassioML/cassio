@@ -24,7 +24,7 @@ class VectorMixin:
             keyspace=self.keyspace,
             table=self.table
         ))
-        self.session.execute(st, tuple())
+        self.session.execute(st)
 
     def ann_search(self, embedding_vector: List[float], top_k: int) -> ResultSet:
         st = SimpleStatement(cassio.cql.search_vector_table_item.format(
@@ -38,7 +38,7 @@ class VectorMixin:
             keyspace=self.keyspace,
             table=self.table
         ))
-        return self.session.execute(st, tuple()).one().count
+        return self.session.execute(st).one().count
 
 
 class VectorTable(VectorMixin):
@@ -139,10 +139,7 @@ class VectorTable(VectorMixin):
         #
         # evaluate metric
         distance_function, distance_reversed = distance_metrics[metric]
-        row_embeddings = [
-            row.embedding_vector
-            for row in rows
-        ]
+        row_embeddings = [row.embedding_vector for row in rows]
         # enrich with their metric score
         rows_with_metric = list(zip(
             distance_function(row_embeddings, embedding_vector),
@@ -186,8 +183,7 @@ class VectorTable(VectorMixin):
             keyspace=self.keyspace,
             table=self.table,
         ))
-        params = tuple()
-        self.session.execute(st, params)
+        self.session.execute(st)
 
     def _create_table(self) -> None:
         st = SimpleStatement(cassio.cql.create_vector_table.format(
@@ -196,5 +192,4 @@ class VectorTable(VectorMixin):
             idType='UUID' if self.auto_id else 'TEXT',
             embeddingDimension=self.embedding_dimension,
         ))
-        params = tuple()
-        self.session.execute(st, params)
+        self.session.execute(st)
