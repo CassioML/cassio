@@ -1,8 +1,8 @@
-v 0.0.4
+v 0.0.6
 =======
 
-* Switch to PyPI Cassandra driver v3.28.0+
-* Start deprecating the 'experimentalVectorSearch' flag
+* VectorTable implements `put_async` to enable concurrent inserts
+* more type hints
 
 v 0.0.5
 =======
@@ -10,3 +10,9 @@ v 0.0.5
 * Removed globals
 * Vector DB: renamed class, method signature & parameters
 * Vector DB: removed overfetch
+
+v 0.0.4
+=======
+
+* Switch to PyPI Cassandra driver v3.28.0+
+* Start deprecating the 'experimentalVectorSearch' flag
