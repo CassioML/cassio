@@ -101,7 +101,7 @@ class VectorTable(VectorMixin):
         else:
             return self.session.execute(st, values)
 
-    def get(self, document_id: str) -> Dict[str: Any]:
+    def get(self, document_id: str) -> Dict[str, Any]:
         if self.auto_id:
             raise ValueError('\'get\' not supported if autoID')
         else:
@@ -130,7 +130,7 @@ class VectorTable(VectorMixin):
                embedding_vector: List[float],
                top_k: int,
                metric: str,
-               metric_threshold: float) -> List[Dict[str: Any]]:
+               metric_threshold: float) -> List[Dict[str, Any]]:
         # get rows by ANN
         rows = list(self.ann_search(embedding_vector, top_k))
         if not rows:
@@ -167,7 +167,7 @@ class VectorTable(VectorMixin):
         ]
 
     @staticmethod
-    def _jsonify_hit(hit: NamedTuple, distance: Optional[float]) -> Dict[str: Any]:
+    def _jsonify_hit(hit: NamedTuple, distance: Optional[float]) -> Dict[str, Any]:
         d = {
             'document_id': hit.document_id,
             'metadata': json.loads(hit.metadata_blob),
