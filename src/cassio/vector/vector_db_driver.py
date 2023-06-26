@@ -43,21 +43,24 @@ class VectorMixin:
 
 class VectorTable(VectorMixin):
 
-    def __init__(self, session: Session, keyspace: str, table: str, embedding_dimension: int, auto_id: bool):
+    def __init__(self,
+                 session: Session,
+                 keyspace: str,
+                 table: str,
+                 embedding_dimension: int,
+                 primary_key_type: str = 'UUID'):
         self.session = session
         self.keyspace = keyspace
         self.table = table
         self.embedding_dimension = embedding_dimension
         #
-        self.auto_id = auto_id
-        #
-        self._create_table()
+        self._create_table(primary_key_type)
         self._create_index()
 
     def put(self,
             document: str,
             embedding_vector: List[float],
-            document_id: Optional[str],
+            document_id: Any,
             metadata: JSONType,
             ttl_seconds: int) -> None:
         self._put(False, document, embedding_vector, document_id, metadata, ttl_seconds)
@@ -65,7 +68,7 @@ class VectorTable(VectorMixin):
     def put_async(self,
                   document: str,
                   embedding_vector: List[float],
-                  document_id: Optional[str],
+                  document_id: Any,
                   metadata: JSONType,
                   ttl_seconds: int) -> ResponseFuture:
         return self._put(True, document, embedding_vector, document_id, metadata, ttl_seconds)
@@ -74,14 +77,9 @@ class VectorTable(VectorMixin):
              is_async: bool,
              document: str,
              embedding_vector: List[float],
-             document_id: Optional[str],
+             document_id: Any,
              metadata: JSONType,
              ttl_seconds: int) -> Optional[ResponseFuture]:
-        # document_id, if not autoID, must be str
-        if not self.auto_id and document_id is None:
-            raise ValueError('\'document_id\' must be specified unless autoID')
-        if self.auto_id and document_id is not None:
-            raise ValueError('\'document_id\' cannot be passes if autoID')
         if ttl_seconds:
             ttl_spec = f' USING TTL {ttl_seconds}'
         else:
@@ -89,35 +87,29 @@ class VectorTable(VectorMixin):
         st = SimpleStatement(cassio.cql.store_cached_vss_item.format(
             keyspace=self.keyspace,
             table=self.table,
-            documentIdPlaceholder='now()' if self.auto_id else '%s',
             ttlSpec=ttl_spec,
         ))
         metadata_blob = json.dumps(metadata)
-        # depending on autoID, the size of the values tuple changes:
-        values0 = (embedding_vector, document, metadata_blob)
-        values = values0 if self.auto_id else tuple([document_id] + list(values0))
+        values = (document_id, embedding_vector, document, metadata_blob)
         if is_async:
             return self.session.execute_async(st, values)
         else:
             return self.session.execute(st, values)
 
-    def get(self, document_id: str) -> Dict[str: Any]:
-        if self.auto_id:
-            raise ValueError('\'get\' not supported if autoID')
+    def get(self, document_id: Any) -> Dict[str: Any]:
+        st = SimpleStatement(cassio.cql.get_vector_table_item.format(
+            keyspace=self.keyspace,
+            table=self.table,
+        ))
+        params = (document_id, )
+        hits = self.session.execute(st, params)
+        hit = hits.one()
+        if hit:
+            return VectorTable._jsonify_hit(hit, distance=None)
         else:
-            st = SimpleStatement(cassio.cql.get_vector_table_item.format(
-                keyspace=self.keyspace,
-                table=self.table,
-            ))
-            params = (document_id, )
-            hits = self.session.execute(st, params)
-            hit = hits.one()
-            if hit:
-                return VectorTable._jsonify_hit(hit, distance=None)
-            else:
-                return None
+            return None
 
-    def delete(self, document_id: str) -> None:
+    def delete(self, document_id: Any) -> None:
         """This operation goes through even if the row does not exist."""
         st = SimpleStatement(cassio.cql.delete_vector_table_item.format(
             keyspace=self.keyspace,
@@ -185,11 +177,11 @@ class VectorTable(VectorMixin):
         ))
         self.session.execute(st)
 
-    def _create_table(self) -> None:
+    def _create_table(self, primary_key_type: str) -> None:
         st = SimpleStatement(cassio.cql.create_vector_table.format(
             keyspace=self.keyspace,
             table=self.table,
-            idType='UUID' if self.auto_id else 'TEXT',
-            embeddingDimension=self.embedding_dimension,
+            key_type=primary_key_type,
+            embedding_dimension=self.embedding_dimension,
         ))
         self.session.execute(st)
