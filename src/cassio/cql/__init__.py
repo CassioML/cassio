@@ -1,6 +1,6 @@
 create_vector_table = """
 CREATE TABLE IF NOT EXISTS {keyspace}.{table} (
-    document_id {key_ype} PRIMARY KEY,
+    document_id {key_type} PRIMARY KEY,
     embedding_vector VECTOR<FLOAT, {embedding_dimension}>,
     document TEXT,
     metadata_blob TEXT

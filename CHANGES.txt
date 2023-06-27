@@ -1,3 +1,7 @@
+v 0.0.7
+=======
+* VectorTable loses `auto_id` parameter and gains `primary_key_type`
+
 v 0.0.6
 =======
 
