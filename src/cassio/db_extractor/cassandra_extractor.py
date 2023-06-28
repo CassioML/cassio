@@ -4,67 +4,78 @@ a keyspace, with a fair amount of metadata inspection.
 """
 
 from functools import reduce
+from typing import List
 
 from cassandra.query import SimpleStatement
 
-from cassio.inspection import (
-    _table_primary_key_columns,
-)
+import cassio.cql
 
 
-class CassandraExtractor():
+def _table_primary_key_columns(session, keyspace, table) -> List[str]:
+    table = session.cluster.metadata.keyspaces[keyspace].tables[table]
+    return [
+        col.name for col in table.partition_key
+    ] + [
+        col.name for col in table.clustering_key
+    ]
+
+
+class CassandraExtractor:
 
     def __init__(self, session, keyspace, field_mapper, literal_nones):
         self.session = session
         self.keyspace = keyspace
         self.field_mapper = field_mapper
-        self.literal_nones = literal_nones # TODO: handle much better
+        self.literal_nones = literal_nones  # TODO: handle much better
         # derived fields
-        self.tablesNeeded = {fmv[0] for fmv in field_mapper.values()}
-        self.primaryKeyMap = {
-            tableName: _table_primary_key_columns(self.session, self.keyspace, tableName)
-            for tableName in self.tablesNeeded
+        self.tables_needed = {fmv[0] for fmv in field_mapper.values()}
+        self.primary_key_map = {
+            table: _table_primary_key_columns(self.session, self.keyspace, table)
+            for table in self.tables_needed
         }
         # all primary-key values needed across tables
-        self.requiredParameters = list(reduce(lambda accum, nw: accum | set(nw), self.primaryKeyMap.values(), set()))
+        self.requiredParameters = list(reduce(lambda accum, nw: accum | set(nw), self.primary_key_map.values(), set()))
+
         # TODOs:
         #   move this getter creation someplace else
-        #   query a table only once (grouping required variables by source table, selecting only those unless function passed)
+        #   query a table only once (grouping required variables by source table,
+        #   selecting only those unless function passed)
         def _getter(**kwargs):
-            def _retrieve_field(_tableName2, _keyColumns, _columnOrExtractor, _keyValueMap):
-                selector = SimpleStatement('SELECT * FROM {keyspace}.{tableName} WHERE {whereClause} LIMIT 1;'.format(
+            def _retrieve_field(_table2, _key_columns, _column_or_extractor, _key_value_map):
+                selector = SimpleStatement(cassio.cql.retrieve_one_row.format(
                     keyspace=keyspace,
-                    tableName=_tableName2,
+                    table=_table2,
                     whereClause=' AND '.join(
                         f'{kc} = %s'
-                        for kc in _keyColumns
+                        for kc in _key_columns
                     ),
                 ))
                 values = tuple([
-                    _keyValueMap[kc]
-                    for kc in _keyColumns
+                    _key_value_map[kc]
+                    for kc in _key_columns
                 ])
                 row = session.execute(selector, values).one()
                 if row:
-                    if callable(_columnOrExtractor):
-                        return _columnOrExtractor(row)
+                    if callable(_column_or_extractor):
+                        return _column_or_extractor(row)
                     else:
-                        return getattr(row, _columnOrExtractor)
+                        return getattr(row, _column_or_extractor)
                 else:
                     if literal_nones:
                         return None
                     else:
                         raise ValueError('No data found for %s from %s.%s' % (
-                            str(_columnOrExtractor),
+                            str(_column_or_extractor),
                             keyspace,
-                            _tableName2,
+                            _table2,
                         ))
-            
+
             return {
-                field: _retrieve_field(tableName, self.primaryKeyMap[tableName], columnOrExtractor, kwargs)
-                for field, (tableName, columnOrExtractor) in field_mapper.items()
+                field: _retrieve_field(table, self.primary_key_map[table], columnOrExtractor, kwargs)
+                for field, (table, columnOrExtractor) in field_mapper.items()
             }
+
         self.getter = _getter
 
-    def __call__(self, *pargs, **kwargs):
-        return self.getter(*pargs, **kwargs)
+    def __call__(self, **kwargs):
+        return self.getter(**kwargs)

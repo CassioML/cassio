@@ -7,121 +7,82 @@ from typing import Union, List, Any
 
 from cassandra.cluster import Session
 
-# CQL templates
-_createTableCQLTemplate = """
-CREATE TABLE IF NOT EXISTS {keyspace}.{tableName} (
-    key_desc TEXT,
-    cache_key TEXT,
-    cache_value TEXT,
-    PRIMARY KEY (( key_desc, cache_key ))
-);
-"""
-_getCachedItemCQLTemplate = """
-SELECT cache_value
-    FROM {keyspace}.{tableName}
-WHERE key_desc=%s
-    AND cache_key=%s;
-"""
-_deleteCachedItemCQLTemplate = """
-DELETE FROM {keyspace}.{tableName}
-WHERE key_desc=%s
-    AND cache_key=%s;
-"""
-_storeCachedItemCQLTemplate = """
-INSERT INTO {keyspace}.{tableName} (
-    key_desc,
-    cache_key,
-    cache_value
-) VALUES (
-    %s,
-    %s,
-    %s
-){ttlSpec};
-"""
-_truncateTableCQLTemplate = """
-TRUNCATE TABLE {keyspace}.{tableName};
-"""
+import cassio.cql
 
 
-class KVCache():
+class KVCache:
 
-    def __init__(self, session: Session, keyspace: str, tableName: str, keys: List[Any]):
+    def __init__(self, session: Session, keyspace: str, table: str, keys: List[Any]):
         self.session = session
         self.keyspace = keyspace
-        self.tableName = tableName
+        self.table = table
         self.keys = keys
-        self.keyDesc = '/'.join(self.keys)
+        self.key_desc = '/'.join(self.keys)
         # Schema creation, if needed
-        createTableCQL = _createTableCQLTemplate.format(
+        st = cassio.cql.create_kv_table.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
+            table=self.table,
         )
-        session.execute(createTableCQL)
+        session.execute(st)
 
     def clear(self):
-        truncateTableCQL = _truncateTableCQLTemplate.format(
+        st = cassio.cql.truncate_table.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
+            table=self.table,
         )
-        self.session.execute(
-            truncateTableCQL
-        )
+        self.session.execute(st)
 
-    def put(self, keyDict, cacheValue, ttlSeconds):
-        if ttlSeconds:
-            ttlSpec = f' USING TTL {ttlSeconds}'
+    def put(self, key_dict, cache_value, ttl_seconds):
+        if ttl_seconds:
+            ttl_spec = f' USING TTL {ttl_seconds}'
         else:
-            ttlSpec = ''
-        cacheKey = self._serializeKey([
-            keyDict[k]
+            ttl_spec = ''
+        cache_key = self._serialize_key([
+            key_dict[k]
             for k in self.keys
         ])
-        storeCachedItemCQL = _storeCachedItemCQLTemplate.format(
+        st = cassio.cql.store_kv_item.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
-            ttlSpec=ttlSpec,
+            table=self.table,
+            ttlSpec=ttl_spec,
         )
         self.session.execute(
-            storeCachedItemCQL,
-            (
-                self.keyDesc,
-                cacheKey,
-                cacheValue,
-            ),
+            st,
+            (self.key_desc, cache_key, cache_value,),
         )
 
-    def get(self, keyDict) -> Union[None, str]:
-        cacheKey = self._serializeKey([
-            keyDict[k]
+    def get(self, key_dict) -> Union[None, str]:
+        cache_key = self._serialize_key([
+            key_dict[k]
             for k in self.keys
         ])
-        getCachedItemCQL = _getCachedItemCQLTemplate.format(
+        st = cassio.cql.get_kv_item.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
+            table=self.table,
         )
-        foundRow = self.session.execute(
-            getCachedItemCQL,
-            (self.keyDesc, cacheKey),
+        row = self.session.execute(
+            st,
+            (self.key_desc, cache_key),
         ).one()
-        if foundRow:
-            return foundRow.cache_value
+        if row:
+            return row.cache_value
         else:
             return None
 
-    def delete(self, keyDict) -> None:
+    def delete(self, key_dict) -> None:
         """ Will not complain if the row does not exist. """
-        cacheKey = self._serializeKey([
-            keyDict[k]
+        cache_key = self._serialize_key([
+            key_dict[k]
             for k in self.keys
         ])
-        deleteCachedItemCQL = _deleteCachedItemCQLTemplate.format(
+        st = cassio.cql.delete_kv_item.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
+            table=self.table,
         )
         self.session.execute(
-            deleteCachedItemCQL,
-            (self.keyDesc, cacheKey),
+            st,
+            (self.key_desc, cache_key),
         )
 
-    def _serializeKey(self, keys: List[str]):
+    def _serialize_key(self, keys: List[str]):
         return str(keys)

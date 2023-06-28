@@ -2,226 +2,194 @@
 A common driver to operate on tables with vector-similarity-search indices.
 """
 
-from operator import itemgetter
 import json
+from operator import itemgetter
+from typing import List, Optional, Union, Dict, Any, NamedTuple
 
-from cassandra.cluster import Session
+from cassandra.cluster import Session, ResponseFuture, ResultSet
 from cassandra.query import SimpleStatement
-from cassandra.protocol import SyntaxException
 
-from cassio.utils.vector.distance_metrics import distanceMetricsMap
-
-_createVectorDBTableCQLTemplate = """
-CREATE TABLE IF NOT EXISTS {keyspace}.{tableName} (
-    document_id {idType} PRIMARY KEY,
-    embedding_vector VECTOR<FLOAT, {embeddingDimension}>,
-    document TEXT,
-    metadata_blob TEXT
-);
-"""
-_createVectorDBTableIndexCQLTemplate = """
-CREATE CUSTOM INDEX IF NOT EXISTS {indexName} ON {keyspace}.{tableName} (embedding_vector)
-USING 'org.apache.cassandra.index.sai.StorageAttachedIndex' ;
-"""
-_storeCachedVSSItemCQLTemplate = """
-INSERT INTO {keyspace}.{tableName} (
-    document_id,
-    embedding_vector,
-    document,
-    metadata_blob
-) VALUES (
-    {documentIdPlaceholder},
-    %s,
-    %s,
-    %s
-){ttlSpec};
-"""
-_getVectorDBTableItemCQLTemplate = """
-SELECT
-    document_id, embedding_vector, document, metadata_blob
-FROM {keyspace}.{tableName}
-    WHERE document_id=%s;
-"""
-_searchVectorDBTableItemCQLTemplate = """
-SELECT
-    document_id, embedding_vector, document, metadata_blob
-FROM {keyspace}.{tableName}
-    ORDER BY embedding_vector ANN OF %s
-    LIMIT %s
-    ALLOW FILTERING;
-"""
-
-_truncateVectorDBTableCQLTemplate = """
-TRUNCATE TABLE {keyspace}.{tableName};
-"""
-_deleteVectorDBTableItemCQLTemplate = """
-DELETE FROM {keyspace}.{tableName}
-WHERE document_id = %s;
-"""
-_countRowsCQLTemplate = """
-    SELECT COUNT(*) FROM {keyspace}.{tableName};
-"""
+import cassio.cql
+from cassio.utils.vector.distance_metrics import distance_metrics
 
 
-class VectorDBMixin():
+JSONType = Union[Dict[str, Any], List[Any], int, float, str, bool, None]
 
-    def _createIndex(self):
-        indexName = f'{self.tableName}_embedding_idx'
-        createVectorDBTableIndexCQL = SimpleStatement(_createVectorDBTableIndexCQLTemplate.format(
-            indexName=indexName,
+
+class VectorMixin:
+    def _create_index(self) -> None:
+        index_name = f'{self.table}_embedding_idx'
+        st = SimpleStatement(cassio.cql.create_vector_table_index.format(
+            indexName=index_name,
             keyspace=self.keyspace,
-            tableName=self.tableName
+            table=self.table
         ))
-        self._executeCQL(createVectorDBTableIndexCQL, tuple())
+        self.session.execute(st)
 
-    def ANNSearch(self, embedding_vector, numRows):
-        searchVectorDBTableItemCQL = SimpleStatement(_searchVectorDBTableItemCQLTemplate.format(
+    def ann_search(self, embedding_vector: List[float], top_k: int) -> ResultSet:
+        st = SimpleStatement(cassio.cql.search_vector_table_item.format(
             keyspace=self.keyspace,
-            tableName=self.tableName
+            table=self.table
         ))
-        return self._executeCQL(searchVectorDBTableItemCQL, (embedding_vector, numRows))
+        return self.session.execute(st, (embedding_vector, top_k))
 
-    def _countRows(self):
-        countRowsCQL = SimpleStatement(_countRowsCQLTemplate.format(
+    def _count_rows(self) -> int:
+        st = SimpleStatement(cassio.cql.count_rows.format(
             keyspace=self.keyspace,
-            tableName=self.tableName
+            table=self.table
         ))
-        return self._executeCQL(countRowsCQL, tuple()).one().count
+        return self.session.execute(st).one().count
 
 
-class VectorDBTable(VectorDBMixin):
+class VectorTable(VectorMixin):
 
-    def __init__(self, session: Session, keyspace: str, tableName: str, embeddingDimension: int, autoID: bool):
+    def __init__(self, session: Session, keyspace: str, table: str, embedding_dimension: int, auto_id: bool):
         self.session = session
         self.keyspace = keyspace
-        self.tableName = tableName
-        self.embeddingDimension = embeddingDimension
+        self.table = table
+        self.embedding_dimension = embedding_dimension
         #
-        self.autoID = autoID
+        self.auto_id = auto_id
         #
-        self._createTable()
-        self._createIndex()
+        self._create_table()
+        self._create_index()
 
-    def put(self, document, embedding_vector, document_id, metadata, ttlSeconds):
+    def put(self,
+            document: str,
+            embedding_vector: List[float],
+            document_id: Optional[str],
+            metadata: JSONType,
+            ttl_seconds: int) -> None:
+        self._put(False, document, embedding_vector, document_id, metadata, ttl_seconds)
+
+    def put_async(self,
+                  document: str,
+                  embedding_vector: List[float],
+                  document_id: Optional[str],
+                  metadata: JSONType,
+                  ttl_seconds: int) -> ResponseFuture:
+        return self._put(True, document, embedding_vector, document_id, metadata, ttl_seconds)
+
+    def _put(self,
+             is_async: bool,
+             document: str,
+             embedding_vector: List[float],
+             document_id: Optional[str],
+             metadata: JSONType,
+             ttl_seconds: int) -> Optional[ResponseFuture]:
         # document_id, if not autoID, must be str
-        if not self.autoID and document_id is None:
+        if not self.auto_id and document_id is None:
             raise ValueError('\'document_id\' must be specified unless autoID')
-        if self.autoID and document_id is not None:
+        if self.auto_id and document_id is not None:
             raise ValueError('\'document_id\' cannot be passes if autoID')
-        if ttlSeconds:
-            ttlSpec = f' USING TTL {ttlSeconds}'
+        if ttl_seconds:
+            ttl_spec = f' USING TTL {ttl_seconds}'
         else:
-            ttlSpec = ''
-        storeCachedVSSItemCQL = SimpleStatement(_storeCachedVSSItemCQLTemplate.format(
+            ttl_spec = ''
+        st = SimpleStatement(cassio.cql.store_cached_vss_item.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
-            documentIdPlaceholder='now()' if self.autoID else '%s',
-            ttlSpec=ttlSpec,
+            table=self.table,
+            documentIdPlaceholder='now()' if self.auto_id else '%s',
+            ttlSpec=ttl_spec,
         ))
-        metadataBlob = json.dumps(metadata)
+        metadata_blob = json.dumps(metadata)
         # depending on autoID, the size of the values tuple changes:
-        values0 = (embedding_vector, document, metadataBlob)
-        values = values0 if self.autoID else tuple([document_id] + list(values0))
-        self._executeCQL(storeCachedVSSItemCQL, values)
+        values0 = (embedding_vector, document, metadata_blob)
+        values = values0 if self.auto_id else tuple([document_id] + list(values0))
+        if is_async:
+            return self.session.execute_async(st, values)
+        else:
+            return self.session.execute(st, values)
 
-    def get(self, document_id):
-        if self.autoID:
+    def get(self, document_id: str) -> Dict[str, Any]:
+        if self.auto_id:
             raise ValueError('\'get\' not supported if autoID')
         else:
-            getVectorDBTableItemCQL = SimpleStatement(_getVectorDBTableItemCQLTemplate.format(
+            st = SimpleStatement(cassio.cql.get_vector_table_item.format(
                 keyspace=self.keyspace,
-                tableName=self.tableName,
+                table=self.table,
             ))
-            hits = self._executeCQL(getVectorDBTableItemCQL, (document_id, ))
+            params = (document_id, )
+            hits = self.session.execute(st, params)
             hit = hits.one()
             if hit:
-                return VectorDBTable._jsonifyHit(hit, distance=None)
+                return VectorTable._jsonify_hit(hit, distance=None)
             else:
                 return None
 
-    def delete(self, document_id) -> None:
+    def delete(self, document_id: str) -> None:
         """This operation goes through even if the row does not exist."""
-        deleteVectorDBTableItemCQL = SimpleStatement(_deleteVectorDBTableItemCQLTemplate.format(
+        st = SimpleStatement(cassio.cql.delete_vector_table_item.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
+            table=self.table,
         ))
-        self._executeCQL(deleteVectorDBTableItemCQL, (document_id, ))
+        params = (document_id, )
+        self.session.execute(st, params)
 
-    def search(self, embedding_vector, topK, maxRowsToRetrieve, metric, metricThreshold):
+    def search(self,
+               embedding_vector: List[float],
+               top_k: int,
+               metric: str,
+               metric_threshold: float) -> List[Dict[str, Any]]:
         # get rows by ANN
-        rows = list(self.ANNSearch(embedding_vector, maxRowsToRetrieve))
-        if rows:
-            # sort, cut, validate and prepare for returning (if any)
-            #
-            # evaluate metric
-            distanceFunction = distanceMetricsMap[metric]
-            rowEmbeddings = [
-                row.embedding_vector
-                for row in rows
-            ]
-            # enrich with their metric score
-            rowsWithMetric = list(zip(
-                distanceFunction[0](rowEmbeddings, embedding_vector),
-                rows,
-            ))
-            # sort rows by metric score. First handle metric/threshold
-            if metricThreshold is not None:
-                if distanceFunction[1]:
-                    def _thresholder(mtx, thr): return mtx >= thr
-                else:
-                    def _thresholder(mtx, thr): return mtx <= thr
-            else:
-                # no hits are discarded
-                def _thresholder(mtx, thr): return True
-            #
-            sortedPassingWinners = sorted(
-                (
-                    pair
-                    for pair in rowsWithMetric
-                    if _thresholder(pair[0], metricThreshold)
-                ),
-                key=itemgetter(0),
-                reverse=distanceFunction[1],
-            )[:topK]
-            # we discard the scores and return an iterable of hits (as JSONs)
-            return [
-                VectorDBTable._jsonifyHit(hit, distance=distance)
-                for distance, hit in sortedPassingWinners
-            ]
-        else:
+        rows = list(self.ann_search(embedding_vector, top_k))
+        if not rows:
             return []
+        # sort, cut, validate and prepare for returning
+        #
+        # evaluate metric
+        distance_function, distance_reversed = distance_metrics[metric]
+        row_embeddings = [row.embedding_vector for row in rows]
+        # enrich with their metric score
+        rows_with_metric = list(zip(
+            distance_function(row_embeddings, embedding_vector),
+            rows,
+        ))
+        # sort rows by metric score. First handle metric/threshold
+        if metric_threshold is not None:
+            if distance_reversed:
+                def _thresholder(mtx, thr): return mtx >= thr
+            else:
+                def _thresholder(mtx, thr): return mtx <= thr
+        else:
+            # no hits are discarded
+            def _thresholder(mtx, thr): return True
+        #
+        sorted_passing_winners = sorted(
+            (pair for pair in rows_with_metric if _thresholder(pair[0], metric_threshold)),
+            key=itemgetter(0),
+            reverse=distance_reversed,
+        )
+        # we discard the scores and return an iterable of hits (as JSON)
+        return [
+            VectorTable._jsonify_hit(hit, distance)
+            for distance, hit in sorted_passing_winners
+        ]
 
     @staticmethod
-    def _jsonifyHit(hit, distance):
-        if distance is not None:
-            distDict = {'distance': distance}
-        else:
-            distDict = {}
-        return {
-            **{
-                'document_id': hit.document_id,
-                'metadata': json.loads(hit.metadata_blob),
-                'document': hit.document,
-                'embedding_vector': hit.embedding_vector,
-            },
-            **distDict,
+    def _jsonify_hit(hit: NamedTuple, distance: Optional[float]) -> Dict[str, Any]:
+        d = {
+            'document_id': hit.document_id,
+            'metadata': json.loads(hit.metadata_blob),
+            'document': hit.document,
+            'embedding_vector': hit.embedding_vector,
         }
+        if distance is not None:
+            d['distance'] = distance
+        return d
 
-    def clear(self):
-        truncateVectorDBTableCQL = SimpleStatement(_truncateVectorDBTableCQLTemplate.format(
+    def clear(self) -> None:
+        st = SimpleStatement(cassio.cql.truncate_vector_table.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
+            table=self.table,
         ))
-        self._executeCQL(truncateVectorDBTableCQL, tuple())
+        self.session.execute(st)
 
-    def _createTable(self):
-        createVectorDBTableCQL = SimpleStatement(_createVectorDBTableCQLTemplate.format(
+    def _create_table(self) -> None:
+        st = SimpleStatement(cassio.cql.create_vector_table.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
-            idType='UUID' if self.autoID else 'TEXT',
-            embeddingDimension=self.embeddingDimension,
+            table=self.table,
+            idType='UUID' if self.auto_id else 'TEXT',
+            embeddingDimension=self.embedding_dimension,
         ))
-        self._executeCQL(createVectorDBTableCQL, tuple())
-
-    def _executeCQL(self, statement, params):
-        return self.session.execute(statement, params)
+        self.session.execute(st)

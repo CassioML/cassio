@@ -5,86 +5,57 @@ by some 'session id'. Overwrites are not supported by design.
 
 from cassandra.query import SimpleStatement
 
-_createTableCQLTemplate = """
-CREATE TABLE IF NOT EXISTS {keyspace}.{tableName} (
-    session_id TEXT,
-    blob_id TIMEUUID,
-    blob TEXT,
-    PRIMARY KEY (( session_id ) , blob_id )
-) WITH CLUSTERING ORDER BY (blob_id ASC);
-"""
-_getSessionBlobsCQLTemplate = """
-SELECT blob
-    FROM {keyspace}.{tableName}
-WHERE session_id=%s;
-"""
-_storeSessionBlobCQLTemplate = """
-INSERT INTO {keyspace}.{tableName} (
-    session_id,
-    blob_id,
-    blob
-) VALUES (
-    %s,
-    now(),
-    %s
-){ttlSpec};
-"""
-_clearSessionCQLTemplate = """
-DELETE FROM {keyspace}.{tableName} WHERE session_id = %s;
-"""
+import cassio.cql
 
 
-class StoredBlobHistory():
+class StoredBlobHistory:
 
-    def __init__(self, session, keyspace, tableName):
+    def __init__(self, session, keyspace, table):
         self.session = session
         self.keyspace = keyspace
-        self.tableName = tableName
+        self.table = table
         # Schema creation, if needed
-        createTableCQL = SimpleStatement(_createTableCQLTemplate.format(
+        st = SimpleStatement(cassio.cql.create_session_table.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
+            table=self.table,
         ))
-        session.execute(createTableCQL)
+        session.execute(st)
 
-    def store(self, sessionId, blob, ttlSeconds):
-        if ttlSeconds:
-            ttlSpec = f' USING TTL {ttlSeconds}'
+    def store(self, session_id, blob, ttl_seconds):
+        if ttl_seconds:
+            ttl_spec = f' USING TTL {ttl_seconds}'
         else:
-            ttlSpec = ''
+            ttl_spec = ''
         #
-        storeSessionBlobCQL = SimpleStatement(_storeSessionBlobCQLTemplate.format(
+        st = SimpleStatement(cassio.cql.store_session_blob.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
-            ttlSpec=ttlSpec,
+            table=self.table,
+            ttlSpec=ttl_spec,
         ))
         self.session.execute(
-            storeSessionBlobCQL,
-            (
-                sessionId,
-                blob,
-            )
+            st,
+            (session_id, blob,)
         )
 
-    def retrieve(self, sessionId, maxCount=None):
+    def retrieve(self, session_id, max_count=None):
         pass
-        getSessionBlobsCQL = SimpleStatement(_getSessionBlobsCQLTemplate.format(
+        st = SimpleStatement(cassio.cql.get_session_blobs.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
+            table=self.table,
         ))
-        blobRows = self.session.execute(
-            getSessionBlobsCQL,
-            (sessionId, )
+        rows = self.session.execute(
+            st,
+            (session_id,)
         )
         return (
             row.blob
-            for row in blobRows
+            for row in rows
         )
 
-    def clearSessionId(self, sessionId):
+    def clear_session_id(self, session_id):
         pass
-        clearSessionCQL = SimpleStatement(_clearSessionCQLTemplate.format(
+        st = SimpleStatement(cassio.cql.clear_session.format(
             keyspace=self.keyspace,
-            tableName=self.tableName,
+            table=self.table,
         ))
-        self.session.execute(clearSessionCQL, (sessionId, ))
+        self.session.execute(st, (session_id,))
