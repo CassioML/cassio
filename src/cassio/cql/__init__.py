@@ -1,7 +1,7 @@
 create_vector_table = """
 CREATE TABLE IF NOT EXISTS {keyspace}.{table} (
-    document_id {idType} PRIMARY KEY,
-    embedding_vector VECTOR<FLOAT, {embeddingDimension}>,
+    document_id {key_type} PRIMARY KEY,
+    embedding_vector VECTOR<FLOAT, {embedding_dimension}>,
     document TEXT,
     metadata_blob TEXT
 )
@@ -17,7 +17,7 @@ INSERT INTO {keyspace}.{table} (
     document,
     metadata_blob
 ) VALUES (
-    {documentIdPlaceholder},
+    %s,
     %s,
     %s,
     %s
