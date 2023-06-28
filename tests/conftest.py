@@ -3,6 +3,7 @@ fixtures for testing
 """
 
 import os
+from typing import Union
 
 import pytest
 
@@ -10,6 +11,7 @@ from cassandra.cluster import (
     Cluster,
 )
 from cassandra.auth import PlainTextAuthProvider
+from cassandra.query import SimpleStatement
 
 # Mock DB session
 
@@ -18,21 +20,20 @@ class MockDBSession():
     def __init__(self):
         self.statements = []
 
-    def execute(self, statement, arguments=tuple()):
-        self.statements.append((statement, arguments))
 
-    def last(self, n):
-        if n<=0:
-            return []
+    def normalizeCQLStatement(self, statement: Union[str, SimpleStatement]) -> str:
+        if isinstance(statement, str):
+            _statement = statement
+        elif isinstance(statement, SimpleStatement):
+            _statement = statement.query_string
         else:
-            return self.statements[-n:]
-
-    @classmethod
-    def normalizeCQLStatement(statement: str) -> str:
-        _s = statement
-            .replace(';', ' ')
-            .replace('%s', ' %s ')
-            .replace('=', ' = ')
+            raise ValueError()
+        #
+        _s = _statement \
+            .replace(';', ' ') \
+            .replace('%s', ' %s ') \
+            .replace('=', ' = ') \
+            .replace('\n', ' ')
         return ' '.join(
             tok.lower()
             for tok in (
@@ -41,6 +42,26 @@ class MockDBSession():
                 if _t.strip()
             )
         )
+
+    def execute(self, statement, arguments=tuple()):
+        self.statements.append((statement, arguments))
+        return []
+
+    def last_raw(self, n):
+        if n<=0:
+            return []
+        else:
+            return self.statements[-n:]
+
+    def last(self, n):
+        return [
+            (
+                self.normalizeCQLStatement(stmt),
+                data,
+            )
+            for stmt, data in self.last_raw(n)
+        ]
+
 
 # DB session (as per settings detected in env vars)
 dbSession = None
@@ -113,3 +134,7 @@ def db_session():
 @pytest.fixture(scope='session')
 def db_keyspace():
     return getDBKeyspace()
+
+@pytest.fixture(scope='function')
+def mock_db_session():
+    return MockDBSession()
