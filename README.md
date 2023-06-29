@@ -17,27 +17,52 @@ such as LangChain, please visit [cassio.org](https://cassio.org).
 
 ## CassIO developers
 
-### Developing
+### Setup
 
 To develop `cassio`, use the `requirements-dev.txt`.
 
 To use the dev version in an integration (e.g. your branch of LangChain),
+`pip install -e .` in this `cassio` repo from within the virtual environment
+you are using to develop your integration.
 
-- `pip install -e .` in this `cassio` repo;
-- `pip install -e .` in the LangChain `cassio` branch of [this fork](https://github.com/hemidactylus/langchain/tree/cassio);
-- plus any additional requirement files specific to the examples
-you're running (such as Jupyter).
+### Git flow
+
+_Note: this is a rough guide, use your common sense and consider exceptions._
+
+`main` is where versioned releases occur (the corresponding commits are git-tagged
+as `v0.0.7` and similar, parallel to the PyPI releases).
+
+Please do not push/PR more than trivial fixes directly to `main`.
+
+Features should generally be done on specific branches and merged into `dev`
+for wider testing. Then, with a slower cadence (such as, when releasing),
+`dev` would be merged to `main`.
+
+![Git flow](images/git-flow.png)
+
+#### Versioning
+
+We are still at `0.*`. Occasional breaking changes are to be expected,
+but please think carefully. A later stronger model of versioning will
+be adopted.
 
 ### Publishing
 
+- Bump version in setup.py
+- Add to `CHANGES.txt`
+- Commit the very code that will be built:
+
 ```
-# (bump version & commit ...)
+rm upload dist/*
 python setup.py sdist bdist_wheel
 twine upload dist/*
 # (login to PyPI ...)
 ```
 
 ### Testing
+
+Please run tests (and add some coverage for new features). This is not
+enforced other than to your conscience.
 
 #### Unit testing
 
