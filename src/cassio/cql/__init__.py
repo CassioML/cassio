@@ -35,7 +35,6 @@ SELECT
 FROM {keyspace}.{table}
     ORDER BY embedding_vector ANN OF %s
     LIMIT %s
-    ALLOW FILTERING
 """
 truncate_vector_table = """
 TRUNCATE TABLE {keyspace}.{table};
