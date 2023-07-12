@@ -1,17 +1,20 @@
 from typing import Any, List, Dict, Protocol, Set, Tuple, Union
 
-from cassio.table.table_types import ColumnSpecType, RowType, SessionType
+from cassio.table.table_types import ColumnSpecType, RowType, SessionType, normalize_type_desc
 
 
 class BaseTable:
-    def __init__(self, session: SessionType, keyspace: str, table: str) -> None:
+    def __init__(self, session: SessionType, keyspace: str, table: str,
+        row_id_type: Union[str, List[str]] = ["TEXT"]) -> None:
         self.session = session
         self.keyspace = keyspace
         self.table = table
+        self.row_id_type =  normalize_type_desc(row_id_type)
 
     def _schema_row_id(self) -> List[ColumnSpecType]:
+        assert(len(self.row_id_type) == 1)
         return [
-            ("row_id", "TEXT"),
+            ("row_id", self.row_id_type[0]),
         ]
 
     def _schema_pk(self) -> List[ColumnSpecType]:
@@ -39,9 +42,9 @@ class BaseTable:
         full_list = self._schema_da() + self._schema_cc() + self._schema_pk()
         return full_list
 
-    def _schema_colset(self) -> Set[ColumnSpecType]:
+    def _schema_colnameset(self) -> Set[str]:
         full_list = self._schema_collist()
-        full_set = set(full_list)
+        full_set = set(col for col, _ in full_list)
         assert len(full_list) == len(full_set)
         return full_set
 

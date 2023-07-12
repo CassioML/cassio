@@ -1,6 +1,6 @@
-from typing import Any, List, Dict, Iterable, Optional, Protocol, Set, Tuple, Type
+from typing import Any, List, Dict, Iterable, Optional, Protocol, Set, Tuple, Type, Union
 
-from cassio.table.table_types import ColumnSpecType, RowType, SessionType
+from cassio.table.table_types import ColumnSpecType, RowType, SessionType, normalize_type_desc
 from cassio.table.base_table import BaseTable
 
 
@@ -11,10 +11,14 @@ class BaseTableMixin(BaseTable):
 
 
 class ClusteredMixin(BaseTableMixin):
+    def __init__(self, *pargs: Any, partition_id_type: Union[str, List[str]] = ["TEXT"], **kwargs: Any) -> None:
+        self.partition_id_type = normalize_type_desc(partition_id_type)
+        super().__init__(*pargs, **kwargs)
 
     def _schema_pk(self) -> List[ColumnSpecType]:
+        assert(len(self.partition_id_type) == 1)
         return [
-            ("partition_id", "TEXT"),
+            ("partition_id", self.partition_id_type[0]),
         ]
 
     def _schema_cc(self) -> List[ColumnSpecType]:
@@ -106,9 +110,16 @@ class VectorMixin(BaseTableMixin):
 
 class ElasticKeyMixin(BaseTableMixin):
     def __init__(self, *pargs: Any, keys: List[str], **kwargs: Any) -> None:
+        if 'row_id_type' in kwargs:
+            raise ValueError("'row_id_type' not allowed for elastic tables.")
         self.keys = keys
         self.key_desc = "/".join(self.keys)
-        super().__init__(*pargs, **kwargs)
+        row_id_type = ["TEXT", "TEXT"]
+        new_kwargs = {
+            **{"row_id_type": row_id_type},
+            **kwargs,
+        }
+        super().__init__(*pargs, **new_kwargs)
 
     @staticmethod
     def _serialize_key_vals(key_vals: List[Any]) -> str:

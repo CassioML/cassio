@@ -7,6 +7,10 @@ from cassio.table.mixins import (
 )
 
 
+class PlainTable(BaseTable):
+    pass
+
+
 class ClusteredTable(ClusteredMixin, BaseTable):
     pass
 
@@ -79,7 +83,7 @@ class ElasticMetadataVectorTable(
 
 if __name__ == "__main__":
     print("=" * 80)
-    t = BaseTable("s", "k", "tn")#, primary_key_type="UUID")
+    t = PlainTable("s", "k", "tn", row_id_type="UUID")
     t.db_setup()
     t.delete(row_id="ROWID")
     t.get(row_id="ROWID")
@@ -97,7 +101,7 @@ if __name__ == "__main__":
     # mt.db_setup()
 
     print("=" * 80)
-    bt = VectorTable("s", "k", "tn")#, primary_key_type="UUID")
+    bt = VectorTable("s", "k", "tn", row_id_type="UUID")
     bt.db_setup()
     bt.delete(row_id="ROWID")
     bt.get(row_id="ROWID")
@@ -105,7 +109,7 @@ if __name__ == "__main__":
     bt.clear()
 
     print("=" * 80)
-    cvt = ClusteredVectorTable("s", "k", "tn")
+    cvt = ClusteredVectorTable("s", "k", "tn", row_id_type="UUID", partition_id_type="PUIID")
     cvt.db_setup()
     cvt.delete(partition_id="PARTITIONID", row_id="ROWID")
     cvt.delete_partition(partition_id="PARTITIONID")
@@ -151,7 +155,7 @@ if __name__ == "__main__":
     # cevt.db_setup()
 
     print("=" * 80)
-    cemvt = ClusteredElasticMetadataVectorTable("s", "k", "tn", keys=["a", "b"])
+    cemvt = ClusteredElasticMetadataVectorTable("s", "k", "tn", keys=["a", "b"], partition_id_type="PUUID")
     cemvt.db_setup()
     cemvt.delete(partition_id="PARTITIONID", a="A", b="B")
     cemvt.get(partition_id="PARTITIONID", a="A", b="B")
