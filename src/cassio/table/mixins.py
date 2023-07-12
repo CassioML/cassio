@@ -122,7 +122,9 @@ class VectorMixin(BaseTableMixin):
         super().__init__(*pargs, **kwargs)
 
     def _schema_da(self) -> List[ColumnSpecType]:
-        return super()._schema_da() + [("vector", f"VECTOR<FLOAT,{self.vector_dimension}>")]
+        return super()._schema_da() + [
+            ("vector", f"VECTOR<FLOAT,{self.vector_dimension}>")
+        ]
 
     def db_setup(self) -> None:
         super().db_setup()
