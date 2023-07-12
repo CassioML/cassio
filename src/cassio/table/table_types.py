@@ -1,5 +1,5 @@
-from typing import Any
+from typing import Any, Tuple
 
-ColumnSpecType = str
+ColumnSpecType = Tuple[str, str]
 RowType = Any
 SessionType = Any

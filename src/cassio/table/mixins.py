@@ -14,7 +14,7 @@ class ClusteredMixin(BaseTableMixin):
     @classmethod
     def _schema_pk(cls) -> List[ColumnSpecType]:
         return [
-            "partition_id",
+            ("partition_id", "TEXT"),
         ]
 
     @classmethod
@@ -44,9 +44,9 @@ class MetadataMixin(BaseTableMixin):
     @classmethod
     def _schema_da(cls) -> List[ColumnSpecType]:
         return super()._schema_da() + [
-            "metadata_s",
-            "metadata_n",
-            "metadata_tags",
+            ("metadata_s", "MAP<TEXT,TEXT>"),
+            ("metadata_n", "MAP<TEXT,FLOAT>"),
+            ("metadata_tags", "SET<TEXT>"),
         ]
 
     def db_setup(self) -> None:
@@ -95,7 +95,7 @@ class MetadataMixin(BaseTableMixin):
 class VectorMixin(BaseTableMixin):
     @classmethod
     def _schema_da(cls) -> List[ColumnSpecType]:
-        return super()._schema_da() + ["vector"]
+        return super()._schema_da() + [("vector", "VECTOR<FLOAT,999>")]
 
     def db_setup(self) -> None:
         super().db_setup()
@@ -143,6 +143,6 @@ class ElasticKeyMixin(BaseTableMixin):
     @staticmethod
     def _schema_row_id() -> List[ColumnSpecType]:
         return [
-            "key_desc",
-            "key_vals",
+            ("key_desc", "TEXT"),
+            ("key_vals", "TEXT"),
         ]

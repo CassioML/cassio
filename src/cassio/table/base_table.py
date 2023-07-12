@@ -12,7 +12,7 @@ class BaseTable:
     @classmethod
     def _schema_row_id(cls) -> List[ColumnSpecType]:
         return [
-            "row_id",
+            ("row_id", "TEXT"),
         ]
 
     @classmethod
@@ -26,7 +26,7 @@ class BaseTable:
     @classmethod
     def _schema_da(cls) -> List[ColumnSpecType]:
         return [
-            "body_blob",
+            ("body_blob", "TEXT"),
         ]
 
     @classmethod
@@ -57,19 +57,19 @@ class BaseTable:
         columns = self._schema()
         col_str = (
             "[("
-            + ", ".join(columns["pk"])
+            + ", ".join('%s(%s)' % colspec for colspec in columns["pk"])
             + ") "
-            + ", ".join(columns["cc"])
+            + ", ".join('%s(%s)' % colspec for colspec in columns["cc"])
             + "] "
-            + ", ".join(columns["da"])
+            + ", ".join('%s(%s)' % colspec for colspec in columns["da"])
         )
         return col_str
 
     def delete(self, **kwargs: Any) -> None:
         primary_key = self._schema_primary_key()
-        assert set(kwargs.keys()) == set(primary_key)
-        delete_cql = f"DELETE_ROW: ({', '.join(primary_key)})"
-        delete_cql_vals = tuple(kwargs[c] for c in primary_key)
+        assert set(kwargs.keys()) == set(col for col, _ in primary_key)
+        delete_cql = f"DELETE_ROW: ({', '.join(col for col, _ in primary_key)})"
+        delete_cql_vals = tuple(kwargs[c] for c, _ in primary_key)
         self.execute_cql(delete_cql, delete_cql_vals)
 
     def clear(self) -> None:
@@ -77,15 +77,15 @@ class BaseTable:
 
     def get(self, **kwargs: Any) -> List[RowType]:
         primary_key = self._schema_primary_key()
-        assert set(kwargs.keys()) == set(primary_key)
-        get_cql = f"GET_ROW: ({', '.join(primary_key)})"
-        get_cql_vals = tuple(kwargs[c] for c in primary_key)
+        assert set(kwargs.keys()) == set(col for col, _ in primary_key)
+        get_cql = f"GET_ROW: ({', '.join(col for col, _ in primary_key)})"
+        get_cql_vals = tuple(kwargs[c] for c, _ in primary_key)
         return self.execute_cql(get_cql, get_cql_vals)
 
     def put(self, **kwargs: Any) -> None:
         primary_key = self._schema_primary_key()
-        assert set(primary_key) - set(kwargs.keys()) == set()
-        columns = [col for col in self._schema_collist() if col in kwargs]
+        assert set(col for col, _ in primary_key) - set(kwargs.keys()) == set()
+        columns = [col for col, _ in self._schema_collist() if col in kwargs]
         col_vals = tuple([kwargs[col] for col in columns])
         put_cql = f"PUT_ROW: ({', '.join(columns)})"
         self.execute_cql(put_cql, col_vals)
