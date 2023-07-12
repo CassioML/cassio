@@ -1,3 +1,4 @@
+-e .
 black==22.3.0
 cassandra-driver>=3.28.0
 flake8==4.0.1
