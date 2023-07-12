@@ -1,6 +1,23 @@
-from typing import Any, List, Dict, Iterable, Optional, Protocol, Set, Tuple, Type, Union
+from typing import (
+    Any,
+    List,
+    Dict,
+    Iterable,
+    Optional,
+    Protocol,
+    Set,
+    Tuple,
+    Type,
+    Union,
+)
 
-from cassio.table.table_types import ColumnSpecType, RowType, SessionType, normalize_type_desc
+from cassio.table.table_types import (
+    ColumnSpecType,
+    RowType,
+    SessionType,
+    normalize_type_desc,
+    rearrange_pk_type,
+)
 from cassio.table.base_table import BaseTable
 
 
@@ -11,12 +28,17 @@ class BaseTableMixin(BaseTable):
 
 
 class ClusteredMixin(BaseTableMixin):
-    def __init__(self, *pargs: Any, partition_id_type: Union[str, List[str]] = ["TEXT"], **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *pargs: Any,
+        partition_id_type: Union[str, List[str]] = ["TEXT"],
+        **kwargs: Any,
+    ) -> None:
         self.partition_id_type = normalize_type_desc(partition_id_type)
         super().__init__(*pargs, **kwargs)
 
     def _schema_pk(self) -> List[ColumnSpecType]:
-        assert(len(self.partition_id_type) == 1)
+        assert len(self.partition_id_type) == 1
         return [
             ("partition_id", self.partition_id_type[0]),
         ]
@@ -44,7 +66,6 @@ class ClusteredMixin(BaseTableMixin):
 
 
 class MetadataMixin(BaseTableMixin):
-
     def _schema_da(self) -> List[ColumnSpecType]:
         return super()._schema_da() + [
             ("metadata_s", "MAP<TEXT,TEXT>"),
@@ -96,7 +117,6 @@ class MetadataMixin(BaseTableMixin):
 
 
 class VectorMixin(BaseTableMixin):
-
     def _schema_da(self) -> List[ColumnSpecType]:
         return super()._schema_da() + [("vector", "VECTOR<FLOAT,999>")]
 
@@ -110,7 +130,7 @@ class VectorMixin(BaseTableMixin):
 
 class ElasticKeyMixin(BaseTableMixin):
     def __init__(self, *pargs: Any, keys: List[str], **kwargs: Any) -> None:
-        if 'row_id_type' in kwargs:
+        if "row_id_type" in kwargs:
             raise ValueError("'row_id_type' not allowed for elastic tables.")
         self.keys = keys
         self.key_desc = "/".join(self.keys)
@@ -156,3 +176,20 @@ class ElasticKeyMixin(BaseTableMixin):
             ("key_desc", "TEXT"),
             ("key_vals", "TEXT"),
         ]
+
+
+class TypeNormalizerMixin(BaseTableMixin):
+
+    clustered: bool = False
+    elastic: bool = False
+
+    def __init__(self, *pargs: Any, **kwargs: Any) -> None:
+        if "primary_key_type" in kwargs:
+            pk_arg = kwargs["primary_key_type"]
+            num_elastic_keys = len(kwargs["keys"]) if self.elastic else None
+            col_type_map = rearrange_pk_type(pk_arg, self.clustered, num_elastic_keys)
+            new_kwargs = {
+                **col_type_map,
+                **{k: v for k, v in kwargs.items() if k != "primary_key_type"},
+            }
+            super().__init__(*pargs, **new_kwargs)
