@@ -1,4 +1,4 @@
-from typing import Any, List, Dict, Protocol, Set, Tuple
+from typing import Any, List, Dict, Protocol, Set, Tuple, Union
 
 from cassio.table.table_types import ColumnSpecType, RowType, SessionType
 
@@ -9,46 +9,38 @@ class BaseTable:
         self.keyspace = keyspace
         self.table = table
 
-    @classmethod
-    def _schema_row_id(cls) -> List[ColumnSpecType]:
+    def _schema_row_id(self) -> List[ColumnSpecType]:
         return [
             ("row_id", "TEXT"),
         ]
 
-    @classmethod
-    def _schema_pk(cls) -> List[ColumnSpecType]:
-        return cls._schema_row_id()
+    def _schema_pk(self) -> List[ColumnSpecType]:
+        return self._schema_row_id()
 
-    @classmethod
-    def _schema_cc(cls) -> List[ColumnSpecType]:
+    def _schema_cc(self) -> List[ColumnSpecType]:
         return []
 
-    @classmethod
-    def _schema_da(cls) -> List[ColumnSpecType]:
+    def _schema_da(self) -> List[ColumnSpecType]:
         return [
             ("body_blob", "TEXT"),
         ]
 
-    @classmethod
-    def _schema(cls) -> Dict[str, List[ColumnSpecType]]:
+    def _schema(self) -> Dict[str, List[ColumnSpecType]]:
         return {
-            "pk": cls._schema_pk(),
-            "cc": cls._schema_cc(),
-            "da": cls._schema_da(),
+            "pk": self._schema_pk(),
+            "cc": self._schema_cc(),
+            "da": self._schema_da(),
         }
 
-    @classmethod
-    def _schema_primary_key(cls) -> List[ColumnSpecType]:
-        return cls._schema_pk() + cls._schema_cc()
+    def _schema_primary_key(self) -> List[ColumnSpecType]:
+        return self._schema_pk() + self._schema_cc()
 
-    @classmethod
-    def _schema_collist(cls) -> List[ColumnSpecType]:
-        full_list = cls._schema_da() + cls._schema_cc() + cls._schema_pk()
+    def _schema_collist(self) -> List[ColumnSpecType]:
+        full_list = self._schema_da() + self._schema_cc() + self._schema_pk()
         return full_list
 
-    @classmethod
-    def _schema_colset(cls) -> Set[ColumnSpecType]:
-        full_list = cls._schema_collist()
+    def _schema_colset(self) -> Set[ColumnSpecType]:
+        full_list = self._schema_collist()
         full_set = set(full_list)
         assert len(full_list) == len(full_set)
         return full_set

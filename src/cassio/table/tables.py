@@ -79,7 +79,7 @@ class ElasticMetadataVectorTable(
 
 if __name__ == "__main__":
     print("=" * 80)
-    t = BaseTable("s", "k", "tn")
+    t = BaseTable("s", "k", "tn")#, primary_key_type="UUID")
     t.db_setup()
     t.delete(row_id="ROWID")
     t.get(row_id="ROWID")
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     # mt.db_setup()
 
     print("=" * 80)
-    bt = VectorTable("s", "k", "tn")
+    bt = VectorTable("s", "k", "tn")#, primary_key_type="UUID")
     bt.db_setup()
     bt.delete(row_id="ROWID")
     bt.get(row_id="ROWID")

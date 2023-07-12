@@ -11,15 +11,14 @@ class BaseTableMixin(BaseTable):
 
 
 class ClusteredMixin(BaseTableMixin):
-    @classmethod
-    def _schema_pk(cls) -> List[ColumnSpecType]:
+
+    def _schema_pk(self) -> List[ColumnSpecType]:
         return [
             ("partition_id", "TEXT"),
         ]
 
-    @classmethod
-    def _schema_cc(cls) -> List[ColumnSpecType]:
-        return cls._schema_row_id()
+    def _schema_cc(self) -> List[ColumnSpecType]:
+        return self._schema_row_id()
 
     def delete_partition(self, partition_id: str) -> None:
         delete_p_cql = "DELETE_PARTITION: (partition_id)"
@@ -41,8 +40,8 @@ class ClusteredMixin(BaseTableMixin):
 
 
 class MetadataMixin(BaseTableMixin):
-    @classmethod
-    def _schema_da(cls) -> List[ColumnSpecType]:
+
+    def _schema_da(self) -> List[ColumnSpecType]:
         return super()._schema_da() + [
             ("metadata_s", "MAP<TEXT,TEXT>"),
             ("metadata_n", "MAP<TEXT,FLOAT>"),
@@ -93,8 +92,8 @@ class MetadataMixin(BaseTableMixin):
 
 
 class VectorMixin(BaseTableMixin):
-    @classmethod
-    def _schema_da(cls) -> List[ColumnSpecType]:
+
+    def _schema_da(self) -> List[ColumnSpecType]:
         return super()._schema_da() + [("vector", "VECTOR<FLOAT,999>")]
 
     def db_setup(self) -> None:
