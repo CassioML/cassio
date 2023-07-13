@@ -1,4 +1,4 @@
-from typing import Any, List, Dict, Protocol, Set, Tuple, Union
+from typing import Any, List, Dict, Optional, Protocol, Set, Tuple, Union
 
 from cassio.table.table_types import (
     ColumnSpecType,
@@ -17,12 +17,18 @@ class BaseTable:
         session: SessionType,
         keyspace: str,
         table: str,
+        /,
+        ttl_seconds: Optional[int] = None,
         row_id_type: Union[str, List[str]] = ["TEXT"],
+        skip_provisioning=False,
     ) -> None:
         self.session = session
         self.keyspace = keyspace
         self.table = table
+        self.ttl_seconds = ttl_seconds
         self.row_id_type = normalize_type_desc(row_id_type)
+        self.skip_provisioning = skip_provisioning
+        self.db_setup()
 
     def _schema_row_id(self) -> List[ColumnSpecType]:
         assert len(self.row_id_type) == 1
@@ -95,7 +101,10 @@ class BaseTable:
         assert set(col for col, _ in primary_key) - set(kwargs.keys()) == set()
         columns = [col for col, _ in self._schema_collist() if col in kwargs]
         col_vals = tuple([kwargs[col] for col in columns])
-        put_cql = f"PUT_ROW: ({', '.join(columns)})"
+        ttl_seconds = (
+            kwargs["ttl_seconds"] if "ttl_seconds" in kwargs else self.ttl_seconds
+        )
+        put_cql = f"PUT_ROW: ({', '.join(columns)} TTL={str(ttl_seconds)})"
         self.execute_cql(put_cql, col_vals)
 
     def db_setup(self) -> None:
@@ -119,13 +128,19 @@ class BaseTable:
             primkey_spec=primkey_spec,
             clustering_spec=clustering_spec,
         )
-        self.execute_cql(create_table_cql)
+        self.execute_cql(create_table_cql, is_provision=True)
 
     def execute_cql(
-        self, cql_semitemplate: str, args: Tuple[Any, ...] = tuple()
+        self,
+        cql_semitemplate: str,
+        args: Tuple[Any, ...] = tuple(),
+        is_provision=False,
     ) -> List[RowType]:
         cls_name = self.__class__.__name__
         table_fqname = f"{self.keyspace}.{self.table}"
         final_cql = cql_semitemplate.format(table_fqname=table_fqname)
-        print(f"CQL({cls_name:<32}) << {final_cql} >> {str(args)}")
+        if is_provision and self.skip_provisioning:
+            print(f"NO-EXEC CQL({cls_name:<32}) << {final_cql} >> {str(args)}")
+        else:
+            print(f"CQL({cls_name:<32}) << {final_cql} >> {str(args)}")
         return []

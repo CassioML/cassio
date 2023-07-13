@@ -32,9 +32,11 @@ class ClusteredMixin(BaseTableMixin):
         self,
         *pargs: Any,
         partition_id_type: Union[str, List[str]] = ["TEXT"],
+        partition_id: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
         self.partition_id_type = normalize_type_desc(partition_id_type)
+        self.partition_id = partition_id
         super().__init__(*pargs, **kwargs)
 
     def _schema_pk(self) -> List[ColumnSpecType]:
@@ -46,23 +48,52 @@ class ClusteredMixin(BaseTableMixin):
     def _schema_cc(self) -> List[ColumnSpecType]:
         return self._schema_row_id()
 
-    def delete_partition(self, partition_id: str) -> None:
+    def delete_partition(self, partition_id: Optional[str] = None) -> None:
+        _partition_id = self.partition_id if partition_id is None else partition_id
         delete_p_cql = "DELETE_PARTITION: (partition_id)"
-        delete_p_cql_vals = (partition_id,)
+        delete_p_cql_vals = (_partition_id,)
         self.execute_cql(delete_p_cql, delete_p_cql_vals)
         return
 
     def get_partition(
-        self, partition_id: str, n: Optional[int] = None
+        self, partition_id: Optional[str] = None, n: Optional[int] = None
     ) -> Iterable[RowType]:
+        _partition_id = self.partition_id if partition_id is None else partition_id
         get_p_cql_vals: Tuple[Any, ...] = tuple()
         if n is None:
             get_p_cql = "GET_PARTITION: (partition_id)"
-            get_p_cql_vals = (partition_id,)
+            get_p_cql_vals = (_partition_id,)
         else:
             get_p_cql = "GET_PARTITION: (partition_id) LIMIT (n)"
-            get_p_cql_vals = (partition_id, n)
+            get_p_cql_vals = (_partition_id, n)
         return self.execute_cql(get_p_cql, get_p_cql_vals)
+
+    @staticmethod
+    def _enrich_pk_arg(arg_pid, instance_pid, kwargs):
+        _partition_id = instance_pid if arg_pid is None else arg_pid
+        new_kwargs = {
+            **{"partition_id": _partition_id},
+            **kwargs,
+        }
+        return new_kwargs
+
+    def delete(self, **kwargs: Any) -> None:
+        new_kwargs = self._enrich_pk_arg(
+            kwargs.get("partition_id"), self.partition_id, kwargs
+        )
+        super().delete(**new_kwargs)
+
+    def get(self, **kwargs: Any) -> List[RowType]:
+        new_kwargs = self._enrich_pk_arg(
+            kwargs.get("partition_id"), self.partition_id, kwargs
+        )
+        return super().get(**new_kwargs)
+
+    def put(self, **kwargs: Any) -> None:
+        new_kwargs = self._enrich_pk_arg(
+            kwargs.get("partition_id"), self.partition_id, kwargs
+        )
+        super().put(**new_kwargs)
 
 
 class MetadataMixin(BaseTableMixin):
