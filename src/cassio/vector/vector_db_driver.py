@@ -89,7 +89,7 @@ class VectorTable(VectorMixin):
             table=self.table,
             ttlSpec=ttl_spec,
         ))
-        metadata_blob = json.dumps(metadata)
+        metadata_blob = json.dumps(metadata if metadata is not None else {})
         values = (document_id, embedding_vector, document, metadata_blob)
         if is_async:
             return self.session.execute_async(st, values)
