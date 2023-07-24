@@ -135,6 +135,7 @@ def db_session():
 def db_keyspace():
     return getDBKeyspace()
 
+
 @pytest.fixture(scope='function')
 def mock_db_session():
     return MockDBSession()

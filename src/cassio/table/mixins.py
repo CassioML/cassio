@@ -11,6 +11,12 @@ from typing import (
     Union,
 )
 
+from cassio.table.cql import (
+    CQLOpType,
+    DELETE_CQL_TEMPLATE,
+    SELECT_CQL_TEMPLATE,
+    CREATE_INDEX_CQL_TEMPLATE,
+)
 from cassio.table.table_types import (
     ColumnSpecType,
     RowType,
@@ -50,9 +56,13 @@ class ClusteredMixin(BaseTableMixin):
 
     def delete_partition(self, partition_id: Optional[str] = None) -> None:
         _partition_id = self.partition_id if partition_id is None else partition_id
-        delete_p_cql = "DELETE_PARTITION: (partition_id)"
-        delete_p_cql_vals = (_partition_id,)
-        self.execute_cql(delete_p_cql, delete_p_cql_vals)
+        #
+        where_clause = " partition_id = %s "
+        delete_cql_vals = (_partition_id,)
+        delete_cql = DELETE_CQL_TEMPLATE.format(
+            where_clause=where_clause,
+        )
+        self.execute_cql(delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE)
         return
 
     def get_partition(
@@ -60,13 +70,36 @@ class ClusteredMixin(BaseTableMixin):
     ) -> Iterable[RowType]:
         _partition_id = self.partition_id if partition_id is None else partition_id
         get_p_cql_vals: Tuple[Any, ...] = tuple()
-        if n is None:
-            get_p_cql = "GET_PARTITION: (partition_id)"
-            get_p_cql_vals = (_partition_id,)
+        #
+        # TODO: work on a columns: Optional[List[str]] = None
+        # (but with nuanced handling of the column-magic we have here)
+        columns = None
+        if columns is None:
+            columns_desc = "*"
         else:
-            get_p_cql = "GET_PARTITION: (partition_id) LIMIT (n)"
-            get_p_cql_vals = (_partition_id, n)
-        return self.execute_cql(get_p_cql, get_p_cql_vals)
+            # TODO: handle translations here?
+            # columns_desc = ", ".join(columns)
+            raise NotImplementedError
+        #
+        where_clause = "partition_id = %s"
+        where_cql_vals = [
+            _partition_id,
+        ]
+        #
+        if n is None:
+            limit_clause = ""
+            limit_cql_vals = []
+        else:
+            limit_clause = f"LIMIT %s"
+            limit_cql_vals = [n]
+        #
+        select_cql = SELECT_CQL_TEMPLATE.format(
+            columns_desc=columns_desc,
+            where_clause=where_clause,
+            limit_clause=limit_clause,
+        )
+        get_p_cql_vals = tuple(where_cql_vals + limit_cql_vals)
+        return self.execute_cql(select_cql, args=get_p_cql_vals, op_type=CQLOpType.READ)
 
     @staticmethod
     def _enrich_pk_arg(arg_pid, instance_pid, kwargs):
@@ -106,7 +139,16 @@ class MetadataMixin(BaseTableMixin):
 
     def db_setup(self) -> None:
         super().db_setup()
-        self.execute_cql("CREATE_METADATA_SAIs")
+        #
+        for index_column in ["metadata_s", "metadata_n", "metadata_tags"]:
+            index_name = f"index_{index_column}"
+            index_column = f"{index_column}"
+            create_index_cql = CREATE_INDEX_CQL_TEMPLATE.format(
+                index_name=index_name,
+                index_column=index_column,
+            )
+            self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
+        return
 
     def _split_metadata(self, md_dict: Dict[str, Any]) -> Dict[str, Any]:
         # TODO: more care about types here
@@ -159,7 +201,15 @@ class VectorMixin(BaseTableMixin):
 
     def db_setup(self) -> None:
         super().db_setup()
-        self.execute_cql("CREATE_VECTOR_SAI")
+        # index on the vector column:
+        index_name = "index_vector"
+        index_column = "vector"
+        create_index_cql = CREATE_INDEX_CQL_TEMPLATE.format(
+            index_name=index_name,
+            index_column=index_column,
+        )
+        self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
+        return
 
     def ann_search(self, vector: List[float], **kwargs: Any) -> Iterable[RowType]:
         raise NotImplementedError

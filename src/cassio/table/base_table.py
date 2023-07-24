@@ -7,7 +7,12 @@ from cassio.table.table_types import (
     normalize_type_desc,
 )
 from cassio.table.cql import (
+    CQLOpType,
     CREATE_TABLE_CQL_TEMPLATE,
+    TRUNCATE_TABLE_CQL_TEMPLATE,
+    DELETE_CQL_TEMPLATE,
+    SELECT_CQL_TEMPLATE,
+    INSERT_ROW_CQL_TEMPLATE,
 )
 
 
@@ -82,30 +87,67 @@ class BaseTable:
     def delete(self, **kwargs: Any) -> None:
         primary_key = self._schema_primary_key()
         assert set(kwargs.keys()) == set(col for col, _ in primary_key)
-        delete_cql = f"DELETE_ROW: ({', '.join(col for col, _ in primary_key)})"
-        delete_cql_vals = tuple(kwargs[c] for c, _ in primary_key)
-        self.execute_cql(delete_cql, delete_cql_vals)
+        where_clause_blocks = [f"{pk_col} = %s" for pk_col, _ in primary_key]
+        where_clause = " AND ".join(where_clause_blocks)
+        delete_cql_vals = tuple(kwargs[pk_col] for pk_col, _ in primary_key)
+        delete_cql = DELETE_CQL_TEMPLATE.format(
+            where_clause=where_clause,
+        )
+        self.execute_cql(delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE)
 
     def clear(self) -> None:
-        self.execute_cql("TRUNCATE", tuple())
+        truncate_table_cql = TRUNCATE_TABLE_CQL_TEMPLATE.format()
+        self.execute_cql(truncate_table_cql, args=tuple(), op_type=CQLOpType.WRITE)
 
     def get(self, **kwargs: Any) -> List[RowType]:
         primary_key = self._schema_primary_key()
         assert set(kwargs.keys()) == set(col for col, _ in primary_key)
-        get_cql = f"GET_ROW: ({', '.join(col for col, _ in primary_key)})"
-        get_cql_vals = tuple(kwargs[c] for c, _ in primary_key)
-        return self.execute_cql(get_cql, get_cql_vals)
+        #
+        # TODO: work on a columns: Optional[List[str]] = None
+        # (but with nuanced handling of the column-magic we have here)
+        columns = None
+        if columns is None:
+            columns_desc = "*"
+        else:
+            # TODO: handle translations here?
+            # columns_desc = ", ".join(columns)
+            raise NotImplementedError
+        #
+        where_clause_blocks = [f"{pk_col} = %s" for pk_col, _ in primary_key]
+        where_clause = " AND ".join(where_clause_blocks)
+        get_cql_vals = tuple(kwargs[pk_col] for pk_col, _ in primary_key)
+        limit_clause = ""
+        #
+        select_cql = SELECT_CQL_TEMPLATE.format(
+            columns_desc=columns_desc,
+            where_clause=where_clause,
+            limit_clause=limit_clause,
+        )
+        return self.execute_cql(select_cql, args=get_cql_vals, op_type=CQLOpType.READ)
 
     def put(self, **kwargs: Any) -> None:
         primary_key = self._schema_primary_key()
         assert set(col for col, _ in primary_key) - set(kwargs.keys()) == set()
         columns = [col for col, _ in self._schema_collist() if col in kwargs]
-        col_vals = tuple([kwargs[col] for col in columns])
+        columns_desc = ", ".join(columns)
+        insert_cql_vals = tuple([kwargs[col] for col in columns])
+        value_placeholders = ", ".join("%s" for _ in columns)
+        #
         ttl_seconds = (
             kwargs["ttl_seconds"] if "ttl_seconds" in kwargs else self.ttl_seconds
         )
-        put_cql = f"PUT_ROW: ({', '.join(columns)} TTL={str(ttl_seconds)})"
-        self.execute_cql(put_cql, col_vals)
+        if ttl_seconds is not None:
+            ttl_spec = f"USING TTL {ttl_seconds}"
+        else:
+            ttl_spec = ""
+        #
+        insert_cql = INSERT_ROW_CQL_TEMPLATE.format(
+            columns_desc=columns_desc,
+            value_placeholders=value_placeholders,
+            ttl_spec=ttl_spec,
+        )
+        #
+        self.execute_cql(insert_cql, args=insert_cql_vals, op_type=CQLOpType.WRITE)
 
     def db_setup(self) -> None:
         _schema = self._schema()
@@ -119,28 +161,28 @@ class BaseTable:
         primkey_spec = f"( ( {pk_spec} ) {',' if _schema['cc'] else ''} {cc_spec} )"
         if _schema["cc"]:
             clu_core = ", ".join(f"{col} ASC" for col, _ in _schema["cc"])
-            clustering_spec = f" WITH CLUSTERING ORDER BY ({clu_core})"
+            clustering_spec = f"WITH CLUSTERING ORDER BY ({clu_core})"
         else:
             clustering_spec = ""
         #
         create_table_cql = CREATE_TABLE_CQL_TEMPLATE.format(
-            columns_spec="\n".join(f"  {cs}," for cs in column_specs),
+            columns_spec=" ".join(f"  {cs}," for cs in column_specs),
             primkey_spec=primkey_spec,
             clustering_spec=clustering_spec,
         )
-        self.execute_cql(create_table_cql, is_provision=True)
+        self.execute_cql(create_table_cql, op_type=CQLOpType.SCHEMA)
 
     def execute_cql(
         self,
         cql_semitemplate: str,
+        op_type: CQLOpType,
         args: Tuple[Any, ...] = tuple(),
-        is_provision=False,
     ) -> List[RowType]:
         cls_name = self.__class__.__name__
         table_fqname = f"{self.keyspace}.{self.table}"
         final_cql = cql_semitemplate.format(table_fqname=table_fqname)
-        if is_provision and self.skip_provisioning:
-            print(f"NO-EXEC CQL({cls_name:<32}) << {final_cql} >> {str(args)}")
+        if op_type == CQLOpType.SCHEMA and self.skip_provisioning:
+            print(f"nop CQL({cls_name:<32}) << {final_cql} >> {str(args)}")
         else:
-            print(f"CQL({cls_name:<32}) << {final_cql} >> {str(args)}")
+            print(f"    CQL({cls_name:<32}) << {final_cql} >> {str(args)}")
         return []
