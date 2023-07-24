@@ -104,7 +104,7 @@ class TestVectorTable():
         assert(match_no is None)
 
     def test_null_json(self, db_session, db_keyspace):
-        vtable_name1 = 'vector_table_1'
+        vtable_name1 = 'vector_table_4'
         v_emb_dim_1 = 3
         db_session.execute(f'DROP TABLE IF EXISTS {db_keyspace}.{vtable_name1};')
         v_table = VectorTable(
@@ -127,3 +127,10 @@ class TestVectorTable():
             'document': 'document',
             'embedding_vector': [1,2,3],
         })
+
+
+# if __name__ == '__main__':
+#     from ..conftest import db_session, db_keyspace
+#     s=db_session()
+#     k=db_keyspace()
+#     TestVectorTable().test_put_and_get(s,k)
