@@ -102,3 +102,28 @@ class TestVectorTable():
 
         match_no = v_table.get(123)
         assert(match_no is None)
+
+    def test_null_json(self, db_session, db_keyspace):
+        vtable_name1 = 'vector_table_1'
+        v_emb_dim_1 = 3
+        db_session.execute(f'DROP TABLE IF EXISTS {db_keyspace}.{vtable_name1};')
+        v_table = VectorTable(
+            db_session,
+            db_keyspace,
+            table=vtable_name1,
+            embedding_dimension=v_emb_dim_1,
+            primary_key_type='TEXT',
+        )
+        v_table.put(
+            'document',
+            [1,2,3],
+            'doc_id',
+            None,
+            None,
+        )
+        assert(v_table.get('doc_id') == {
+            'document_id': 'doc_id',
+            'metadata': {},
+            'document': 'document',
+            'embedding_vector': [1,2,3],
+        })
