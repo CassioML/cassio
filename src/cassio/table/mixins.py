@@ -16,6 +16,7 @@ from cassio.table.cql import (
     DELETE_CQL_TEMPLATE,
     SELECT_CQL_TEMPLATE,
     CREATE_INDEX_CQL_TEMPLATE,
+    SELECT_ANN_CQL_TEMPLATE,
 )
 from cassio.table.table_types import (
     ColumnSpecType,
@@ -57,13 +58,23 @@ class ClusteredMixin(BaseTableMixin):
     def delete_partition(self, partition_id: Optional[str] = None) -> None:
         _partition_id = self.partition_id if partition_id is None else partition_id
         #
-        where_clause = "partition_id = %s"
+        where_clause = "WHERE " + "partition_id = %s"
         delete_cql_vals = (_partition_id,)
         delete_cql = DELETE_CQL_TEMPLATE.format(
             where_clause=where_clause,
         )
         self.execute_cql(delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE)
         return
+
+    def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
+        arg_pid = args_dict.get("partition_id")
+        instance_pid = self.partition_id
+        _partition_id = instance_pid if arg_pid is None else arg_pid
+        new_args_dict = {
+            **{"partition_id": _partition_id},
+            **args_dict,
+        }
+        return super()._normalize_kwargs(new_args_dict)
 
     def get_partition(
         self, partition_id: Optional[str] = None, n: Optional[int] = None
@@ -81,7 +92,7 @@ class ClusteredMixin(BaseTableMixin):
             # columns_desc = ", ".join(columns)
             raise NotImplementedError
         #
-        where_clause = "partition_id = %s"
+        where_clause = "WHERE " + "partition_id = %s"
         where_cql_vals = [
             _partition_id,
         ]
@@ -100,34 +111,6 @@ class ClusteredMixin(BaseTableMixin):
         )
         get_p_cql_vals = tuple(where_cql_vals + limit_cql_vals)
         return self.execute_cql(select_cql, args=get_p_cql_vals, op_type=CQLOpType.READ)
-
-    @staticmethod
-    def _enrich_pk_arg(arg_pid, instance_pid, kwargs):
-        _partition_id = instance_pid if arg_pid is None else arg_pid
-        new_kwargs = {
-            **{"partition_id": _partition_id},
-            **kwargs,
-        }
-        return new_kwargs
-
-    def delete(self, **kwargs: Any) -> None:
-        new_kwargs = self._enrich_pk_arg(
-            kwargs.get("partition_id"), self.partition_id, kwargs
-        )
-        super().delete(**new_kwargs)
-
-    def get(self, **kwargs: Any) -> List[RowType]:
-        new_kwargs = self._enrich_pk_arg(
-            kwargs.get("partition_id"), self.partition_id, kwargs
-        )
-        return super().get(**new_kwargs)
-
-    def put(self, **kwargs: Any) -> None:
-        new_kwargs = self._enrich_pk_arg(
-            kwargs.get("partition_id"), self.partition_id, kwargs
-        )
-        super().put(**new_kwargs)
-
 
 class MetadataMixin(BaseTableMixin):
     def _schema_da(self) -> List[ColumnSpecType]:
@@ -211,9 +194,43 @@ class VectorMixin(BaseTableMixin):
         self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
         return
 
-    def ann_search(self, vector: List[float], **kwargs: Any) -> Iterable[RowType]:
-        raise NotImplementedError
-
+    def ann_search(self, vector: List[float], n: int, **kwargs: Any) -> Iterable[RowType]:
+        # TODO: work on a columns: Optional[List[str]] = None
+        # (but with nuanced handling of the column-magic we have here)
+        columns = None
+        if columns is None:
+            columns_desc = "*"
+        else:
+            # TODO: handle translations here?
+            # columns_desc = ", ".join(columns)
+            raise NotImplementedError
+        #
+        vector_column = "vector"
+        vector_cql_vals = [vector]
+        #
+        (
+            rest_kwargs,
+            where_clause_blocks,
+            where_cql_vals,
+        ) = self._extract_where_clause_blocks(kwargs)
+        assert rest_kwargs == {}
+        if where_clause_blocks == []:
+            where_clause = ""
+        else:
+            where_clause = "WHERE " + " AND ".join(where_clause_blocks)
+        #
+        limit_clause = f"LIMIT %s"
+        limit_cql_vals = [n]
+        #        
+        select_ann_cql = SELECT_ANN_CQL_TEMPLATE.format(
+            columns_desc=columns_desc,
+            vector_column=vector_column,
+            where_clause=where_clause,
+            limit_clause=limit_clause,
+        )
+        #
+        select_ann_cql_vals = tuple(vector_cql_vals + list(where_cql_vals) + limit_cql_vals)
+        return self.execute_cql(select_ann_cql, args=select_ann_cql_vals, op_type=CQLOpType.READ)
 
 class ElasticKeyMixin(BaseTableMixin):
     def __init__(self, *pargs: Any, keys: List[str], **kwargs: Any) -> None:

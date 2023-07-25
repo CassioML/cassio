@@ -87,12 +87,35 @@ class BaseTable:
         )
         return col_str
 
+    def _extract_where_clause_blocks(
+        self, args_dict: Any, allowed_colspecs: Optional[List[ColumnSpecType]] = None
+    ) -> Tuple[Any, List[str], Tuple[Any, ...]]:
+        # Removes some of the passed kwargs and returns the remaining, plus the pieces for a WHERE
+        _allowed_colspecs = (
+            self._schema_collist() if allowed_colspecs is None else allowed_colspecs
+        )
+        passed_columns = sorted([col for col, _ in _allowed_colspecs if col in args_dict])
+        residual_args = {k: v for k, v in args_dict.items() if k not in passed_columns}
+        where_clause_blocks = [f"{col} = %s" for col in passed_columns]
+        where_clause_vals = tuple([args_dict[col] for col in passed_columns])
+        return (
+            residual_args,
+            where_clause_blocks,
+            where_clause_vals,
+        )
+
+    def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
+        return args_dict
+
     def delete(self, **kwargs: Any) -> None:
-        primary_key = self._schema_primary_key()
-        assert set(kwargs.keys()) == set(col for col, _ in primary_key)
-        where_clause_blocks = [f"{pk_col} = %s" for pk_col, _ in primary_key]
-        where_clause = " AND ".join(where_clause_blocks)
-        delete_cql_vals = tuple(kwargs[pk_col] for pk_col, _ in primary_key)
+        n_kwargs = self._normalize_kwargs(kwargs)
+        (
+            rest_kwargs,
+            where_clause_blocks,
+            delete_cql_vals,
+        ) = self._extract_where_clause_blocks(n_kwargs)
+        assert rest_kwargs == {}
+        where_clause = "WHERE " + " AND ".join(where_clause_blocks)
         delete_cql = DELETE_CQL_TEMPLATE.format(
             where_clause=where_clause,
         )
@@ -103,9 +126,7 @@ class BaseTable:
         self.execute_cql(truncate_table_cql, args=tuple(), op_type=CQLOpType.WRITE)
 
     def get(self, **kwargs: Any) -> List[RowType]:
-        primary_key = self._schema_primary_key()
-        assert set(kwargs.keys()) == set(col for col, _ in primary_key)
-        #
+        n_kwargs = self._normalize_kwargs(kwargs)
         # TODO: work on a columns: Optional[List[str]] = None
         # (but with nuanced handling of the column-magic we have here)
         columns = None
@@ -116,9 +137,13 @@ class BaseTable:
             # columns_desc = ", ".join(columns)
             raise NotImplementedError
         #
-        where_clause_blocks = [f"{pk_col} = %s" for pk_col, _ in primary_key]
-        where_clause = " AND ".join(where_clause_blocks)
-        get_cql_vals = tuple(kwargs[pk_col] for pk_col, _ in primary_key)
+        (
+            rest_kwargs,
+            where_clause_blocks,
+            get_cql_vals,
+        ) = self._extract_where_clause_blocks(n_kwargs)
+        assert rest_kwargs == {}
+        where_clause = "WHERE " + " AND ".join(where_clause_blocks)
         limit_clause = ""
         #
         select_cql = SELECT_CQL_TEMPLATE.format(
@@ -129,15 +154,16 @@ class BaseTable:
         return self.execute_cql(select_cql, args=get_cql_vals, op_type=CQLOpType.READ)
 
     def put(self, **kwargs: Any) -> None:
+        n_kwargs = self._normalize_kwargs(kwargs)
         primary_key = self._schema_primary_key()
-        assert set(col for col, _ in primary_key) - set(kwargs.keys()) == set()
-        columns = [col for col, _ in self._schema_collist() if col in kwargs]
+        assert set(col for col, _ in primary_key) - set(n_kwargs.keys()) == set()
+        columns = [col for col, _ in self._schema_collist() if col in n_kwargs]
         columns_desc = ", ".join(columns)
-        insert_cql_vals = tuple([kwargs[col] for col in columns])
+        insert_cql_vals = tuple([n_kwargs[col] for col in columns])
         value_placeholders = ", ".join("%s" for _ in columns)
         #
         ttl_seconds = (
-            kwargs["ttl_seconds"] if "ttl_seconds" in kwargs else self.ttl_seconds
+            n_kwargs["ttl_seconds"] if "ttl_seconds" in n_kwargs else self.ttl_seconds
         )
         if ttl_seconds is not None:
             ttl_spec = f"USING TTL {ttl_seconds}"
@@ -200,4 +226,5 @@ class BaseTable:
                         _preparable_cql
                     )
                 statement = self._prepared_statements[_preparable_cql]
+            #
             return self.session.execute(statement, args)

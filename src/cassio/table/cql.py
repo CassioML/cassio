@@ -14,14 +14,15 @@ CREATE_TABLE_CQL_TEMPLATE = """CREATE TABLE {{table_fqname}} ({columns_spec} PRI
 
 TRUNCATE_TABLE_CQL_TEMPLATE = """TRUNCATE TABLE {{table_fqname}};"""
 
-DELETE_CQL_TEMPLATE = """DELETE FROM {{table_fqname}} WHERE {where_clause};"""
+DELETE_CQL_TEMPLATE = """DELETE FROM {{table_fqname}} {where_clause};"""
 
-SELECT_CQL_TEMPLATE = """SELECT {columns_desc} FROM {{table_fqname}} WHERE {where_clause} {limit_clause};"""
+SELECT_CQL_TEMPLATE = """SELECT {columns_desc} FROM {{table_fqname}} {where_clause} {limit_clause};"""
 
 INSERT_ROW_CQL_TEMPLATE = """INSERT INTO {{table_fqname}} ({columns_desc}) VALUES ({value_placeholders}) {ttl_spec} ;"""
 
 CREATE_INDEX_CQL_TEMPLATE = """CREATE CUSTOM INDEX IF NOT EXISTS {index_name} ON {{table_fqname}} ({index_column}) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';"""
 
+SELECT_ANN_CQL_TEMPLATE = """SELECT {columns_desc} FROM {{table_fqname}} ORDER BY {vector_column} ANN OF %s {where_clause} {limit_clause};"""
 
 CQLStatementType = Union[str, SimpleStatement, PreparedStatement]
 
@@ -67,15 +68,24 @@ class MockDBSession:
     def execute(self, statement, arguments=tuple()):
         if self.verbose:
             #
+            st_body = self.getStatementBody(statement)
             if isinstance(statement, str):
                 st_type = "STR"
+                placeholder_count = st_body.count("%s")
+                assert("?" not in st_body)
             elif isinstance(statement, SimpleStatement):
                 st_type = "SIM"
+                placeholder_count = st_body.count("%s")
+                assert("?" not in st_body)
             elif isinstance(statement, PreparedStatement):
                 st_type = "PRE"
+                placeholder_count = st_body.count("?")
+                assert("%s" not in st_body)
+            #
+            assert(placeholder_count == len(arguments))
             #
             print(f"CQL_EXECUTE [{st_type}]:")
-            print(f"    {self.getStatementBody(statement)}")
+            print(f"    {st_body}")
             if arguments:
                 print(f"    {str(arguments)}")
         self.statements.append((statement, arguments))

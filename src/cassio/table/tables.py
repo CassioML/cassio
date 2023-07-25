@@ -34,7 +34,7 @@ class VectorCassandraTable(TypeNormalizerMixin, VectorMixin, BaseTable):
 
 
 class ClusteredVectorCassandraTable(
-    TypeNormalizerMixin, ClusteredMixin, VectorMixin, BaseTable
+    TypeNormalizerMixin, VectorMixin, ClusteredMixin, BaseTable
 ):
     clustered = True
     pass
@@ -140,14 +140,15 @@ if __name__ == "__main__":
     # mt = MetadataCassandraTable(session, "k", "tn")
 
     print("=" * 80, "VectorCassandraTable")
-    # bt = VectorCassandraTable(session, "k", "tn", row_id_type="UUID")
-    bt = VectorCassandraTable(
+    # vt = VectorCassandraTable(session, "k", "tn", row_id_type="UUID")
+    vt = VectorCassandraTable(
         session, "k", "tn", vector_dimension=765, primary_key_type="UUID"
     )
-    bt.delete(row_id="ROWID")
-    bt.get(row_id="ROWID")
-    bt.put(row_id="ROWID", body_blob="BODYBLOB", vector="VECTOR")
-    bt.clear()
+    vt.delete(row_id="ROWID")
+    vt.get(row_id="ROWID")
+    vt.put(row_id="ROWID", body_blob="BODYBLOB", vector="VECTOR")
+    # vt.ann_search([10,11], 2)
+    vt.clear()
 
     print("=" * 80, "ClusteredVectorCassandraTable")
     # cvt = ClusteredVectorCassandraTable(session, "k", "tn", row_id_type="UUID", partition_id_type="PUUID")
@@ -174,6 +175,7 @@ if __name__ == "__main__":
     )
     cvt.put(partition_id="PARTITIONID", row_id="ROWID", body_blob="BODYBLOB")
     cvt.put(partition_id="PARTITIONID", row_id="ROWID", vector="VECTOR")
+    # vt.ann_search([10,11], 2, partition_id="PARTITIONID")
     cvt.clear()
 
     # cmvt = ClusteredMetadataVectorCassandraTable(session, "k", "tn")
