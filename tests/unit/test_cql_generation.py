@@ -21,7 +21,10 @@ class TestGenerateCQL():
         )
         statements = mock_db_session.last(2)
         expected_statements = [
-            ("create table if not exists keyspace.table ( document_id pk_type primary key, embedding_vector vector<float, 123>, document text, metadata_blob text )", ()),
-            ("create custom index if not exists table_embedding_idx on keyspace.table (embedding_vector) using 'org.apache.cassandra.index.sai.storageattachedindex'", ()),
+            (mock_db_session.normalizeCQLStatement(st[0]), st[1])
+            for st in [
+                ("create table if not exists keyspace.table ( document_id pk_type primary key, embedding_vector vector<float, 123>, document text, metadata_blob text )", ()),
+                ("create custom index if not exists table_embedding_idx on keyspace.table ( embedding_vector ) using 'org.apache.cassandra.index.sai.storageattachedindex'", ()),
+            ]
         ]
         assert(statements == expected_statements)

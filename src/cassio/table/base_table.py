@@ -1,5 +1,7 @@
 from typing import Any, List, Dict, Optional, Protocol, Set, Tuple, Union
 
+from cassandra.query import SimpleStatement, PreparedStatement  # type: ignore
+
 from cassio.table.table_types import (
     ColumnSpecType,
     RowType,
@@ -33,6 +35,7 @@ class BaseTable:
         self.ttl_seconds = ttl_seconds
         self.row_id_type = normalize_type_desc(row_id_type)
         self.skip_provisioning = skip_provisioning
+        self._prepared_statements: Dict[str, PreparedStatement] = {}
         self.db_setup()
 
     def _schema_row_id(self) -> List[ColumnSpecType]:
@@ -178,11 +181,23 @@ class BaseTable:
         op_type: CQLOpType,
         args: Tuple[Any, ...] = tuple(),
     ) -> List[RowType]:
-        cls_name = self.__class__.__name__
         table_fqname = f"{self.keyspace}.{self.table}"
         final_cql = cql_semitemplate.format(table_fqname=table_fqname)
+        #
         if op_type == CQLOpType.SCHEMA and self.skip_provisioning:
-            print(f"nop CQL({cls_name:<32}) << {final_cql} >> {str(args)}")
+            # these operations are not executed for this instance:
+            return []
         else:
-            print(f"    CQL({cls_name:<32}) << {final_cql} >> {str(args)}")
-        return []
+            if op_type == CQLOpType.SCHEMA:
+                # schema operations are not to be 'prepared'
+                statement = SimpleStatement(final_cql)
+            else:
+                # TODO: improve this placeholder handling
+                _preparable_cql = final_cql.replace("%s", "?")
+                # handle the cache of prepared statements
+                if _preparable_cql not in self._prepared_statements:
+                    self._prepared_statements[_preparable_cql] = self.session.prepare(
+                        _preparable_cql
+                    )
+                statement = self._prepared_statements[_preparable_cql]
+            return self.session.execute(statement, args)

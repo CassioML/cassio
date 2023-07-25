@@ -57,7 +57,7 @@ class ClusteredMixin(BaseTableMixin):
     def delete_partition(self, partition_id: Optional[str] = None) -> None:
         _partition_id = self.partition_id if partition_id is None else partition_id
         #
-        where_clause = " partition_id = %s "
+        where_clause = "partition_id = %s"
         delete_cql_vals = (_partition_id,)
         delete_cql = DELETE_CQL_TEMPLATE.format(
             where_clause=where_clause,

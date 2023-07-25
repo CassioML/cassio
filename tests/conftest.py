@@ -11,56 +11,8 @@ from cassandra.cluster import (
     Cluster,
 )
 from cassandra.auth import PlainTextAuthProvider
-from cassandra.query import SimpleStatement
 
-# Mock DB session
-
-class MockDBSession():
-
-    def __init__(self):
-        self.statements = []
-
-
-    def normalizeCQLStatement(self, statement: Union[str, SimpleStatement]) -> str:
-        if isinstance(statement, str):
-            _statement = statement
-        elif isinstance(statement, SimpleStatement):
-            _statement = statement.query_string
-        else:
-            raise ValueError()
-        #
-        _s = _statement \
-            .replace(';', ' ') \
-            .replace('%s', ' %s ') \
-            .replace('=', ' = ') \
-            .replace('\n', ' ')
-        return ' '.join(
-            tok.lower()
-            for tok in (
-                _t.strip()
-                for _t in _s.split(' ')
-                if _t.strip()
-            )
-        )
-
-    def execute(self, statement, arguments=tuple()):
-        self.statements.append((statement, arguments))
-        return []
-
-    def last_raw(self, n):
-        if n<=0:
-            return []
-        else:
-            return self.statements[-n:]
-
-    def last(self, n):
-        return [
-            (
-                self.normalizeCQLStatement(stmt),
-                data,
-            )
-            for stmt, data in self.last_raw(n)
-        ]
+from cassio.table.cql import MockDBSession
 
 
 # DB session (as per settings detected in env vars)

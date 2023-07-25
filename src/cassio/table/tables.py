@@ -9,52 +9,56 @@ from cassio.table.mixins import (
 )
 
 
-class PlainTable(TypeNormalizerMixin, BaseTable):
+class PlainCassandraTable(TypeNormalizerMixin, BaseTable):
     pass
 
 
-class ClusteredTable(TypeNormalizerMixin, ClusteredMixin, BaseTable):
+class ClusteredCassandraTable(TypeNormalizerMixin, ClusteredMixin, BaseTable):
     clustered = True
     pass
 
 
-class ClusteredMetadataTable(
+class ClusteredMetadataCassandraTable(
     TypeNormalizerMixin, MetadataMixin, ClusteredMixin, BaseTable
 ):
     clustered = True
     pass
 
 
-class MetadataTable(TypeNormalizerMixin, MetadataMixin, BaseTable):
+class MetadataCassandraTable(TypeNormalizerMixin, MetadataMixin, BaseTable):
     pass
 
 
-class VectorTable(TypeNormalizerMixin, VectorMixin, BaseTable):
+class VectorCassandraTable(TypeNormalizerMixin, VectorMixin, BaseTable):
     pass
 
 
-class ClusteredVectorTable(TypeNormalizerMixin, ClusteredMixin, VectorMixin, BaseTable):
+class ClusteredVectorCassandraTable(
+    TypeNormalizerMixin, ClusteredMixin, VectorMixin, BaseTable
+):
     clustered = True
     pass
 
 
-class ClusteredMetadataVectorTable(
+class ClusteredMetadataVectorCassandraTable(
     TypeNormalizerMixin, MetadataMixin, ClusteredMixin, VectorMixin, BaseTable
 ):
     clustered = True
     pass
 
 
-class MetadataVectorTable(TypeNormalizerMixin, MetadataMixin, VectorMixin, BaseTable):
+class MetadataVectorCassandraTable(
+    TypeNormalizerMixin, MetadataMixin, VectorMixin, BaseTable
+):
     pass
 
 
-class ElasticTable(TypeNormalizerMixin, ElasticKeyMixin, BaseTable):
+class ElasticCassandraTable(TypeNormalizerMixin, ElasticKeyMixin, BaseTable):
     elastic = True
     pass
 
 
-class ClusteredElasticTable(
+class ClusteredElasticCassandraTable(
     TypeNormalizerMixin, ClusteredMixin, ElasticKeyMixin, BaseTable
 ):
     clustered = True
@@ -62,7 +66,7 @@ class ClusteredElasticTable(
     pass
 
 
-class ClusteredElasticMetadataTable(
+class ClusteredElasticMetadataCassandraTable(
     TypeNormalizerMixin, MetadataMixin, ElasticKeyMixin, ClusteredMixin, BaseTable
 ):
     clustered = True
@@ -70,19 +74,21 @@ class ClusteredElasticMetadataTable(
     pass
 
 
-class ElasticMetadataTable(
+class ElasticMetadataCassandraTable(
     TypeNormalizerMixin, MetadataMixin, ElasticKeyMixin, BaseTable
 ):
     elastic = True
     pass
 
 
-class ElasticVectorTable(TypeNormalizerMixin, VectorMixin, ElasticKeyMixin, BaseTable):
+class ElasticVectorCassandraTable(
+    TypeNormalizerMixin, VectorMixin, ElasticKeyMixin, BaseTable
+):
     elastic = True
     pass
 
 
-class ClusteredElasticVectorTable(
+class ClusteredElasticVectorCassandraTable(
     TypeNormalizerMixin, ClusteredMixin, ElasticKeyMixin, VectorMixin, BaseTable
 ):
     clustered = True
@@ -90,7 +96,7 @@ class ClusteredElasticVectorTable(
     pass
 
 
-class ClusteredElasticMetadataVectorTable(
+class ClusteredElasticMetadataVectorCassandraTable(
     TypeNormalizerMixin,
     MetadataMixin,
     ElasticKeyMixin,
@@ -103,7 +109,7 @@ class ClusteredElasticMetadataVectorTable(
     pass
 
 
-class ElasticMetadataVectorTable(
+class ElasticMetadataVectorCassandraTable(
     MetadataMixin, ElasticKeyMixin, VectorMixin, BaseTable
 ):
     elastic = True
@@ -111,36 +117,45 @@ class ElasticMetadataVectorTable(
 
 
 if __name__ == "__main__":
-    print("=" * 80)
-    # t = PlainTable("s", "k", "tn", row_id_type="UUID")
-    t = PlainTable("s", "k", "tn", primary_key_type="UUID", skip_provisioning=True)
+    #
+    from cassio.table.cql import MockDBSession
+
+    session = MockDBSession(verbose=True)
+    #
+    print("=" * 80, "PlainCassandraTable")
+    # t = PlainTable(session, "k", "tn", row_id_type="UUID")
+    t = PlainCassandraTable(
+        session, "k", "tn", primary_key_type="UUID", skip_provisioning=True
+    )
     t.delete(row_id="ROWID")
     t.get(row_id="ROWID")
     t.put(row_id="ROWID")
     t.put(row_id="ROWID", body_blob="BODYBLOB")
     t.clear()
 
-    # ct = ClusteredTable('s', 'k', 'tn')
+    # ct = ClusteredCassandraTable(session, "k", "tn")
 
-    # cmt = ClusteredMetadataTable('s', 'k', 'tn')
+    # cmt = ClusteredMetadataCassandraTable(session, "k", "tn")
 
-    # mt = MetadataTable('s', 'k', 'tn')
+    # mt = MetadataCassandraTable(session, "k", "tn")
 
-    print("=" * 80)
-    # bt = VectorTable("s", "k", "tn", row_id_type="UUID")
-    bt = VectorTable("s", "k", "tn", vector_dimension=765, primary_key_type="UUID")
+    print("=" * 80, "VectorCassandraTable")
+    # bt = VectorCassandraTable(session, "k", "tn", row_id_type="UUID")
+    bt = VectorCassandraTable(
+        session, "k", "tn", vector_dimension=765, primary_key_type="UUID"
+    )
     bt.delete(row_id="ROWID")
     bt.get(row_id="ROWID")
     bt.put(row_id="ROWID", body_blob="BODYBLOB", vector="VECTOR")
     bt.clear()
 
-    print("=" * 80)
-    # cvt = ClusteredVectorTable("s", "k", "tn", row_id_type="UUID", partition_id_type="PUUID")
-    # cvt = ClusteredVectorTable(
-    #     "s", "k", "tn", vector_dimension=765, primary_key_type=["PUUID", "UUID"]
+    print("=" * 80, "ClusteredVectorCassandraTable")
+    # cvt = ClusteredVectorCassandraTable(session, "k", "tn", row_id_type="UUID", partition_id_type="PUUID")
+    # cvt = ClusteredVectorCassandraTable(
+    #     session, "k", "tn", vector_dimension=765, primary_key_type=["PUUID", "UUID"]
     # )
-    cvt = ClusteredVectorTable(
-        "s",
+    cvt = ClusteredVectorCassandraTable(
+        session,
         "k",
         "tn",
         vector_dimension=765,
@@ -161,32 +176,34 @@ if __name__ == "__main__":
     cvt.put(partition_id="PARTITIONID", row_id="ROWID", vector="VECTOR")
     cvt.clear()
 
-    # cmvt = ClusteredMetadataVectorTable('s', 'k', 'tn')
+    # cmvt = ClusteredMetadataVectorCassandraTable(session, "k", "tn")
 
-    # mvt = MetadataVectorTable('s', 'k', 'tn')
+    # mvt = MetadataVectorCassandraTable(session, "k", "tn")
 
-    print("=" * 80)
-    # et = ElasticTable("s", "k", "tn", keys=["a", "b"])
-    et = ElasticTable("s", "k", "tn", keys=["a", "b"], primary_key_type=["AT", "BT"])
+    print("=" * 80, "ElasticCassandraTable")
+    # et = ElasticCassandraTable(session, "k", "tn", keys=["a", "b"])
+    et = ElasticCassandraTable(
+        session, "k", "tn", keys=["a", "b"], primary_key_type=["AT", "BT"]
+    )
     et.delete(a="A", b="B")
     et.get(a="A", b="B")
     et.put(a="A", b="B", body_blob="BODYBLOB", ttl_seconds=444)
     et.clear()
 
-    # cet = ClusteredElasticTable('s', 'k', 'tn')
+    # cet = ClusteredElasticCassandraTable(session, "k", "tn")
 
-    # cemt = ClusteredElasticMetadataTable('s', 'k', 'tn')
+    # cemt = ClusteredElasticMetadataCassandraTable(session, "k", "tn")
 
-    # emt = ElasticMetadataTable('s', 'k', 'tn')
+    # emt = ElasticMetadataCassandraTable(session, "k", "tn")
 
-    # evt = ElasticVectorTable('s', 'k', 'tn')
+    # evt = ElasticVectorCassandraTable(session, "k", "tn")
 
-    # cevt = ClusteredElasticVectorTable('s', 'k', 'tn')
+    # cevt = ClusteredElasticVectorCassandraTable(session, "k", "tn")
 
-    print("=" * 80)
-    # cemvt = ClusteredElasticMetadataVectorTable("s", "k", "tn", keys=["a", "b"], partition_id_type="PUUID")
-    cemvt = ClusteredElasticMetadataVectorTable(
-        "s",
+    print("=" * 80, "ClusteredElasticMetadataVectorCassandraTable")
+    # cemvt = ClusteredElasticMetadataVectorCassandraTable(session, "k", "tn", keys=["a", "b"], partition_id_type="PUUID")
+    cemvt = ClusteredElasticMetadataVectorCassandraTable(
+        session,
         "k",
         "tn",
         keys=["a", "b"],
@@ -223,4 +240,4 @@ if __name__ == "__main__":
     cemvt.get_partition(partition_id="PARTITIONID")
     cemvt.clear()
 
-    # emvt = ElasticMetadataVectorTable('s', 'k', 'tn')
+    # emvt = ElasticMetadataVectorCassandraTable(session, "k", "tn")
