@@ -94,7 +94,9 @@ class BaseTable:
         _allowed_colspecs = (
             self._schema_collist() if allowed_colspecs is None else allowed_colspecs
         )
-        passed_columns = sorted([col for col, _ in _allowed_colspecs if col in args_dict])
+        passed_columns = sorted(
+            [col for col, _ in _allowed_colspecs if col in args_dict]
+        )
         residual_args = {k: v for k, v in args_dict.items() if k not in passed_columns}
         where_clause_blocks = [f"{col} = %s" for col in passed_columns]
         where_clause_vals = tuple([args_dict[col] for col in passed_columns])
@@ -159,24 +161,27 @@ class BaseTable:
         assert set(col for col, _ in primary_key) - set(n_kwargs.keys()) == set()
         columns = [col for col, _ in self._schema_collist() if col in n_kwargs]
         columns_desc = ", ".join(columns)
-        insert_cql_vals = tuple([n_kwargs[col] for col in columns])
+        insert_cql_vals = [n_kwargs[col] for col in columns]
         value_placeholders = ", ".join("%s" for _ in columns)
         #
         ttl_seconds = (
             n_kwargs["ttl_seconds"] if "ttl_seconds" in n_kwargs else self.ttl_seconds
         )
         if ttl_seconds is not None:
-            ttl_spec = f"USING TTL {ttl_seconds}"
+            ttl_spec = f"USING TTL %s"
+            ttl_vals = [ttl_seconds]
         else:
             ttl_spec = ""
+            ttl_vals = []
         #
+        insert_cql_args = tuple(insert_cql_vals + ttl_vals)
         insert_cql = INSERT_ROW_CQL_TEMPLATE.format(
             columns_desc=columns_desc,
             value_placeholders=value_placeholders,
             ttl_spec=ttl_spec,
         )
         #
-        self.execute_cql(insert_cql, args=insert_cql_vals, op_type=CQLOpType.WRITE)
+        self.execute_cql(insert_cql, args=insert_cql_args, op_type=CQLOpType.WRITE)
 
     def db_setup(self) -> None:
         _schema = self._schema()

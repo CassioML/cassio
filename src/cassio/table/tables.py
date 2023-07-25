@@ -147,7 +147,7 @@ if __name__ == "__main__":
     vt.delete(row_id="ROWID")
     vt.get(row_id="ROWID")
     vt.put(row_id="ROWID", body_blob="BODYBLOB", vector="VECTOR")
-    # vt.ann_search([10,11], 2)
+    vt.ann_search([10,11], 2)
     vt.clear()
 
     print("=" * 80, "ClusteredVectorCassandraTable")
@@ -175,7 +175,8 @@ if __name__ == "__main__":
     )
     cvt.put(partition_id="PARTITIONID", row_id="ROWID", body_blob="BODYBLOB")
     cvt.put(partition_id="PARTITIONID", row_id="ROWID", vector="VECTOR")
-    # vt.ann_search([10,11], 2, partition_id="PARTITIONID")
+    cvt.ann_search([10,11], 2, partition_id="PARTITIONID")
+    cvt.ann_search([10,11], 2)
     cvt.clear()
 
     # cmvt = ClusteredMetadataVectorCassandraTable(session, "k", "tn")
@@ -212,6 +213,7 @@ if __name__ == "__main__":
         vector_dimension=765,
         primary_key_type=["PUUID", "AT", "BT"],
         ttl_seconds=123,
+        partition_id="PRE-PART-ID",
     )
     cemvt.delete(partition_id="PARTITIONID", a="A", b="B")
     cemvt.get(partition_id="PARTITIONID", a="A", b="B")
@@ -240,6 +242,8 @@ if __name__ == "__main__":
     cemvt.put(partition_id="PARTITIONID", a="A", b="B", metadata=md2)
     cemvt.get_partition(partition_id="PARTITIONID", n=10)
     cemvt.get_partition(partition_id="PARTITIONID")
+    cemvt.ann_search([10,11], 2, a="A", b="B", partition_id="PARTITIONID")
+    cemvt.ann_search([10,11], 2, a="A", b="B")
     cemvt.clear()
 
     # emvt = ElasticMetadataVectorCassandraTable(session, "k", "tn")

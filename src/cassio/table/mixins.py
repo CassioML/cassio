@@ -67,6 +67,7 @@ class ClusteredMixin(BaseTableMixin):
         return
 
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
+        # if partition id provided in call, takes precedence over instance value
         arg_pid = args_dict.get("partition_id")
         instance_pid = self.partition_id
         _partition_id = instance_pid if arg_pid is None else arg_pid
@@ -111,6 +112,7 @@ class ClusteredMixin(BaseTableMixin):
         )
         get_p_cql_vals = tuple(where_cql_vals + limit_cql_vals)
         return self.execute_cql(select_cql, args=get_p_cql_vals, op_type=CQLOpType.READ)
+
 
 class MetadataMixin(BaseTableMixin):
     def _schema_da(self) -> List[ColumnSpecType]:
@@ -194,7 +196,10 @@ class VectorMixin(BaseTableMixin):
         self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
         return
 
-    def ann_search(self, vector: List[float], n: int, **kwargs: Any) -> Iterable[RowType]:
+    def ann_search(
+        self, vector: List[float], n: int, **kwargs: Any
+    ) -> Iterable[RowType]:
+        n_kwargs = self._normalize_kwargs(kwargs)
         # TODO: work on a columns: Optional[List[str]] = None
         # (but with nuanced handling of the column-magic we have here)
         columns = None
@@ -212,7 +217,7 @@ class VectorMixin(BaseTableMixin):
             rest_kwargs,
             where_clause_blocks,
             where_cql_vals,
-        ) = self._extract_where_clause_blocks(kwargs)
+        ) = self._extract_where_clause_blocks(n_kwargs)
         assert rest_kwargs == {}
         if where_clause_blocks == []:
             where_clause = ""
@@ -221,7 +226,7 @@ class VectorMixin(BaseTableMixin):
         #
         limit_clause = f"LIMIT %s"
         limit_cql_vals = [n]
-        #        
+        #
         select_ann_cql = SELECT_ANN_CQL_TEMPLATE.format(
             columns_desc=columns_desc,
             vector_column=vector_column,
@@ -229,8 +234,13 @@ class VectorMixin(BaseTableMixin):
             limit_clause=limit_clause,
         )
         #
-        select_ann_cql_vals = tuple(vector_cql_vals + list(where_cql_vals) + limit_cql_vals)
-        return self.execute_cql(select_ann_cql, args=select_ann_cql_vals, op_type=CQLOpType.READ)
+        select_ann_cql_vals = tuple(
+            vector_cql_vals + list(where_cql_vals) + limit_cql_vals
+        )
+        return self.execute_cql(
+            select_ann_cql, args=select_ann_cql_vals, op_type=CQLOpType.READ
+        )
+
 
 class ElasticKeyMixin(BaseTableMixin):
     def __init__(self, *pargs: Any, keys: List[str], **kwargs: Any) -> None:
@@ -249,30 +259,49 @@ class ElasticKeyMixin(BaseTableMixin):
     def _serialize_key_vals(key_vals: List[Any]) -> str:
         return str(key_vals)
 
-    def _split_row_args(self, arg_dict: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
-        # split in key/nonkey from a kwargs dict
-        # and represent the former as one field
-        key_args = {k: v for k, v in arg_dict.items() if k in self.keys}
+    def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
+        # transform provided "keys" into the elastic-representation two-val form
+        key_args = {k: v for k, v in args_dict.items() if k in self.keys}
         assert set(key_args.keys()) == set(self.keys)
         key_vals = self._serialize_key_vals(
             [key_args[key_col] for key_col in self.keys]
         )
         #
-        other_kwargs = {k: v for k, v in arg_dict.items() if k not in self.keys}
-        return key_vals, other_kwargs
+        key_args_dict = {
+            "key_vals": key_vals,
+            "key_desc": self.key_desc,
+        }
+        other_args_dict = {k: v for k, v in args_dict.items() if k not in self.keys}
+        new_args_dict = {
+            **key_args_dict,
+            **other_args_dict,
+        }
+        return super()._normalize_kwargs(new_args_dict)
 
-    def delete(self, /, **kwargs: Any) -> None:
-        key_vals, other_kwargs = self._split_row_args(kwargs)
-        super().delete(key_desc=self.key_desc, key_vals=key_vals, **other_kwargs)
+    # def _split_row_args(self, arg_dict: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
+    #     # split in key/nonkey from a kwargs dict
+    #     # and represent the former as one field
+    #     key_args = {k: v for k, v in arg_dict.items() if k in self.keys}
+    #     assert set(key_args.keys()) == set(self.keys)
+    #     key_vals = self._serialize_key_vals(
+    #         [key_args[key_col] for key_col in self.keys]
+    #     )
+    #     #
+    #     other_kwargs = {k: v for k, v in arg_dict.items() if k not in self.keys}
+    #     return key_vals, other_kwargs
 
-    def get(self, /, **kwargs: Any) -> RowType:
-        key_vals, other_kwargs = self._split_row_args(kwargs)
-        # TODO: unpack the key
-        return super().get(key_desc=self.key_desc, key_vals=key_vals, **other_kwargs)
+    # def delete(self, /, **kwargs: Any) -> None:
+    #     key_vals, other_kwargs = self._split_row_args(kwargs)
+    #     super().delete(key_desc=self.key_desc, key_vals=key_vals, **other_kwargs)
 
-    def put(self, /, **kwargs: Any) -> None:
-        key_vals, other_kwargs = self._split_row_args(kwargs)
-        super().put(key_desc=self.key_desc, key_vals=key_vals, **other_kwargs)
+    # def get(self, /, **kwargs: Any) -> RowType:
+    #     key_vals, other_kwargs = self._split_row_args(kwargs)
+    #     # TODO: unpack the key
+    #     return super().get(key_desc=self.key_desc, key_vals=key_vals, **other_kwargs)
+
+    # def put(self, /, **kwargs: Any) -> None:
+    #     key_vals, other_kwargs = self._split_row_args(kwargs)
+    #     super().put(key_desc=self.key_desc, key_vals=key_vals, **other_kwargs)
 
     @staticmethod
     def _schema_row_id() -> List[ColumnSpecType]:

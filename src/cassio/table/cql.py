@@ -16,7 +16,9 @@ TRUNCATE_TABLE_CQL_TEMPLATE = """TRUNCATE TABLE {{table_fqname}};"""
 
 DELETE_CQL_TEMPLATE = """DELETE FROM {{table_fqname}} {where_clause};"""
 
-SELECT_CQL_TEMPLATE = """SELECT {columns_desc} FROM {{table_fqname}} {where_clause} {limit_clause};"""
+SELECT_CQL_TEMPLATE = (
+    """SELECT {columns_desc} FROM {{table_fqname}} {where_clause} {limit_clause};"""
+)
 
 INSERT_ROW_CQL_TEMPLATE = """INSERT INTO {{table_fqname}} ({columns_desc}) VALUES ({value_placeholders}) {ttl_spec} ;"""
 
@@ -72,17 +74,17 @@ class MockDBSession:
             if isinstance(statement, str):
                 st_type = "STR"
                 placeholder_count = st_body.count("%s")
-                assert("?" not in st_body)
+                assert "?" not in st_body
             elif isinstance(statement, SimpleStatement):
                 st_type = "SIM"
                 placeholder_count = st_body.count("%s")
-                assert("?" not in st_body)
+                assert "?" not in st_body
             elif isinstance(statement, PreparedStatement):
                 st_type = "PRE"
                 placeholder_count = st_body.count("?")
-                assert("%s" not in st_body)
+                assert "%s" not in st_body
             #
-            assert(placeholder_count == len(arguments))
+            assert placeholder_count == len(arguments)
             #
             print(f"CQL_EXECUTE [{st_type}]:")
             print(f"    {st_body}")
