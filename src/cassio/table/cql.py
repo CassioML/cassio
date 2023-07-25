@@ -24,7 +24,11 @@ INSERT_ROW_CQL_TEMPLATE = """INSERT INTO {{table_fqname}} ({columns_desc}) VALUE
 
 CREATE_INDEX_CQL_TEMPLATE = """CREATE CUSTOM INDEX IF NOT EXISTS {index_name} ON {{table_fqname}} ({index_column}) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';"""
 
-SELECT_ANN_CQL_TEMPLATE = """SELECT {columns_desc} FROM {{table_fqname}} ORDER BY {vector_column} ANN OF %s {where_clause} {limit_clause};"""
+CREATE_KEYS_INDEX_CQL_TEMPLATE = """CREATE CUSTOM INDEX IF NOT EXISTS {index_name} ON {{table_fqname}} (KEYS({index_column})) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';"""
+
+CREATE_ENTRIES_INDEX_CQL_TEMPLATE = """CREATE CUSTOM INDEX IF NOT EXISTS {index_name} ON {{table_fqname}} (ENTRIES({index_column})) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';"""
+
+SELECT_ANN_CQL_TEMPLATE = """SELECT {columns_desc} FROM {{table_fqname}} {where_clause} ORDER BY {vector_column} ANN OF %s {limit_clause};"""
 
 CQLStatementType = Union[str, SimpleStatement, PreparedStatement]
 
@@ -107,3 +111,13 @@ class MockDBSession:
             )
             for stmt, data in self.last_raw(n)
         ]
+
+    def assert_last_equal(self, expected_statements):
+        # used for testing
+        last_executed = self.last(len(expected_statements))
+        assert len(last_executed) == len(expected_statements)
+        for s_exe, s_expe in zip(last_executed, expected_statements):
+            assert s_exe[1] == s_expe[1], f"EXE#{str(s_exe[1])}# != EXPE#{s_expe[1]}#"
+            exe_cql = self.normalizeCQLStatement(s_exe[0])
+            expe_cql = self.normalizeCQLStatement(s_expe[0])
+            assert exe_cql == expe_cql, f"EXE#{exe_cql}# != EXPE#{expe_cql}#"

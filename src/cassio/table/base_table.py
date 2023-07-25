@@ -88,12 +88,10 @@ class BaseTable:
         return col_str
 
     def _extract_where_clause_blocks(
-        self, args_dict: Any, allowed_colspecs: Optional[List[ColumnSpecType]] = None
+        self, args_dict: Any
     ) -> Tuple[Any, List[str], Tuple[Any, ...]]:
         # Removes some of the passed kwargs and returns the remaining, plus the pieces for a WHERE
-        _allowed_colspecs = (
-            self._schema_collist() if allowed_colspecs is None else allowed_colspecs
-        )
+        _allowed_colspecs = self._schema_collist()
         passed_columns = sorted(
             [col for col, _ in _allowed_colspecs if col in args_dict]
         )

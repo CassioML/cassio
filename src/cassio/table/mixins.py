@@ -16,6 +16,8 @@ from cassio.table.cql import (
     DELETE_CQL_TEMPLATE,
     SELECT_CQL_TEMPLATE,
     CREATE_INDEX_CQL_TEMPLATE,
+    # CREATE_KEYS_INDEX_CQL_TEMPLATE,
+    CREATE_ENTRIES_INDEX_CQL_TEMPLATE,
     SELECT_ANN_CQL_TEMPLATE,
 )
 from cassio.table.table_types import (
@@ -78,7 +80,7 @@ class ClusteredMixin(BaseTableMixin):
         return super()._normalize_kwargs(new_args_dict)
 
     def get_partition(
-        self, partition_id: Optional[str] = None, n: Optional[int] = None
+        self, partition_id: Optional[str] = None, n: Optional[int] = None, **kwargs: Any
     ) -> Iterable[RowType]:
         _partition_id = self.partition_id if partition_id is None else partition_id
         get_p_cql_vals: Tuple[Any, ...] = tuple()
@@ -92,11 +94,19 @@ class ClusteredMixin(BaseTableMixin):
             # TODO: handle translations here?
             # columns_desc = ", ".join(columns)
             raise NotImplementedError
-        #
-        where_clause = "WHERE " + "partition_id = %s"
-        where_cql_vals = [
-            _partition_id,
-        ]
+        # WHERE can admit other sources (e.g. medata if the corresponding mixin)
+        # so we escalate to standard WHERE-creation route and reinject the partition
+        n_kwargs = self._normalize_kwargs(
+            {
+                **{"partition_id": _partition_id},
+                **kwargs,
+            }
+        )
+        (args_dict, wc_blocks, wc_vals) = self._extract_where_clause_blocks(n_kwargs)
+        # check for exhaustion:
+        assert args_dict == {}
+        where_clause = "WHERE " + " AND ".join(wc_blocks)
+        where_cql_vals = list(wc_vals)
         #
         if n is None:
             limit_clause = ""
@@ -123,9 +133,13 @@ class MetadataMixin(BaseTableMixin):
         ]
 
     def db_setup(self) -> None:
+        # Currently this supports entries on the two entryful metadata parts
+        # and just existence on the tags (set). No indexes on key existence are created.
         super().db_setup()
         #
-        for index_column in ["metadata_s", "metadata_n", "metadata_tags"]:
+        entries_index_columns = ["metadata_s", "metadata_n"]
+        index_columns = ["metadata_tags"]
+        for index_column in index_columns:
             index_name = f"index_{index_column}"
             index_column = f"{index_column}"
             create_index_cql = CREATE_INDEX_CQL_TEMPLATE.format(
@@ -133,9 +147,18 @@ class MetadataMixin(BaseTableMixin):
                 index_column=index_column,
             )
             self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
+        for entries_index_column in entries_index_columns:
+            index_name = f"entries_index_{entries_index_column}"
+            index_column = f"{entries_index_column}"
+            create_index_cql = CREATE_ENTRIES_INDEX_CQL_TEMPLATE.format(
+                index_name=index_name,
+                index_column=index_column,
+            )
+            self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
+        #
         return
 
-    def _split_metadata(self, md_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _split_metadata_fields(self, md_dict: Dict[str, Any]) -> Dict[str, Any]:
         # TODO: more care about types here
         stringy_part = {k: v for k, v in md_dict.items() if isinstance(v, str)}
         numeric_part = {
@@ -160,18 +183,56 @@ class MetadataMixin(BaseTableMixin):
             "metadata_tags": nully_part,
         }
 
-    def put(self, /, **kwargs: Any):
-        if "metadata" in kwargs:
-            new_metadata_fields = self._split_metadata(kwargs["metadata"])
+    def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
+        if "metadata" in args_dict:
+            new_metadata_fields = {
+                k: v
+                for k, v in self._split_metadata_fields(args_dict["metadata"]).items()
+                if v != {}
+            }
         else:
             new_metadata_fields = {}
         #
-        new_kwargs = {
-            **{k: v for k, v in kwargs.items() if k != "metadata"},
+        new_args_dict = {
+            **{k: v for k, v in args_dict.items() if k != "metadata"},
             **new_metadata_fields,
         }
-        #
-        super().put(**new_kwargs)
+        return super()._normalize_kwargs(new_args_dict)
+
+    def _extract_where_clause_blocks(
+        self, args_dict: Any
+    ) -> Tuple[Any, List[str], Tuple[Any, ...]]:
+        # This always happens after a corresponding _normalize_kwargs,
+        # so the metadata, if present, appears as split-fields.
+        assert "metadata" not in args_dict
+        md_keys = {"metadata_s", "metadata_n", "metadata_tags"}
+        new_args_dict = {k: v for k, v in args_dict.items() if k not in md_keys}
+        # Here the "metadata" entry is made into specific where clauses
+        split_metadata = {k: v for k, v in args_dict.items() if k in md_keys}
+        these_wc_blocks: List[str] = []
+        these_wc_vals_list: List[Any] = []
+        # WHERE creation:
+        for v in sorted(split_metadata.get("metadata_tags", set())):
+            these_wc_blocks.append(f"metadata_tags CONTAINS %s")
+            these_wc_vals_list.append(v)
+        for k, v in sorted(split_metadata.get("metadata_s", {}).items()):
+            these_wc_blocks.append(f"metadata_s['{k}'] = %s")
+            these_wc_vals_list.append(v)
+        for k, v in sorted(split_metadata.get("metadata_n", {}).items()):
+            these_wc_blocks.append(f"metadata_n['{k}'] = %s")
+            these_wc_vals_list.append(v)
+        # no new kwargs keys are created, all goes to WHERE
+        this_args_dict: Dict[str, Any] = {}
+        these_wc_vals = tuple(these_wc_vals_list)
+        # ready to defer to superclass(es), then collate-and-return
+        (s_args_dict, s_wc_blocks, s_wc_vals) = super()._extract_where_clause_blocks(
+            new_args_dict
+        )
+        return (
+            {**this_args_dict, **s_args_dict},
+            these_wc_blocks + s_wc_blocks,
+            tuple(list(these_wc_vals) + list(s_wc_vals)),
+        )
 
 
 class VectorMixin(BaseTableMixin):
@@ -235,7 +296,7 @@ class VectorMixin(BaseTableMixin):
         )
         #
         select_ann_cql_vals = tuple(
-            vector_cql_vals + list(where_cql_vals) + limit_cql_vals
+            list(where_cql_vals) + vector_cql_vals + limit_cql_vals
         )
         return self.execute_cql(
             select_ann_cql, args=select_ann_cql_vals, op_type=CQLOpType.READ
@@ -262,46 +323,25 @@ class ElasticKeyMixin(BaseTableMixin):
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
         # transform provided "keys" into the elastic-representation two-val form
         key_args = {k: v for k, v in args_dict.items() if k in self.keys}
-        assert set(key_args.keys()) == set(self.keys)
-        key_vals = self._serialize_key_vals(
-            [key_args[key_col] for key_col in self.keys]
-        )
-        #
-        key_args_dict = {
-            "key_vals": key_vals,
-            "key_desc": self.key_desc,
-        }
-        other_args_dict = {k: v for k, v in args_dict.items() if k not in self.keys}
-        new_args_dict = {
-            **key_args_dict,
-            **other_args_dict,
-        }
+        # the "key" is passed all-or-nothing:
+        assert set(key_args.keys()) == set(self.keys) or key_args == {}
+        if key_args != {}:
+            key_vals = self._serialize_key_vals(
+                [key_args[key_col] for key_col in self.keys]
+            )
+            #
+            key_args_dict = {
+                "key_vals": key_vals,
+                "key_desc": self.key_desc,
+            }
+            other_args_dict = {k: v for k, v in args_dict.items() if k not in self.keys}
+            new_args_dict = {
+                **key_args_dict,
+                **other_args_dict,
+            }
+        else:
+            new_args_dict = args_dict
         return super()._normalize_kwargs(new_args_dict)
-
-    # def _split_row_args(self, arg_dict: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
-    #     # split in key/nonkey from a kwargs dict
-    #     # and represent the former as one field
-    #     key_args = {k: v for k, v in arg_dict.items() if k in self.keys}
-    #     assert set(key_args.keys()) == set(self.keys)
-    #     key_vals = self._serialize_key_vals(
-    #         [key_args[key_col] for key_col in self.keys]
-    #     )
-    #     #
-    #     other_kwargs = {k: v for k, v in arg_dict.items() if k not in self.keys}
-    #     return key_vals, other_kwargs
-
-    # def delete(self, /, **kwargs: Any) -> None:
-    #     key_vals, other_kwargs = self._split_row_args(kwargs)
-    #     super().delete(key_desc=self.key_desc, key_vals=key_vals, **other_kwargs)
-
-    # def get(self, /, **kwargs: Any) -> RowType:
-    #     key_vals, other_kwargs = self._split_row_args(kwargs)
-    #     # TODO: unpack the key
-    #     return super().get(key_desc=self.key_desc, key_vals=key_vals, **other_kwargs)
-
-    # def put(self, /, **kwargs: Any) -> None:
-    #     key_vals, other_kwargs = self._split_row_args(kwargs)
-    #     super().put(key_desc=self.key_desc, key_vals=key_vals, **other_kwargs)
 
     @staticmethod
     def _schema_row_id() -> List[ColumnSpecType]:
