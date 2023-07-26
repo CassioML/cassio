@@ -11,9 +11,8 @@ from cassio.table.tables import (
 
 @pytest.mark.usefixtures("db_session", "db_keyspace")
 class TestPlainCassandraTable:
-
     def test_crud(self, db_session, db_keyspace):
-        table_name = "test_table_plaincassandratable"
+        table_name = "ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #
         t = PlainCassandraTable(
@@ -33,9 +32,10 @@ class TestPlainCassandraTable:
         assert gotten1n is None
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # TEST_DB_MODE=LOCAL_CASSANDRA python -m pdb -m  tests.integration.test_tableclasses_plaincassandratable
     from ..conftest import createDBSessionSingleton, getDBKeyspace
+
     s = createDBSessionSingleton()
     k = getDBKeyspace()
     TestPlainCassandraTable().test_crud(s, k)

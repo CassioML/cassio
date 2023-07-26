@@ -22,7 +22,7 @@ class TestTableClassesCQLGeneration:
                     tuple(),
                 ),
                 (
-                    "CREATE CUSTOM INDEX IF NOT EXISTS index_vector ON k.tn (vector) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",
+                    "CREATE CUSTOM INDEX IF NOT EXISTS idx_vector_tn ON k.tn (vector) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",
                     tuple(),
                 ),
             ]
@@ -103,19 +103,19 @@ class TestTableClassesCQLGeneration:
                     tuple(),
                 ),
                 (
-                    "CREATE CUSTOM INDEX IF NOT EXISTS index_vector ON k.tn (vector) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",
+                    "CREATE CUSTOM INDEX IF NOT EXISTS idx_vector_tn ON k.tn (vector) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",
                     tuple(),
                 ),
                 (
-                    "CREATE CUSTOM INDEX IF NOT EXISTS index_metadata_tags ON k.tn (metadata_tags) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",
+                    "CREATE CUSTOM INDEX IF NOT EXISTS idx_metadata_tags_tn ON k.tn (metadata_tags) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",
                     tuple(),
                 ),
                 (
-                    "CREATE CUSTOM INDEX IF NOT EXISTS entries_index_metadata_s ON k.tn (ENTRIES(metadata_s)) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",
+                    "CREATE CUSTOM INDEX IF NOT EXISTS eidx_metadata_s_tn ON k.tn (ENTRIES(metadata_s)) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",
                     tuple(),
                 ),
                 (
-                    "CREATE CUSTOM INDEX IF NOT EXISTS entries_index_metadata_n ON k.tn (ENTRIES(metadata_n)) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",
+                    "CREATE CUSTOM INDEX IF NOT EXISTS eidx_metadata_n_tn ON k.tn (ENTRIES(metadata_n)) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",
                     tuple(),
                 ),
             ]
@@ -126,7 +126,7 @@ class TestTableClassesCQLGeneration:
             [
                 (
                     "DELETE FROM k.tn WHERE key_desc = ? AND key_vals = ? AND partition_id = ?;",
-                    ("a/b", "['A', 'B']", "PARTITIONID"),
+                    ('["a","b"]', '["A","B"]', "PARTITIONID"),
                 ),
             ]
         )
@@ -136,7 +136,7 @@ class TestTableClassesCQLGeneration:
             [
                 (
                     "SELECT * FROM k.tn WHERE key_desc = ? AND key_vals = ? AND partition_id = ? ;",
-                    ("a/b", "['A', 'B']", "PARTITIONID"),
+                    ('["a","b"]', '["A","B"]', "PARTITIONID"),
                 ),
             ]
         )
@@ -165,8 +165,8 @@ class TestTableClassesCQLGeneration:
                     (
                         "BODYBLOB",
                         "VECTOR",
-                        "a/b",
-                        "['A', 'B']",
+                        '["a","b"]',
+                        '["A","B"]',
                         "PARTITIONID",
                         123,
                     ),
@@ -194,8 +194,8 @@ class TestTableClassesCQLGeneration:
                         {"str1": "STR1"},
                         {"num1": 123.0, "num2": 456.0},
                         {"tru1"},
-                        "a/b",
-                        "['A', 'B']",
+                        '["a","b"]',
+                        '["A","B"]',
                         "PARTITIONID",
                         123,
                     ),
@@ -219,8 +219,8 @@ class TestTableClassesCQLGeneration:
                         "BODYBLOB",
                         "VECTOR",
                         {"tru2", "tru1"},
-                        "a/b",
-                        "['A', 'B']",
+                        '["a","b"]',
+                        '["A","B"]',
                         "PARTITIONID",
                         123,
                     ),
@@ -233,7 +233,7 @@ class TestTableClassesCQLGeneration:
             [
                 (
                     "INSERT INTO k.tn (metadata_tags, key_desc, key_vals, partition_id) VALUES (?, ?, ?, ?) USING TTL ? ;",
-                    ({"tru2", "tru1"}, "a/b", "['A', 'B']", "PARTITIONID", 123),
+                    ({"tru2", "tru1"}, '["a","b"]', '["A","B"]', "PARTITIONID", 123),
                 ),
             ]
         )
@@ -273,7 +273,7 @@ class TestTableClassesCQLGeneration:
             [
                 (
                     "SELECT * FROM k.tn WHERE key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",
-                    ("a/b", "['A', 'B']", "PARTITIONID", [10, 11], 2),
+                    ('["a","b"]', '["A","B"]', "PARTITIONID", [10, 11], 2),
                 ),
             ]
         )
@@ -283,7 +283,7 @@ class TestTableClassesCQLGeneration:
             [
                 (
                     "SELECT * FROM k.tn WHERE key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",
-                    ("a/b", "['A', 'B']", "PRE-PART-ID", [10, 11], 2),
+                    ('["a","b"]', '["A","B"]', "PRE-PART-ID", [10, 11], 2),
                 ),
             ]
         )
@@ -294,7 +294,7 @@ class TestTableClassesCQLGeneration:
             [
                 (
                     "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_s['mdks'] = ? AND metadata_n['mdkn'] = ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ;",
-                    ("mdke", "mdv", 123.0, "a/b", "['MDA', 'MDB']", "MDPART"),
+                    ("mdke", "mdv", 123.0, '["a","b"]', '["MDA","MDB"]', "MDPART"),
                 ),
             ]
         )
@@ -310,8 +310,8 @@ class TestTableClassesCQLGeneration:
                         "mdke",
                         "mdv",
                         123.0,
-                        "a/b",
-                        "['MDA', 'MDB']",
+                        '["a","b"]',
+                        '["MDA","MDB"]',
                         "MDPART",
                         [100, 101],
                         9,
@@ -329,8 +329,8 @@ class TestTableClassesCQLGeneration:
                         "mdke",
                         "mdv",
                         123.0,
-                        "a/b",
-                        "['MDA', 'MDB']",
+                        '["a","b"]',
+                        '["MDA","MDB"]',
                         "PRE-PART-ID",
                         [100, 101],
                         9,
@@ -365,7 +365,7 @@ class TestTableClassesCQLGeneration:
             [
                 (
                     "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_tags CONTAINS ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ;",
-                    ("mdke", "mdke2", "a/b", "['MDA', 'MDB']", "MDPART"),
+                    ("mdke", "mdke2", '["a","b"]', '["MDA","MDB"]', "MDPART"),
                 ),
             ]
         )
@@ -382,7 +382,15 @@ class TestTableClassesCQLGeneration:
             [
                 (
                     "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_tags CONTAINS ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",
-                    ("mdke", "mdke2", "a/b", "['MDA', 'MDB']", "MDPART", [100, 101], 9),
+                    (
+                        "mdke",
+                        "mdke2",
+                        '["a","b"]',
+                        '["MDA","MDB"]',
+                        "MDPART",
+                        [100, 101],
+                        9,
+                    ),
                 ),
             ]
         )
@@ -395,8 +403,8 @@ class TestTableClassesCQLGeneration:
                     (
                         "mdke",
                         "mdke2",
-                        "a/b",
-                        "['MDA', 'MDB']",
+                        '["a","b"]',
+                        '["MDA","MDB"]',
                         "PRE-PART-ID",
                         [100, 101],
                         9,

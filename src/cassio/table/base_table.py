@@ -134,7 +134,9 @@ class BaseTable:
         truncate_table_cql = TRUNCATE_TABLE_CQL_TEMPLATE.format()
         self.execute_cql(truncate_table_cql, args=tuple(), op_type=CQLOpType.WRITE)
 
-    def _parse_select_core_params(self, **kwargs: Any) -> Tuple[str, str, Tuple[Any, ...]]:
+    def _parse_select_core_params(
+        self, **kwargs: Any
+    ) -> Tuple[str, str, Tuple[Any, ...]]:
         n_kwargs = self._normalize_kwargs(kwargs)
         # TODO: work on a columns: Optional[List[str]] = None
         # (but with nuanced handling of the column-magic we have here)
@@ -156,7 +158,9 @@ class BaseTable:
         return columns_desc, where_clause, select_cql_vals
 
     def get(self, **kwargs: Any) -> RowType:
-        columns_desc, where_clause, get_cql_vals = self._parse_select_core_params(**kwargs)
+        columns_desc, where_clause, get_cql_vals = self._parse_select_core_params(
+            **kwargs
+        )
         limit_clause = ""
         limit_cql_vals: List[Any] = []
         select_vals = tuple(list(get_cql_vals) + limit_cql_vals)
@@ -167,7 +171,9 @@ class BaseTable:
             limit_clause=limit_clause,
         )
         # dancing around the result set (to comply with type checking):
-        result_set = self.execute_cql(select_cql, args=select_vals, op_type=CQLOpType.READ)
+        result_set = self.execute_cql(
+            select_cql, args=select_vals, op_type=CQLOpType.READ
+        )
         if isinstance(result_set, ResultSet):
             result = result_set.one()
         else:
@@ -236,7 +242,10 @@ class BaseTable:
         args: Tuple[Any, ...] = tuple(),
     ) -> Iterable[RowType]:
         table_fqname = f"{self.keyspace}.{self.table}"
-        final_cql = cql_semitemplate.format(table_fqname=table_fqname)
+        table_name = self.table
+        final_cql = cql_semitemplate.format(
+            table_fqname=table_fqname, table_name=table_name
+        )
         #
         if op_type == CQLOpType.SCHEMA and self.skip_provisioning:
             # these operations are not executed for this instance:

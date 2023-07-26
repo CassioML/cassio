@@ -1,3 +1,5 @@
+import json
+
 from typing import (
     Any,
     List,
@@ -143,7 +145,7 @@ class MetadataMixin(BaseTableMixin):
         entries_index_columns = ["metadata_s", "metadata_n"]
         index_columns = ["metadata_tags"]
         for index_column in index_columns:
-            index_name = f"index_{index_column}"
+            index_name = f"idx_{index_column}"
             index_column = f"{index_column}"
             create_index_cql = CREATE_INDEX_CQL_TEMPLATE.format(
                 index_name=index_name,
@@ -151,7 +153,7 @@ class MetadataMixin(BaseTableMixin):
             )
             self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
         for entries_index_column in entries_index_columns:
-            index_name = f"entries_index_{entries_index_column}"
+            index_name = f"eidx_{entries_index_column}"
             index_column = f"{entries_index_column}"
             create_index_cql = CREATE_ENTRIES_INDEX_CQL_TEMPLATE.format(
                 index_name=index_name,
@@ -174,7 +176,9 @@ class MetadataMixin(BaseTableMixin):
         nully_part = {
             k for k, v in md_dict.items() if isinstance(v, bool) and v is True
         }
-        assert {k for k, v in md_dict.items() if isinstance(v, bool) and v is False} == set()
+        assert {
+            k for k, v in md_dict.items() if isinstance(v, bool) and v is False
+        } == set()
         assert set(stringy_part.keys()) | set(numeric_part.keys()) | nully_part == set(
             md_dict.keys()
         )
@@ -194,28 +198,25 @@ class MetadataMixin(BaseTableMixin):
             "metadata_tags": set(),
         }
         pre_normalized = super()._normalize_row(raw_row)
-        row_rest = {k: v for k, v in pre_normalized.items() if k not in md_columns_defaults}
+        row_rest = {
+            k: v for k, v in pre_normalized.items() if k not in md_columns_defaults
+        }
         #
         mergee_md_fields = {
-            k: v
-            for k, v in pre_normalized.items()
-            if k in md_columns_defaults
+            k: v for k, v in pre_normalized.items() if k in md_columns_defaults
         }
         normalized_mergee_md_fields = {
             k: v if v is not None else md_columns_defaults[k]
             for k, v in mergee_md_fields.items()
         }
         r_md_from_tags = {
-            tag: True
-            for tag in normalized_mergee_md_fields["metadata_tags"]
+            tag: True for tag in normalized_mergee_md_fields["metadata_tags"]
         }
         r_md_from_n = {
-            k: v
-            for k, v in normalized_mergee_md_fields["metadata_n"].items()
+            k: v for k, v in normalized_mergee_md_fields["metadata_n"].items()
         }
         r_md_from_s = {
-            k: v
-            for k, v in normalized_mergee_md_fields["metadata_s"].items()
+            k: v for k, v in normalized_mergee_md_fields["metadata_s"].items()
         }
         #
         row_metadata = {
@@ -284,7 +285,9 @@ class MetadataMixin(BaseTableMixin):
         )
 
     def search(self, n: int, **kwargs: Any) -> RowType:
-        columns_desc, where_clause, get_cql_vals = self._parse_select_core_params(**kwargs)
+        columns_desc, where_clause, get_cql_vals = self._parse_select_core_params(
+            **kwargs
+        )
         limit_clause = f"LIMIT %s"
         limit_cql_vals = [n]
         select_vals = tuple(list(get_cql_vals) + limit_cql_vals)
@@ -294,11 +297,10 @@ class MetadataMixin(BaseTableMixin):
             where_clause=where_clause,
             limit_clause=limit_clause,
         )
-        result_set = self.execute_cql(select_cql, args=select_vals, op_type=CQLOpType.READ)
-        return (
-            self._normalize_row(result)
-            for result in result_set
+        result_set = self.execute_cql(
+            select_cql, args=select_vals, op_type=CQLOpType.READ
         )
+        return (self._normalize_row(result) for result in result_set)
 
 
 class VectorMixin(BaseTableMixin):
@@ -314,7 +316,7 @@ class VectorMixin(BaseTableMixin):
     def db_setup(self) -> None:
         super().db_setup()
         # index on the vector column:
-        index_name = "index_vector"
+        index_name = "idx_vector"
         index_column = "vector"
         create_index_cql = CREATE_INDEX_CQL_TEMPLATE.format(
             index_name=index_name,
@@ -364,9 +366,10 @@ class VectorMixin(BaseTableMixin):
         select_ann_cql_vals = tuple(
             list(where_cql_vals) + vector_cql_vals + limit_cql_vals
         )
-        return self.execute_cql(
+        result_set = self.execute_cql(
             select_ann_cql, args=select_ann_cql_vals, op_type=CQLOpType.READ
         )
+        return (self._normalize_row(result) for result in result_set)
 
 
 class ElasticKeyMixin(BaseTableMixin):
@@ -374,7 +377,7 @@ class ElasticKeyMixin(BaseTableMixin):
         if "row_id_type" in kwargs:
             raise ValueError("'row_id_type' not allowed for elastic tables.")
         self.keys = keys
-        self.key_desc = "/".join(self.keys)
+        self.key_desc = self._serialize_key_list(self.keys)
         row_id_type = ["TEXT", "TEXT"]
         new_kwargs = {
             **{"row_id_type": row_id_type},
@@ -383,8 +386,35 @@ class ElasticKeyMixin(BaseTableMixin):
         super().__init__(*pargs, **new_kwargs)
 
     @staticmethod
-    def _serialize_key_vals(key_vals: List[Any]) -> str:
-        return str(key_vals)
+    def _serialize_key_list(key_vals: List[Any]) -> str:
+        return json.dumps(key_vals, separators=(",", ":"))
+
+    @staticmethod
+    def _deserialize_key_list(keys_str: str) -> List[Any]:
+        return json.loads(keys_str)
+
+    def _normalize_row(self, raw_row: Any) -> Dict[str, Any]:
+        key_fields = {"key_desc", "key_vals"}
+        pre_normalized = super()._normalize_row(raw_row)
+        row_key = {k: v for k, v in pre_normalized.items() if k in key_fields}
+        row_rest = {k: v for k, v in pre_normalized.items() if k not in key_fields}
+        if row_key == {}:
+            key_dict = {}
+        else:
+            # unpack the keys
+            assert len(row_key) == 2
+            assert self._deserialize_key_list(row_key["key_desc"]) == self.keys
+            key_dict = {
+                k: v
+                for k, v in zip(
+                    self.keys,
+                    self._deserialize_key_list(row_key["key_vals"]),
+                )
+            }
+        return {
+            **key_dict,
+            **row_rest,
+        }
 
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
         # transform provided "keys" into the elastic-representation two-val form
@@ -392,7 +422,7 @@ class ElasticKeyMixin(BaseTableMixin):
         # the "key" is passed all-or-nothing:
         assert set(key_args.keys()) == set(self.keys) or key_args == {}
         if key_args != {}:
-            key_vals = self._serialize_key_vals(
+            key_vals = self._serialize_key_list(
                 [key_args[key_col] for key_col in self.keys]
             )
             #

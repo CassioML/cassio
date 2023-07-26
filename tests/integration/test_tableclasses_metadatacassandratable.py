@@ -11,9 +11,8 @@ from cassio.table.tables import (
 
 @pytest.mark.usefixtures("db_session", "db_keyspace")
 class TestMetadataCassandraTable:
-
     def test_crud(self, db_session, db_keyspace):
-        table_name = "test_table_metadatacassandratable"
+        table_name = "m_ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #
         t = MetadataCassandraTable(
@@ -52,8 +51,16 @@ class TestMetadataCassandraTable:
             key=lambda res: res["metadata"]["index"],
         )
         expected = [
-            {"metadata": {"twin": True, "index": 0.0}, "row_id": "twin_a", "body_blob": None},
-            {"metadata": {"twin": True, "index": 1.0}, "row_id": "twin_b", "body_blob": None},
+            {
+                "metadata": {"twin": True, "index": 0.0},
+                "row_id": "twin_a",
+                "body_blob": None,
+            },
+            {
+                "metadata": {"twin": True, "index": 1.0},
+                "row_id": "twin_b",
+                "body_blob": None,
+            },
         ]
         assert md_twins_gotten == expected
         assert list(t.search(row_id="fake", n=10)) == []
@@ -61,9 +68,10 @@ class TestMetadataCassandraTable:
         t.clear()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # TEST_DB_MODE=LOCAL_CASSANDRA python -m pdb -m  tests.integration.test_tableclasses_MetadataCassandraTable
     from ..conftest import createDBSessionSingleton, getDBKeyspace
+
     s = createDBSessionSingleton()
     k = getDBKeyspace()
     TestMetadataCassandraTable().test_crud(s, k)
