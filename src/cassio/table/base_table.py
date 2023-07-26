@@ -1,6 +1,7 @@
-from typing import Any, List, Dict, Optional, Protocol, Set, Tuple, Union
+from typing import Any, List, Dict, Iterable, Optional, Protocol, Set, Tuple, Union
 
 from cassandra.query import SimpleStatement, PreparedStatement  # type: ignore
+from cassandra.cluster import ResultSet  # type: ignore
 
 from cassio.table.table_types import (
     ColumnSpecType,
@@ -107,6 +108,14 @@ class BaseTable:
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
         return args_dict
 
+    def _normalize_row(self, raw_row: Any) -> Dict[str, Any]:
+        if isinstance(raw_row, dict):
+            dict_row = raw_row
+        else:
+            dict_row = raw_row._asdict()
+        #
+        return dict_row
+
     def delete(self, **kwargs: Any) -> None:
         n_kwargs = self._normalize_kwargs(kwargs)
         (
@@ -125,7 +134,7 @@ class BaseTable:
         truncate_table_cql = TRUNCATE_TABLE_CQL_TEMPLATE.format()
         self.execute_cql(truncate_table_cql, args=tuple(), op_type=CQLOpType.WRITE)
 
-    def get(self, **kwargs: Any) -> List[RowType]:
+    def _parse_select_core_params(self, **kwargs: Any) -> Tuple[str, str, Tuple[Any, ...]]:
         n_kwargs = self._normalize_kwargs(kwargs)
         # TODO: work on a columns: Optional[List[str]] = None
         # (but with nuanced handling of the column-magic we have here)
@@ -140,18 +149,34 @@ class BaseTable:
         (
             rest_kwargs,
             where_clause_blocks,
-            get_cql_vals,
+            select_cql_vals,
         ) = self._extract_where_clause_blocks(n_kwargs)
         assert rest_kwargs == {}
         where_clause = "WHERE " + " AND ".join(where_clause_blocks)
+        return columns_desc, where_clause, select_cql_vals
+
+    def get(self, **kwargs: Any) -> RowType:
+        columns_desc, where_clause, get_cql_vals = self._parse_select_core_params(**kwargs)
         limit_clause = ""
+        limit_cql_vals: List[Any] = []
+        select_vals = tuple(list(get_cql_vals) + limit_cql_vals)
         #
         select_cql = SELECT_CQL_TEMPLATE.format(
             columns_desc=columns_desc,
             where_clause=where_clause,
             limit_clause=limit_clause,
         )
-        return self.execute_cql(select_cql, args=get_cql_vals, op_type=CQLOpType.READ)
+        # dancing around the result set (to comply with type checking):
+        result_set = self.execute_cql(select_cql, args=select_vals, op_type=CQLOpType.READ)
+        if isinstance(result_set, ResultSet):
+            result = result_set.one()
+        else:
+            result = None
+        #
+        if result is None:
+            return result
+        else:
+            return self._normalize_row(result)
 
     def put(self, **kwargs: Any) -> None:
         n_kwargs = self._normalize_kwargs(kwargs)
@@ -209,7 +234,7 @@ class BaseTable:
         cql_semitemplate: str,
         op_type: CQLOpType,
         args: Tuple[Any, ...] = tuple(),
-    ) -> List[RowType]:
+    ) -> Iterable[RowType]:
         table_fqname = f"{self.keyspace}.{self.table}"
         final_cql = cql_semitemplate.format(table_fqname=table_fqname)
         #

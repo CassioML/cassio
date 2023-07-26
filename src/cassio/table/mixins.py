@@ -11,6 +11,8 @@ from typing import (
     Union,
 )
 
+from cassandra.cluster import ResultSet  # type: ignore
+
 from cassio.table.cql import (
     CQLOpType,
     DELETE_CQL_TEMPLATE,
@@ -133,8 +135,9 @@ class MetadataMixin(BaseTableMixin):
         ]
 
     def db_setup(self) -> None:
-        # Currently this supports entries on the two entryful metadata parts
-        # and just existence on the tags (set). No indexes on key existence are created.
+        # Currently this supports entries on:
+        # the two entryful metadata parts + just-existence on the tags (set).
+        # No indexes on key existence are created.
         super().db_setup()
         #
         entries_index_columns = ["metadata_s", "metadata_n"]
@@ -171,6 +174,7 @@ class MetadataMixin(BaseTableMixin):
         nully_part = {
             k for k, v in md_dict.items() if isinstance(v, bool) and v is True
         }
+        assert {k for k, v in md_dict.items() if isinstance(v, bool) and v is False} == set()
         assert set(stringy_part.keys()) | set(numeric_part.keys()) | nully_part == set(
             md_dict.keys()
         )
@@ -182,6 +186,51 @@ class MetadataMixin(BaseTableMixin):
             "metadata_n": numeric_part,
             "metadata_tags": nully_part,
         }
+
+    def _normalize_row(self, raw_row: Any) -> Dict[str, Any]:
+        md_columns_defaults: Dict[str, Any] = {
+            "metadata_s": {},
+            "metadata_n": {},
+            "metadata_tags": set(),
+        }
+        pre_normalized = super()._normalize_row(raw_row)
+        row_rest = {k: v for k, v in pre_normalized.items() if k not in md_columns_defaults}
+        #
+        mergee_md_fields = {
+            k: v
+            for k, v in pre_normalized.items()
+            if k in md_columns_defaults
+        }
+        normalized_mergee_md_fields = {
+            k: v if v is not None else md_columns_defaults[k]
+            for k, v in mergee_md_fields.items()
+        }
+        r_md_from_tags = {
+            tag: True
+            for tag in normalized_mergee_md_fields["metadata_tags"]
+        }
+        r_md_from_n = {
+            k: v
+            for k, v in normalized_mergee_md_fields["metadata_n"].items()
+        }
+        r_md_from_s = {
+            k: v
+            for k, v in normalized_mergee_md_fields["metadata_s"].items()
+        }
+        #
+        row_metadata = {
+            "metadata": {
+                **r_md_from_tags,
+                **r_md_from_n,
+                **r_md_from_s,
+            },
+        }
+        #
+        normalized = {
+            **row_metadata,
+            **row_rest,
+        }
+        return normalized
 
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
         if "metadata" in args_dict:
@@ -232,6 +281,23 @@ class MetadataMixin(BaseTableMixin):
             {**this_args_dict, **s_args_dict},
             these_wc_blocks + s_wc_blocks,
             tuple(list(these_wc_vals) + list(s_wc_vals)),
+        )
+
+    def search(self, n: int, **kwargs: Any) -> RowType:
+        columns_desc, where_clause, get_cql_vals = self._parse_select_core_params(**kwargs)
+        limit_clause = f"LIMIT %s"
+        limit_cql_vals = [n]
+        select_vals = tuple(list(get_cql_vals) + limit_cql_vals)
+        #
+        select_cql = SELECT_CQL_TEMPLATE.format(
+            columns_desc=columns_desc,
+            where_clause=where_clause,
+            limit_clause=limit_clause,
+        )
+        result_set = self.execute_cql(select_cql, args=select_vals, op_type=CQLOpType.READ)
+        return (
+            self._normalize_row(result)
+            for result in result_set
         )
 
 
@@ -365,4 +431,6 @@ class TypeNormalizerMixin(BaseTableMixin):
                 **col_type_map,
                 **{k: v for k, v in kwargs.items() if k != "primary_key_type"},
             }
-            super().__init__(*pargs, **new_kwargs)
+        else:
+            new_kwargs = kwargs
+        super().__init__(*pargs, **new_kwargs)
