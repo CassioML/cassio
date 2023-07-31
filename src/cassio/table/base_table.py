@@ -2,6 +2,7 @@ from typing import Any, List, Dict, Iterable, Optional, Protocol, Set, Tuple, Un
 
 from cassandra.query import SimpleStatement, PreparedStatement  # type: ignore
 from cassandra.cluster import ResultSet  # type: ignore
+from cassandra.cluster import ResponseFuture  # type: ignore
 
 from cassio.table.table_types import (
     ColumnSpecType,
@@ -116,7 +117,7 @@ class BaseTable:
         #
         return dict_row
 
-    def delete(self, **kwargs: Any) -> None:
+    def _delete(self, is_async: bool, **kwargs: Any) -> Union[None, ResponseFuture]:
         n_kwargs = self._normalize_kwargs(kwargs)
         (
             rest_kwargs,
@@ -128,11 +129,37 @@ class BaseTable:
         delete_cql = DELETE_CQL_TEMPLATE.format(
             where_clause=where_clause,
         )
-        self.execute_cql(delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE)
+        if is_async:
+            return self.execute_cql_async(
+                delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE
+            )
+        else:
+            self.execute_cql(delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE)
+            return None
+
+    def delete(self, **kwargs: Any) -> None:
+        self._delete(is_async=False, **kwargs)
+        return None
+
+    def delete_async(self, **kwargs: Any) -> ResponseFuture:
+        return self._delete(is_async=True, **kwargs)
+
+    def _clear(self, is_async: bool) -> Union[None, ResponseFuture]:
+        truncate_table_cql = TRUNCATE_TABLE_CQL_TEMPLATE.format()
+        if is_async:
+            return self.execute_cql_async(
+                truncate_table_cql, args=tuple(), op_type=CQLOpType.WRITE
+            )
+        else:
+            self.execute_cql(truncate_table_cql, args=tuple(), op_type=CQLOpType.WRITE)
+            return None
 
     def clear(self) -> None:
-        truncate_table_cql = TRUNCATE_TABLE_CQL_TEMPLATE.format()
-        self.execute_cql(truncate_table_cql, args=tuple(), op_type=CQLOpType.WRITE)
+        self._clear(is_async=False)
+        return None
+
+    def clear_async(self) -> ResponseFuture:
+        return self._clear(is_async=True)
 
     def _parse_select_core_params(
         self, **kwargs: Any
@@ -146,7 +173,7 @@ class BaseTable:
         else:
             # TODO: handle translations here?
             # columns_desc = ", ".join(columns)
-            raise NotImplementedError
+            raise NotImplementedError("Column selection is not implemented.")
         #
         (
             rest_kwargs,
@@ -184,7 +211,10 @@ class BaseTable:
         else:
             return self._normalize_row(result)
 
-    def put(self, **kwargs: Any) -> None:
+    def get_async(self, **kwargs) -> ResponseFuture:
+        raise NotImplementedError("Asynchronous reads are not supported.")
+
+    def _put(self, is_async: bool, **kwargs: Any) -> Union[None, ResponseFuture]:
         n_kwargs = self._normalize_kwargs(kwargs)
         primary_key = self._schema_primary_key()
         assert set(col for col, _ in primary_key) - set(n_kwargs.keys()) == set()
@@ -210,7 +240,20 @@ class BaseTable:
             ttl_spec=ttl_spec,
         )
         #
-        self.execute_cql(insert_cql, args=insert_cql_args, op_type=CQLOpType.WRITE)
+        if is_async:
+            return self.execute_cql_async(
+                insert_cql, args=insert_cql_args, op_type=CQLOpType.WRITE
+            )
+        else:
+            self.execute_cql(insert_cql, args=insert_cql_args, op_type=CQLOpType.WRITE)
+            return None
+
+    def put(self, **kwargs: Any) -> None:
+        self._put(is_async=False, **kwargs)
+        return None
+
+    def put_async(self, **kwargs: Any) -> ResponseFuture:
+        return self._put(is_async=True, **kwargs)
 
     def db_setup(self) -> None:
         _schema = self._schema()
@@ -235,17 +278,31 @@ class BaseTable:
         )
         self.execute_cql(create_table_cql, op_type=CQLOpType.SCHEMA)
 
+    def _finalize_cql_semitemplate(self, cql_semitemplate: str) -> str:
+        table_fqname = f"{self.keyspace}.{self.table}"
+        table_name = self.table
+        final_cql = cql_semitemplate.format(
+            table_fqname=table_fqname, table_name=table_name
+        )
+        return final_cql
+
+    def _obtain_prepared_statement(self, final_cql) -> PreparedStatement:
+        # TODO: improve this placeholder handling
+        _preparable_cql = final_cql.replace("%s", "?")
+        # handle the cache of prepared statements
+        if _preparable_cql not in self._prepared_statements:
+            self._prepared_statements[_preparable_cql] = self.session.prepare(
+                _preparable_cql
+            )
+        return self._prepared_statements[_preparable_cql]
+
     def execute_cql(
         self,
         cql_semitemplate: str,
         op_type: CQLOpType,
         args: Tuple[Any, ...] = tuple(),
     ) -> Iterable[RowType]:
-        table_fqname = f"{self.keyspace}.{self.table}"
-        table_name = self.table
-        final_cql = cql_semitemplate.format(
-            table_fqname=table_fqname, table_name=table_name
-        )
+        final_cql = self._finalize_cql_semitemplate(cql_semitemplate)
         #
         if op_type == CQLOpType.SCHEMA and self.skip_provisioning:
             # these operations are not executed for this instance:
@@ -255,13 +312,21 @@ class BaseTable:
                 # schema operations are not to be 'prepared'
                 statement = SimpleStatement(final_cql)
             else:
-                # TODO: improve this placeholder handling
-                _preparable_cql = final_cql.replace("%s", "?")
-                # handle the cache of prepared statements
-                if _preparable_cql not in self._prepared_statements:
-                    self._prepared_statements[_preparable_cql] = self.session.prepare(
-                        _preparable_cql
-                    )
-                statement = self._prepared_statements[_preparable_cql]
+                statement = self._obtain_prepared_statement(final_cql)
             #
             return self.session.execute(statement, args)
+
+    def execute_cql_async(
+        self,
+        cql_semitemplate: str,
+        op_type: CQLOpType,
+        args: Tuple[Any, ...] = tuple(),
+    ) -> ResponseFuture:
+        final_cql = self._finalize_cql_semitemplate(cql_semitemplate)
+        #
+        if op_type == CQLOpType.SCHEMA:
+            raise RuntimeError("Schema operations cannot be asynchronous")
+        else:
+            statement = self._obtain_prepared_statement(final_cql)
+            #
+            return self.session.execute_async(statement, args)

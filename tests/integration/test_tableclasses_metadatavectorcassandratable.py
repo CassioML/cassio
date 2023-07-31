@@ -73,7 +73,7 @@ class TestMetadataVectorCassandraTable:
         assert {r["row_id"] for r in ann_results_md3[:2]} == {"theta_1", "theta_15"}
         assert {r["row_id"] for r in ann_results_md3[2:4]} == {"theta_3", "theta_13"}
 
-        # t.clear()
+        t.clear()
 
 
 if __name__ == "__main__":

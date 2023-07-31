@@ -14,6 +14,7 @@ from typing import (
 )
 
 from cassandra.cluster import ResultSet  # type: ignore
+from cassandra.cluster import ResponseFuture  # type: ignore
 
 from cassio.table.cql import (
     CQLOpType,
@@ -61,7 +62,9 @@ class ClusteredMixin(BaseTableMixin):
     def _schema_cc(self) -> List[ColumnSpecType]:
         return self._schema_row_id()
 
-    def delete_partition(self, partition_id: Optional[str] = None) -> None:
+    def _delete_partition(
+        self, is_async: bool, partition_id: Optional[str] = None
+    ) -> None:
         _partition_id = self.partition_id if partition_id is None else partition_id
         #
         where_clause = "WHERE " + "partition_id = %s"
@@ -69,8 +72,22 @@ class ClusteredMixin(BaseTableMixin):
         delete_cql = DELETE_CQL_TEMPLATE.format(
             where_clause=where_clause,
         )
-        self.execute_cql(delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE)
-        return
+        if is_async:
+            return self.execute_cql_async(
+                delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE
+            )
+        else:
+            self.execute_cql(delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE)
+            return
+
+    def delete_partition(self, partition_id: Optional[str] = None) -> None:
+        self._delete_partition(is_async=False, partition_id=partition_id)
+        return None
+
+    def delete_partition_async(
+        self, partition_id: Optional[str] = None
+    ) -> ResponseFuture:
+        return self._delete_partition(is_async=True, partition_id=partition_id)
 
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
         # if partition id provided in call, takes precedence over instance value
@@ -97,7 +114,7 @@ class ClusteredMixin(BaseTableMixin):
         else:
             # TODO: handle translations here?
             # columns_desc = ", ".join(columns)
-            raise NotImplementedError
+            raise NotImplementedError("Column selection is not implemented.")
         # WHERE can admit other sources (e.g. medata if the corresponding mixin)
         # so we escalate to standard WHERE-creation route and reinject the partition
         n_kwargs = self._normalize_kwargs(
@@ -126,6 +143,11 @@ class ClusteredMixin(BaseTableMixin):
         )
         get_p_cql_vals = tuple(where_cql_vals + limit_cql_vals)
         return self.execute_cql(select_cql, args=get_p_cql_vals, op_type=CQLOpType.READ)
+
+    def get_partition_async(
+        self, partition_id: Optional[str] = None, n: Optional[int] = None, **kwargs: Any
+    ) -> ResponseFuture:
+        raise NotImplementedError("Asynchronous reads are not supported.")
 
 
 class MetadataMixin(BaseTableMixin):
@@ -302,6 +324,9 @@ class MetadataMixin(BaseTableMixin):
         )
         return (self._normalize_row(result) for result in result_set)
 
+    def search_async(self, n: int, **kwargs: Any) -> ResponseFuture:
+        raise NotImplementedError("Asynchronous reads are not supported.")
+
 
 class VectorMixin(BaseTableMixin):
     def __init__(self, *pargs: Any, vector_dimension: int, **kwargs: Any) -> None:
@@ -337,7 +362,7 @@ class VectorMixin(BaseTableMixin):
         else:
             # TODO: handle translations here?
             # columns_desc = ", ".join(columns)
-            raise NotImplementedError
+            raise NotImplementedError("Column selection is not implemented.")
         #
         vector_column = "vector"
         vector_cql_vals = [vector]
@@ -370,6 +395,11 @@ class VectorMixin(BaseTableMixin):
             select_ann_cql, args=select_ann_cql_vals, op_type=CQLOpType.READ
         )
         return (self._normalize_row(result) for result in result_set)
+
+    def ann_search_async(
+        self, vector: List[float], n: int, **kwargs: Any
+    ) -> ResponseFuture:
+        raise NotImplementedError("Asynchronous reads are not supported.")
 
 
 class ElasticKeyMixin(BaseTableMixin):
