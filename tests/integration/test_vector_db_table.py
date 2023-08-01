@@ -83,6 +83,55 @@ class TestVectorTable:
         assert len(matches) == 1
         assert matches[0]["document_id"] == "doc_id3"
 
+    def test_put_and_search_async(self, db_session, db_keyspace):
+        vtable_name_2a = "vector_table_2async"
+        v_emb_dim_2a = 3
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name_2a};")
+        v_table = VectorTable(
+            db_session,
+            db_keyspace,
+            table=vtable_name_2a,
+            embedding_dimension=v_emb_dim_2a,
+            primary_key_type="TEXT",
+        )
+        futures = [
+            v_table.put_async(
+                "document",
+                [5, 5, 10],
+                "doc_id1",
+                {"a": 1},
+                None,
+            ),
+            v_table.put_async(
+                "document",
+                [
+                    10,
+                    5,
+                    5,
+                ],
+                "doc_id2",
+                {"a": 2},
+                None,
+            ),
+            v_table.put_async(
+                "document",
+                [5, 10, 5],
+                "doc_id3",
+                {"a": 3},
+                None,
+            ),
+        ]
+        for f in futures:
+            _ = f.result()
+        matches = v_table.search(
+            [6, 10, 6],
+            1,
+            "cos",
+            0.5,
+        )
+        assert len(matches) == 1
+        assert matches[0]["document_id"] == "doc_id3"
+
     def test_put_intpk_and_get(self, db_session, db_keyspace):
         vtable_name_3 = "vector_table_3"
         v_emb_dim_3 = 6
@@ -109,14 +158,14 @@ class TestVectorTable:
         assert match_no is None
 
     def test_null_json(self, db_session, db_keyspace):
-        vtable_name1 = "vector_table_4"
-        v_emb_dim_1 = 3
-        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name1};")
+        vtable_name4 = "vector_table_4"
+        v_emb_dim_4 = 3
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name4};")
         v_table = VectorTable(
             db_session,
             db_keyspace,
-            table=vtable_name1,
-            embedding_dimension=v_emb_dim_1,
+            table=vtable_name4,
+            embedding_dimension=v_emb_dim_4,
             primary_key_type="TEXT",
         )
         v_table.put(

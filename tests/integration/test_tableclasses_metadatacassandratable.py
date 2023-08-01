@@ -95,7 +95,7 @@ class TestMetadataCassandraTable:
         )
         t_none.put(row_id="row1", body_blob="bb1", metadata=test_md)
         with pytest.raises(ValueError):
-            # queryng on non-indexed metadata fields:
+            # querying on non-indexed metadata fields:
             t_none.search(metadata={"mds": "string"}, n=1)
         gotten_none = t_none.get(row_id="row1")
         assert gotten_none["metadata"] == test_md

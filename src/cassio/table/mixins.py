@@ -160,11 +160,15 @@ class MetadataMixin(BaseTableMixin):
         metadata_indexing: Union[Tuple[str, Iterable[str]], str] = "all",
         **kwargs: Any,
     ) -> None:
-        self.metadata_indexing_policy = self._normalize_metadata_indexing_policy(metadata_indexing)
+        self.metadata_indexing_policy = self._normalize_metadata_indexing_policy(
+            metadata_indexing
+        )
         super().__init__(*pargs, **kwargs)
 
     @staticmethod
-    def _normalize_metadata_indexing_policy(metadata_indexing: Union[Tuple[str, Iterable[str]], str]) -> MetadataIndexingPolicy:
+    def _normalize_metadata_indexing_policy(
+        metadata_indexing: Union[Tuple[str, Iterable[str]], str]
+    ) -> MetadataIndexingPolicy:
         mode: MetadataIndexingMode
         fields: set[str]
         # metadata indexing policy normalization:
