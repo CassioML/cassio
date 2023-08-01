@@ -31,6 +31,9 @@ from cassio.table.table_types import (
     SessionType,
     normalize_type_desc,
     rearrange_pk_type,
+    MetadataIndexingMode,
+    MetadataIndexingPolicy,
+    is_metadata_field_indexed,
 )
 from cassio.table.base_table import BaseTable
 
@@ -151,6 +154,41 @@ class ClusteredMixin(BaseTableMixin):
 
 
 class MetadataMixin(BaseTableMixin):
+    def __init__(
+        self,
+        *pargs: Any,
+        metadata_indexing: Union[Tuple[str, Iterable[str]], str] = "all",
+        **kwargs: Any,
+    ) -> None:
+        mode: MetadataIndexingMode
+        fields: set[str]
+        # metadata indexing policy normalization:
+        if isinstance(metadata_indexing, str):
+            if metadata_indexing.lower() == "all":
+                mode, fields = (MetadataIndexingMode.DENY_LIST, set())
+            elif metadata_indexing.lower() == "none":
+                mode, fields = (MetadataIndexingMode.ALLOW_LIST, set())
+            else:
+                raise ValueError(
+                    f"Unsupported metadata_indexing value '{metadata_indexing}'"
+                )
+        else:
+            assert len(metadata_indexing) == 2
+            # it's a 2-tuple (mode, fields) still to normalize
+            _mode, _field_spec = metadata_indexing
+            fields = {_field_spec} if isinstance(_field_spec, str) else set(_field_spec)
+            if _mode.lower() in {"allowlist", "allow", "allow_list"}:
+                mode = MetadataIndexingMode.ALLOW_LIST
+            elif _mode.lower() in {"denylist", "deny", "deny_list"}:
+                mode = MetadataIndexingMode.DENY_LIST
+            else:
+                raise ValueError(
+                    f"Unsupported metadata indexing mode specification '{_mode}'"
+                )
+        self.metadata_indexing_policy: MetadataIndexingPolicy = (mode, fields)
+        #
+        super().__init__(*pargs, **kwargs)
+
     def _schema_da(self) -> List[ColumnSpecType]:
         return super()._schema_da() + [
             ("attributes_blob", "TEXT"),
@@ -276,17 +314,18 @@ class MetadataMixin(BaseTableMixin):
 
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
         _metadata_input_dict = args_dict.get("metadata", {})
-        #
+        # separate indexed and non-indexed (=attributes) as per indexing policy
         metadata_indexed_dict = {
             k: v
             for k, v in _metadata_input_dict.items()
-            if True
+            if is_metadata_field_indexed(k, self.metadata_indexing_policy)
         }
         attributes_dict = {
             k: v
             for k, v in _metadata_input_dict.items()
-            if False
+            if not is_metadata_field_indexed(k, self.metadata_indexing_policy)
         }
+        #
         if attributes_dict != {}:
             attributes_fields = {
                 "attributes_blob": self._serialize_md_dict(attributes_dict)

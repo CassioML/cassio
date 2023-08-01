@@ -1,8 +1,27 @@
+from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 ColumnSpecType = Tuple[str, str]
 RowType = Any
 SessionType = Any
+
+
+class MetadataIndexingMode(Enum):
+    ALLOW_LIST = 1
+    DENY_LIST = 2
+
+
+MetadataIndexingPolicy = Tuple[MetadataIndexingMode, set[str]]
+
+
+def is_metadata_field_indexed(field_name: str, policy: MetadataIndexingPolicy) -> bool:
+    p_mode, p_fields = policy
+    if p_mode == MetadataIndexingMode.ALLOW_LIST:
+        return field_name in p_fields
+    elif p_mode == MetadataIndexingMode.DENY_LIST:
+        return field_name not in p_fields
+    else:
+        raise ValueError(f"Unexpected metadata indexing mode {p_mode}")
 
 
 def normalize_type_desc(type_desc: Union[str, List[str]]) -> List[str]:
