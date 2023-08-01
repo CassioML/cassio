@@ -153,6 +153,7 @@ class ClusteredMixin(BaseTableMixin):
 class MetadataMixin(BaseTableMixin):
     def _schema_da(self) -> List[ColumnSpecType]:
         return super()._schema_da() + [
+            ("attributes_blob", "TEXT"),
             ("metadata_s", "MAP<TEXT,TEXT>"),
             ("metadata_n", "MAP<TEXT,FLOAT>"),
             ("metadata_tags", "SET<TEXT>"),
@@ -184,6 +185,14 @@ class MetadataMixin(BaseTableMixin):
             self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
         #
         return
+
+    @staticmethod
+    def _serialize_md_dict(md_dict: Dict[str, Any]) -> str:
+        return json.dumps(md_dict, separators=(",", ":"))
+
+    @staticmethod
+    def _deserialize_md_dict(md_string: str) -> Dict[str, Any]:
+        return json.loads(md_string)
 
     def _split_metadata_fields(self, md_dict: Dict[str, Any]) -> Dict[str, Any]:
         # TODO: more care about types here
@@ -220,10 +229,13 @@ class MetadataMixin(BaseTableMixin):
             "metadata_tags": set(),
         }
         pre_normalized = super()._normalize_row(raw_row)
-        row_rest = {
-            k: v for k, v in pre_normalized.items() if k not in md_columns_defaults
-        }
         #
+        row_rest = {
+            k: v
+            for k, v in pre_normalized.items()
+            if k not in md_columns_defaults
+            if k != "attributes_blob"
+        }
         mergee_md_fields = {
             k: v for k, v in pre_normalized.items() if k in md_columns_defaults
         }
@@ -241,8 +253,15 @@ class MetadataMixin(BaseTableMixin):
             k: v for k, v in normalized_mergee_md_fields["metadata_s"].items()
         }
         #
+        raw_attr_blob = pre_normalized.get("attributes_blob")
+        if raw_attr_blob is not None:
+            r_attrs = self._deserialize_md_dict(raw_attr_blob)
+        else:
+            r_attrs = {}
+        #
         row_metadata = {
             "metadata": {
+                **r_attrs,
                 **r_md_from_tags,
                 **r_md_from_n,
                 **r_md_from_s,
@@ -256,14 +275,30 @@ class MetadataMixin(BaseTableMixin):
         return normalized
 
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
-        if "metadata" in args_dict:
-            new_metadata_fields = {
-                k: v
-                for k, v in self._split_metadata_fields(args_dict["metadata"]).items()
-                if v != {}
+        _metadata_input_dict = args_dict.get("metadata", {})
+        #
+        metadata_indexed_dict = {
+            k: v
+            for k, v in _metadata_input_dict.items()
+            if True
+        }
+        attributes_dict = {
+            k: v
+            for k, v in _metadata_input_dict.items()
+            if False
+        }
+        if attributes_dict != {}:
+            attributes_fields = {
+                "attributes_blob": self._serialize_md_dict(attributes_dict)
             }
         else:
-            new_metadata_fields = {}
+            attributes_fields = {}
+        #
+        new_metadata_fields = {
+            k: v
+            for k, v in self._split_metadata_fields(metadata_indexed_dict).items()
+            if v != {} and v != set()
+        }
         #
         new_args_dict = {
             **{k: v for k, v in args_dict.items() if k != "metadata"},
