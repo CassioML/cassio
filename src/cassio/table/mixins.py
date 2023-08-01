@@ -391,7 +391,7 @@ class MetadataMixin(BaseTableMixin):
             tuple(list(these_wc_vals) + list(s_wc_vals)),
         )
 
-    def search(self, n: int, **kwargs: Any) -> RowType:
+    def find_entries(self, n: int, **kwargs: Any) -> RowType:
         columns_desc, where_clause, get_cql_vals = self._parse_select_core_params(
             **kwargs
         )
@@ -409,7 +409,7 @@ class MetadataMixin(BaseTableMixin):
         )
         return (self._normalize_row(result) for result in result_set)
 
-    def search_async(self, n: int, **kwargs: Any) -> ResponseFuture:
+    def find_entries_async(self, n: int, **kwargs: Any) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
 
 
