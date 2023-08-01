@@ -183,8 +183,10 @@ class TestVectorTable:
         }
 
 
-# if __name__ == '__main__':
-#     from ..conftest import db_session, db_keyspace
-#     s=db_session()
-#     k=db_keyspace()
-#     TestVectorTable().test_put_and_get(s,k)
+if __name__ == "__main__":
+    from ..conftest import createDBSessionSingleton, getDBKeyspace
+
+    s = createDBSessionSingleton()
+    k = getDBKeyspace()
+
+    TestVectorTable().test_null_json(s, k)

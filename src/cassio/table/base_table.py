@@ -26,7 +26,6 @@ class BaseTable:
         session: SessionType,
         keyspace: str,
         table: str,
-        /,
         ttl_seconds: Optional[int] = None,
         row_id_type: Union[str, List[str]] = ["TEXT"],
         skip_provisioning=False,
