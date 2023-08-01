@@ -67,6 +67,81 @@ class TestMetadataCassandraTable:
         #
         t.clear()
 
+    def test_md_routing(self, db_session, db_keyspace):
+        test_md = {"mds": "string", "mdn": 255, "mdb": True}
+        #
+        table_name_all = "m_ct_rtall"
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_all};")
+        t_all = MetadataCassandraTable(
+            db_session,
+            db_keyspace,
+            table_name_all,
+            primary_key_type="TEXT",
+            metadata_indexing="all",
+        )
+        t_all.put(row_id="row1", body_blob="bb1", metadata=test_md)
+        gotten_all = list(t_all.search(metadata={"mds": "string"}, n=1))[0]
+        assert gotten_all["metadata"] == test_md
+        t_all.clear()
+        #
+        table_name_none = "m_ct_rtnone"
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_none};")
+        t_none = MetadataCassandraTable(
+            db_session,
+            db_keyspace,
+            table_name_none,
+            primary_key_type="TEXT",
+            metadata_indexing="none",
+        )
+        t_none.put(row_id="row1", body_blob="bb1", metadata=test_md)
+        with pytest.raises(ValueError):
+            # queryng on non-indexed metadata fields:
+            t_none.search(metadata={"mds": "string"}, n=1)
+        gotten_none = t_none.get(row_id="row1")
+        assert gotten_none["metadata"] == test_md
+        t_none.clear()
+        #
+        test_md_allowdeny = {
+            "mdas": "MDAS",
+            "mdds": "MDDS",
+            "mdan": 255,
+            "mddn": 127,
+            "mdab": True,
+            "mddb": True,
+        }
+        #
+        table_name_allow = "m_ct_rtallow"
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_allow};")
+        t_allow = MetadataCassandraTable(
+            db_session,
+            db_keyspace,
+            table_name_allow,
+            primary_key_type="TEXT",
+            metadata_indexing=("allow", {"mdas", "mdan", "mdab"}),
+        )
+        t_allow.put(row_id="row1", body_blob="bb1", metadata=test_md_allowdeny)
+        with pytest.raises(ValueError):
+            t_allow.search(metadata={"mdds": "MDDS"}, n=1)
+        gotten_allow = list(t_allow.search(metadata={"mdas": "MDAS"}, n=1))[0]
+        assert gotten_allow["metadata"] == test_md_allowdeny
+        t_allow.clear()
+        #
+        table_name_deny = "m_ct_rtdeny"
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_deny};")
+        t_deny = MetadataCassandraTable(
+            db_session,
+            db_keyspace,
+            table_name_deny,
+            primary_key_type="TEXT",
+            metadata_indexing=("deny", {"mdds", "mddn", "mddb"}),
+        )
+        t_deny.put(row_id="row1", body_blob="bb1", metadata=test_md_allowdeny)
+        with pytest.raises(ValueError):
+            t_deny.search(metadata={"mdds": "MDDS"}, n=1)
+        gotten_deny = list(t_deny.search(metadata={"mdas": "MDAS"}, n=1))[0]
+        assert gotten_deny["metadata"] == test_md_allowdeny
+        t_deny.clear()
+
 
 if __name__ == "__main__":
     # TEST_DB_MODE=LOCAL_CASSANDRA python -m pdb -m  tests.integration.test_tableclasses_MetadataCassandraTable
@@ -75,3 +150,4 @@ if __name__ == "__main__":
     s = createDBSessionSingleton()
     k = getDBKeyspace()
     TestMetadataCassandraTable().test_crud(s, k)
+    TestMetadataCassandraTable().test_md_routing(s, k)

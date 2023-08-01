@@ -160,6 +160,11 @@ class MetadataMixin(BaseTableMixin):
         metadata_indexing: Union[Tuple[str, Iterable[str]], str] = "all",
         **kwargs: Any,
     ) -> None:
+        self.metadata_indexing_policy = self._normalize_metadata_indexing_policy(metadata_indexing)
+        super().__init__(*pargs, **kwargs)
+
+    @staticmethod
+    def _normalize_metadata_indexing_policy(metadata_indexing: Union[Tuple[str, Iterable[str]], str]) -> MetadataIndexingPolicy:
         mode: MetadataIndexingMode
         fields: set[str]
         # metadata indexing policy normalization:
@@ -185,9 +190,7 @@ class MetadataMixin(BaseTableMixin):
                 raise ValueError(
                     f"Unsupported metadata indexing mode specification '{_mode}'"
                 )
-        self.metadata_indexing_policy: MetadataIndexingPolicy = (mode, fields)
-        #
-        super().__init__(*pargs, **kwargs)
+        return (mode, fields)
 
     def _schema_da(self) -> List[ColumnSpecType]:
         return super()._schema_da() + [
@@ -233,6 +236,7 @@ class MetadataMixin(BaseTableMixin):
         return json.loads(md_string)
 
     def _split_metadata_fields(self, md_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """Split the *indexed* part of the metadata in separate parts, on per Cassandra column."""
         # TODO: more care about types here
         stringy_part = {k: v for k, v in md_dict.items() if isinstance(v, str)}
         numeric_part = {
@@ -341,6 +345,7 @@ class MetadataMixin(BaseTableMixin):
         #
         new_args_dict = {
             **{k: v for k, v in args_dict.items() if k != "metadata"},
+            **attributes_fields,
             **new_metadata_fields,
         }
         return super()._normalize_kwargs(new_args_dict)
@@ -351,6 +356,8 @@ class MetadataMixin(BaseTableMixin):
         # This always happens after a corresponding _normalize_kwargs,
         # so the metadata, if present, appears as split-fields.
         assert "metadata" not in args_dict
+        if "attributes_blob" in args_dict:
+            raise ValueError("Non-indexed metadata fields cannot be used in queries.")
         md_keys = {"metadata_s", "metadata_n", "metadata_tags"}
         new_args_dict = {k: v for k, v in args_dict.items() if k not in md_keys}
         # Here the "metadata" entry is made into specific where clauses

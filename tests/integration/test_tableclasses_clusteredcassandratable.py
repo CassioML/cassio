@@ -66,7 +66,9 @@ class TestClusteredCassandraTable:
             "partition_id": "my_part",
             "body_blob": "reg_blob",
         }
-        rf2 = t.put_async(row_id="irr_row", partition_id="other_p", body_blob="irr_blob")
+        rf2 = t.put_async(
+            row_id="irr_row", partition_id="other_p", body_blob="irr_blob"
+        )
         _ = rf2.result()
         gotten2n = t.get(row_id="irr_row")
         assert gotten2n is None
