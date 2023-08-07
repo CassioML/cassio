@@ -60,9 +60,10 @@ class VectorTable:
         top_k: int,
         metric: str,
         metric_threshold: float,
+        **kwargs: Any,
     ) -> List[RowType]:
         # get rows by ANN
-        rows = list(self.table.ann_search(embedding_vector, top_k))
+        rows = list(self.table.ann_search(embedding_vector, top_k, **kwargs))
         if not rows:
             return []
         # sort, cut, validate and prepare for returning
@@ -122,6 +123,7 @@ class VectorTable:
         document_id: Any,
         metadata: Dict[str, Any] = {},
         ttl_seconds: Optional[int] = None,
+        **kwargs: Any,
     ) -> None:
         self.table.put(
             row_id=document_id,
@@ -129,6 +131,7 @@ class VectorTable:
             vector=embedding_vector,
             metadata=metadata or {},
             ttl_seconds=ttl_seconds,
+            **kwargs,
         )
 
     def put_async(
@@ -138,6 +141,7 @@ class VectorTable:
         document_id: Any,
         metadata: Dict[str, Any],
         ttl_seconds: int,
+        **kwargs: Any,
     ) -> ResponseFuture:
         return self.table.put_async(
             row_id=document_id,
@@ -145,17 +149,18 @@ class VectorTable:
             vector=embedding_vector,
             metadata=metadata or {},
             ttl_seconds=ttl_seconds,
+            **kwargs,
         )
 
-    def get(self, document_id: Any) -> Optional[RowType]:
-        row_or_none = self.table.get(row_id=document_id)
+    def get(self, document_id: Any, **kwargs: Any) -> Optional[RowType]:
+        row_or_none = self.table.get(row_id=document_id, **kwargs)
         if row_or_none:
             return self._make_dict_legacy(row_or_none)
         else:
             return row_or_none
 
-    def delete(self, document_id: Any) -> None:
-        self.table.delete(row_id=document_id)
+    def delete(self, document_id: Any, **kwargs: Any) -> None:
+        self.table.delete(row_id=document_id, **kwargs)
         return None
 
     @staticmethod
