@@ -39,7 +39,13 @@ class VectorTable:
         if "embedding_dimension" in kwargs:
             vector_dimension = kwargs["embedding_dimension"]
             new_kwargs = {
-                **{k: v for k, v in kwargs.items() if k != "embedding_dimension"},
+                **{
+                    k: v
+                    for k, v in kwargs.items()
+                    if k != "embedding_dimension"
+                    # let's get rid of the infamous 'auto_id' here:
+                    if k != "auto_id"
+                },
                 **{"vector_dimension": vector_dimension},
             }
         else:
@@ -116,6 +122,10 @@ class VectorTable:
 
     def delete(self, document_id: Any, **kwargs: Any) -> None:
         self.table.delete(row_id=document_id, **kwargs)
+        return None
+
+    def clear(self) -> None:
+        self.table.clear()
         return None
 
     @staticmethod

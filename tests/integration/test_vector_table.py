@@ -2,6 +2,7 @@
 Vector search tests
 """
 
+import time
 import pytest
 
 from cassio.vector import VectorTable
@@ -198,6 +199,27 @@ class TestVectorTable:
         # cannot use zero-vectors with cosine similarity:
         with pytest.raises(ValueError):
             _ = v_table.search([0, 0, 0, 0, 0], 10, "cos", 1.01)
+        v_table.clear()
+
+    def test_ttl(self, db_session, db_keyspace):
+        vtable_name6 = "vector_table_6"
+        v_emb_dim_6 = 2
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name6};")
+        v_table = VectorTable(
+            db_session,
+            db_keyspace,
+            table=vtable_name6,
+            embedding_dimension=v_emb_dim_6,
+            primary_key_type="TEXT",
+        )
+        #
+        v_table.put("this is short lived", [1, 0], "short_lived", ttl_seconds=1)
+        v_table.put("this is long lived", [0, 1], "long_lived", ttl_seconds=3)
+        assert len(v_table.search([0.5, 0.5], 3, "cos", 0.01)) == 2
+        time.sleep(1.5)
+        assert len(v_table.search([0.5, 0.5], 3, "cos", 0.01)) == 1
+        time.sleep(2.0)
+        assert len(v_table.search([0.5, 0.5], 3, "cos", 0.01)) == 0
 
 
 if __name__ == "__main__":

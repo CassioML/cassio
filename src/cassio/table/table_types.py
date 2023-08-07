@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 ColumnSpecType = Tuple[str, str]
 RowType = Dict[str, Any]
@@ -12,7 +12,7 @@ class MetadataIndexingMode(Enum):
     DENY_LIST = 2
 
 
-MetadataIndexingPolicy = Tuple[MetadataIndexingMode, set[str]]
+MetadataIndexingPolicy = Tuple[MetadataIndexingMode, Set[str]]
 
 
 def is_metadata_field_indexed(field_name: str, policy: MetadataIndexingPolicy) -> bool:

@@ -18,7 +18,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "CREATE TABLE k.tn (  row_id UUID,   body_blob TEXT,   vector VECTOR<FLOAT,765>, PRIMARY KEY ( ( row_id )   )) ;",
+                    "CREATE TABLE IF NOT EXISTS k.tn (  row_id UUID,   body_blob TEXT,   vector VECTOR<FLOAT,765>, PRIMARY KEY ( ( row_id )   )) ;",
                     tuple(),
                 ),
                 (
@@ -99,7 +99,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "CREATE TABLE k.tn (  partition_id PUUID,   key_desc TEXT,   key_vals TEXT,   body_blob TEXT,   vector VECTOR<FLOAT,765>, attributes_blob TEXT,  metadata_s MAP<TEXT,TEXT>,   metadata_n MAP<TEXT,FLOAT>,   metadata_tags SET<TEXT>, PRIMARY KEY ( ( partition_id ) , key_desc, key_vals )) WITH CLUSTERING ORDER BY (key_desc ASC, key_vals ASC);",
+                    "CREATE TABLE IF NOT EXISTS k.tn (  partition_id PUUID,   key_desc TEXT,   key_vals TEXT,   body_blob TEXT,   vector VECTOR<FLOAT,765>, attributes_blob TEXT,  metadata_s MAP<TEXT,TEXT>,   metadata_n MAP<TEXT,FLOAT>,   metadata_tags SET<TEXT>, PRIMARY KEY ( ( partition_id ) , key_desc, key_vals )) WITH CLUSTERING ORDER BY (key_desc ASC, key_vals ASC);",
                     tuple(),
                 ),
                 (

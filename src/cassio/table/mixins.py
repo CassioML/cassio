@@ -174,7 +174,7 @@ class MetadataMixin(BaseTableMixin):
         metadata_indexing: Union[Tuple[str, Iterable[str]], str]
     ) -> MetadataIndexingPolicy:
         mode: MetadataIndexingMode
-        fields: set[str]
+        fields: Set[str]
         # metadata indexing policy normalization:
         if isinstance(metadata_indexing, str):
             if metadata_indexing.lower() == "all":
