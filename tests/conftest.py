@@ -7,10 +7,8 @@ from typing import Union
 
 import pytest
 
-from cassandra.cluster import (
-    Cluster,
-)
-from cassandra.auth import PlainTextAuthProvider
+from cassandra.cluster import Cluster  # type: ignore
+from cassandra.auth import PlainTextAuthProvider  # type: ignore
 
 from cassio.table.cql import MockDBSession
 

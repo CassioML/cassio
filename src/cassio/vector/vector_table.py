@@ -1,6 +1,8 @@
 """
-Compatibility layer for legacy VectorTable.
-    Note: WIP!
+Compatibility layer for legacy VectorTable (used by LangChain integration
+(as of August 2023).
+
+Note: This is to be replaced by direct usage of the table-class-hierarchy classes.
 """
 
 from operator import itemgetter
@@ -23,6 +25,18 @@ legacy_columns_to_new = {v: k for k, v in new_columns_to_legacy.items()}
 
 
 class VectorTable:
+    """
+    This class is a rewriting of the VectorTable created for use in LangChain
+    integration, this time relying on the class-table-hierarchy (cassio.table.*).
+
+    It mostly provides a translation layer between parameters and key names,
+    using a metadata+vector table class internally.
+
+    Additional kwargs, for use in this new table class, are passed as they are
+    in order to enable their usage already before adapting the LangChain
+    integration code.
+    """
+
     def __init__(self, *pargs: Any, **kwargs: Dict[str, Any]):
         if "embedding_dimension" in kwargs:
             vector_dimension = kwargs["embedding_dimension"]
@@ -32,7 +46,7 @@ class VectorTable:
             }
         else:
             new_kwargs = kwargs
-        #
+        # this legacy VectorTable will have everything indexed for search:
         md_kwargs = {
             **{"metadata_indexing": "all"},
             **new_kwargs,
