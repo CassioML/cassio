@@ -4,8 +4,9 @@ import numpy as np
 
 
 # distance definitions. These all work batched in the first argument.
-def distance_dot_product(embedding_vectors: List[List[float]],
-                         reference_embedding_vector: List[float]) -> List[float]:
+def distance_dot_product(
+    embedding_vectors: List[List[float]], reference_embedding_vector: List[float]
+) -> List[float]:
     """
     Given a list [emb_i] and a reference rEmb vector,
     return a list [distance_i] where each distance is
@@ -17,33 +18,47 @@ def distance_dot_product(embedding_vectors: List[List[float]],
     """
     v1s = np.array(embedding_vectors, dtype=float)
     v2 = np.array(reference_embedding_vector, dtype=float)
-    return list(np.dot(
-        v1s,
-        v2.T,
-    ))
+    return list(
+        np.dot(
+            v1s,
+            v2.T,
+        )
+    )
 
 
-def distance_cos_difference(embedding_vectors: List[List[float]],
-                            reference_embedding_vector: List[float]) -> List[float]:
+def distance_cos_difference(
+    embedding_vectors: List[List[float]], reference_embedding_vector: List[float]
+) -> List[float]:
     v1s = np.array(embedding_vectors, dtype=float)
     v2 = np.array(reference_embedding_vector, dtype=float)
-    return list(np.dot(v1s, v2.T,) /
-                (np.linalg.norm(v1s, axis=1) * np.linalg.norm(v2)))
+    return list(
+        np.dot(
+            v1s,
+            v2.T,
+        )
+        / (np.linalg.norm(v1s, axis=1) * np.linalg.norm(v2))
+    )
 
 
-def distance_l1(embedding_vectors: List[List[float]], reference_embedding_vector: List[float]) -> List[float]:
+def distance_l1(
+    embedding_vectors: List[List[float]], reference_embedding_vector: List[float]
+) -> List[float]:
     v1s = np.array(embedding_vectors, dtype=float)
     v2 = np.array(reference_embedding_vector, dtype=float)
     return list(np.linalg.norm(v1s - v2, axis=1, ord=1))
 
 
-def distance_l2(embedding_vectors: List[List[float]], reference_embedding_vector: List[float]) -> List[float]:
+def distance_l2(
+    embedding_vectors: List[List[float]], reference_embedding_vector: List[float]
+) -> List[float]:
     v1s = np.array(embedding_vectors, dtype=float)
     v2 = np.array(reference_embedding_vector, dtype=float)
     return list(np.linalg.norm(v1s - v2, axis=1, ord=2))
 
 
-def distance_max(embedding_vectors: List[List[float]], reference_embedding_vector: List[float]) -> List[float]:
+def distance_max(
+    embedding_vectors: List[List[float]], reference_embedding_vector: List[float]
+) -> List[float]:
     v1s = np.array(embedding_vectors, dtype=float)
     v2 = np.array(reference_embedding_vector, dtype=float)
     return list(np.linalg.norm(v1s - v2, axis=1, ord=np.inf))
@@ -58,23 +73,23 @@ def distance_max(embedding_vectors: List[List[float]], reference_embedding_vecto
 #     - in that metric higher is closer and that
 #     - cutoff should be metric > threshold)
 distance_metrics: Dict[str, Tuple[Callable, bool]] = {
-    'cos': (
+    "cos": (
         distance_cos_difference,
         True,
     ),
-    'dot': (
+    "dot": (
         distance_dot_product,
         True,
     ),
-    'l1': (
+    "l1": (
         distance_l1,
         False,
     ),
-    'l2': (
+    "l2": (
         distance_l2,
         False,
     ),
-    'max': (
+    "max": (
         distance_max,
         False,
     ),

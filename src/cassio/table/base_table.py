@@ -183,7 +183,7 @@ class BaseTable:
         where_clause = "WHERE " + " AND ".join(where_clause_blocks)
         return columns_desc, where_clause, select_cql_vals
 
-    def get(self, **kwargs: Any) -> RowType:
+    def get(self, **kwargs: Any) -> Optional[RowType]:
         columns_desc, where_clause, get_cql_vals = self._parse_select_core_params(
             **kwargs
         )

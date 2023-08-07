@@ -5,12 +5,10 @@ Compatibility layer for legacy VectorTable (used by LangChain integration
 Note: This is to be replaced by direct usage of the table-class-hierarchy classes.
 """
 
-from operator import itemgetter
 from typing import List, Dict, Any, Optional
 
 from cassandra.cluster import ResponseFuture  # type: ignore
 
-from cassio.utils.vector.distance_metrics import distance_metrics
 from cassio.table.table_types import RowType
 from cassio.table.tables import (
     MetadataVectorCassandraTable,
@@ -58,67 +56,20 @@ class VectorTable:
         self,
         embedding_vector: List[float],
         top_k: int,
-        metric: str,
-        metric_threshold: float,
+        metric: str = "cos",
+        metric_threshold: Optional[float] = None,
         **kwargs: Any,
     ) -> List[RowType]:
         # get rows by ANN
-        rows = list(self.table.ann_search(embedding_vector, top_k, **kwargs))
-        if rows == []:
-            enriched_hits = []
-        else:
-            # sort, cut, validate and prepare for returning
-            #
-            # evaluate metric
-            distance_function, distance_reversed = distance_metrics[metric]
-            row_embeddings = [row["vector"] for row in rows]
-            # enrich with their metric score
-            rows_with_metric = list(
-                zip(
-                    distance_function(row_embeddings, embedding_vector),
-                    rows,
-                )
-            )
-            # sort rows by metric score. First handle metric/threshold
-            if metric_threshold is not None:
-                if distance_reversed:
-
-                    def _thresholder(mtx, thr):
-                        return mtx >= thr
-
-                else:
-
-                    def _thresholder(mtx, thr):
-                        return mtx <= thr
-
-            else:
-                # no hits are discarded
-                def _thresholder(mtx, thr):
-                    return True
-
-            #
-            sorted_passing_winners = sorted(
-                (
-                    pair
-                    for pair in rows_with_metric
-                    if _thresholder(pair[0], metric_threshold)
-                ),
-                key=itemgetter(0),
-                reverse=distance_reversed,
-            )
-            # return a list of hits with their distance (as JSON)
-            enriched_hits = (
-                {
-                    **hit,
-                    **{"distance": distance},
-                }
-                for distance, hit in sorted_passing_winners
-            )
+        enriched_hits = self.table.metric_ann_search(
+            vector=embedding_vector,
+            top_k=top_k,
+            metric=metric,
+            metric_threshold=metric_threshold,
+            **kwargs,
+        )
         #
-        return [
-            self._make_dict_legacy(rich_hit)
-            for rich_hit in enriched_hits
-        ]
+        return [self._make_dict_legacy(rich_hit) for rich_hit in enriched_hits]
 
     def put(
         self,

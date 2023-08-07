@@ -1,3 +1,4 @@
+from operator import itemgetter
 import json
 
 from typing import (
@@ -16,6 +17,8 @@ from typing import (
 from cassandra.cluster import ResultSet  # type: ignore
 from cassandra.cluster import ResponseFuture  # type: ignore
 
+from cassio.utils.vector.distance_metrics import distance_metrics
+
 from cassio.table.cql import (
     CQLOpType,
     DELETE_CQL_TEMPLATE,
@@ -28,6 +31,7 @@ from cassio.table.cql import (
 from cassio.table.table_types import (
     ColumnSpecType,
     RowType,
+    RowWithDistanceType,
     SessionType,
     normalize_type_desc,
     rearrange_pk_type,
@@ -391,7 +395,7 @@ class MetadataMixin(BaseTableMixin):
             tuple(list(these_wc_vals) + list(s_wc_vals)),
         )
 
-    def find_entries(self, n: int, **kwargs: Any) -> RowType:
+    def find_entries(self, n: int, **kwargs: Any) -> Iterable[RowType]:
         columns_desc, where_clause, get_cql_vals = self._parse_select_core_params(
             **kwargs
         )
@@ -486,6 +490,71 @@ class VectorMixin(BaseTableMixin):
         return (self._normalize_row(result) for result in result_set)
 
     def ann_search_async(
+        self, vector: List[float], n: int, **kwargs: Any
+    ) -> ResponseFuture:
+        raise NotImplementedError("Asynchronous reads are not supported.")
+
+    def metric_ann_search(
+        self,
+        vector: List[float],
+        top_k: int,
+        metric: str,
+        metric_threshold: Optional[float],
+        **kwargs: Any,
+    ) -> Iterable[RowWithDistanceType]:
+        rows = list(self.ann_search(vector, top_k, **kwargs))
+        if rows == []:
+            return []
+        else:
+            # sort, cut, validate and prepare for returning
+            # evaluate metric
+            distance_function, distance_reversed = distance_metrics[metric]
+            row_vectors = [row["vector"] for row in rows]
+            # enrich with their metric score
+            rows_with_metric = list(
+                zip(
+                    distance_function(row_vectors, vector),
+                    rows,
+                )
+            )
+            # sort rows by metric score. First handle metric/threshold
+            if metric_threshold is not None:
+                if distance_reversed:
+
+                    def _thresholder(mtx, thr):
+                        return mtx >= thr
+
+                else:
+
+                    def _thresholder(mtx, thr):
+                        return mtx <= thr
+
+            else:
+                # no hits are discarded
+                def _thresholder(mtx, thr):
+                    return True
+
+            #
+            sorted_passing_rows = sorted(
+                (
+                    pair
+                    for pair in rows_with_metric
+                    if _thresholder(pair[0], metric_threshold)
+                ),
+                key=itemgetter(0),
+                reverse=distance_reversed,
+            )
+            # return a list of hits with their distance (as JSON)
+            enriched_hits = (
+                {
+                    **hit,
+                    **{"distance": distance},
+                }
+                for distance, hit in sorted_passing_rows
+            )
+            return enriched_hits
+
+    def metric_ann_search_async(
         self, vector: List[float], n: int, **kwargs: Any
     ) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
