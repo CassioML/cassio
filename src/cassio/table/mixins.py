@@ -449,6 +449,10 @@ class VectorMixin(BaseTableMixin):
             # columns_desc = ", ".join(columns)
             raise NotImplementedError("Column selection is not implemented.")
         #
+        if all(x == 0 for x in vector):
+            # TODO: lift/relax this constraint when non-cosine metrics are there.
+            raise ValueError("Cannot use identically-zero vectors in cos/ANN search.")
+        #
         vector_column = "vector"
         vector_cql_vals = [vector]
         #

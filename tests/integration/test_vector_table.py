@@ -182,6 +182,23 @@ class TestVectorTable:
             "embedding_vector": [1, 2, 3],
         }
 
+    def test_nullsearch_results(self, db_session, db_keyspace):
+        vtable_name5 = "vector_table_5"
+        v_emb_dim_5 = 5
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name5};")
+        v_table = VectorTable(
+            db_session,
+            db_keyspace,
+            table=vtable_name5,
+            embedding_dimension=v_emb_dim_5,
+            primary_key_type="INT",
+        )
+        v_table.put("boasting", [2, 2, 2, 2, 2], 123)
+        assert v_table.search([1, 0, 0, 0, 0], 10, "cos", 1.01) == []
+        # cannot use zero-vectors with cosine similarity:
+        with pytest.raises(ValueError):
+            _ = v_table.search([0, 0, 0, 0, 0], 10, "cos", 1.01)
+
 
 if __name__ == "__main__":
     from ..conftest import createDBSessionSingleton, getDBKeyspace

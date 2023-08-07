@@ -64,56 +64,60 @@ class VectorTable:
     ) -> List[RowType]:
         # get rows by ANN
         rows = list(self.table.ann_search(embedding_vector, top_k, **kwargs))
-        if not rows:
-            return []
-        # sort, cut, validate and prepare for returning
-        #
-        # evaluate metric
-        distance_function, distance_reversed = distance_metrics[metric]
-        row_embeddings = [row["vector"] for row in rows]
-        # enrich with their metric score
-        rows_with_metric = list(
-            zip(
-                distance_function(row_embeddings, embedding_vector),
-                rows,
+        if rows == []:
+            enriched_hits = []
+        else:
+            # sort, cut, validate and prepare for returning
+            #
+            # evaluate metric
+            distance_function, distance_reversed = distance_metrics[metric]
+            row_embeddings = [row["vector"] for row in rows]
+            # enrich with their metric score
+            rows_with_metric = list(
+                zip(
+                    distance_function(row_embeddings, embedding_vector),
+                    rows,
+                )
             )
-        )
-        # sort rows by metric score. First handle metric/threshold
-        if metric_threshold is not None:
-            if distance_reversed:
+            # sort rows by metric score. First handle metric/threshold
+            if metric_threshold is not None:
+                if distance_reversed:
 
-                def _thresholder(mtx, thr):
-                    return mtx >= thr
+                    def _thresholder(mtx, thr):
+                        return mtx >= thr
+
+                else:
+
+                    def _thresholder(mtx, thr):
+                        return mtx <= thr
 
             else:
-
+                # no hits are discarded
                 def _thresholder(mtx, thr):
-                    return mtx <= thr
+                    return True
 
-        else:
-            # no hits are discarded
-            def _thresholder(mtx, thr):
-                return True
-
-        #
-        sorted_passing_winners = sorted(
-            (
-                pair
-                for pair in rows_with_metric
-                if _thresholder(pair[0], metric_threshold)
-            ),
-            key=itemgetter(0),
-            reverse=distance_reversed,
-        )
-        # we discard the scores and return an iterable of hits (as JSON)
-        return [
-            self._make_dict_legacy(
+            #
+            sorted_passing_winners = sorted(
+                (
+                    pair
+                    for pair in rows_with_metric
+                    if _thresholder(pair[0], metric_threshold)
+                ),
+                key=itemgetter(0),
+                reverse=distance_reversed,
+            )
+            # return a list of hits with their distance (as JSON)
+            enriched_hits = (
                 {
                     **hit,
                     **{"distance": distance},
                 }
+                for distance, hit in sorted_passing_winners
             )
-            for distance, hit in sorted_passing_winners
+        #
+        return [
+            self._make_dict_legacy(rich_hit)
+            for rich_hit in enriched_hits
         ]
 
     def put(
