@@ -77,9 +77,7 @@ class ClusteredMixin(BaseTableMixin):
         """
         if "partition_id" in args_dict and args_dict["partition_id"] is None:
             cleaned_args_dict = {
-                k: v
-                for k, v in args_dict.items()
-                if k != "partition_id"
+                k: v for k, v in args_dict.items() if k != "partition_id"
             }
         else:
             cleaned_args_dict = args_dict
