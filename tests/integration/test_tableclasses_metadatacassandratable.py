@@ -144,7 +144,8 @@ class TestMetadataCassandraTable:
 
 
 if __name__ == "__main__":
-    # TEST_DB_MODE=LOCAL_CASSANDRA python -m pdb -m  tests.integration.test_tableclasses_MetadataCassandraTable
+    # TEST_DB_MODE=LOCAL_CASSANDRA python -m pdb -m  \
+    #   tests.integration.test_tableclasses_MetadataCassandraTable
     from ..conftest import createDBSessionSingleton, getDBKeyspace
 
     s = createDBSessionSingleton()

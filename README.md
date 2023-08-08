@@ -46,6 +46,25 @@ We are still at `0.*`. Occasional breaking changes are to be expected,
 but please think carefully. A later stronger model of versioning will
 be adopted.
 
+### Style
+
+We are trying to land on a strictly enforced style. Currently,
+`tests`, `src/cassio/vector`, `src/cassio/table` and `src/cassio/utils`
+are kept in check. This means we try to get clean output from the following
+in each of these directories:
+
+```
+black .
+ruff .
+mypy .
+```
+
+### Python version coverage
+
+At the moment we try to run tests under Python3.8 and Python3.10 to try and
+catch versions-specific issues
+(such as the newer `typing` syntax such as `typeA | typeB`, illegal on 3.8).
+
 ### Publishing
 
 - Bump version in setup.py

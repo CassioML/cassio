@@ -3,27 +3,25 @@ Just importing everything to smoke-test python3.8+ syntax issues, etc.
 TODO: make this more robust in making sure all code is imported.
 """
 
-import pytest
-
 
 class TestImports:
     def test_import_cql(self):
-        from cassio.cql import create_vector_table  # type: ignore
+        from cassio.cql import create_vector_table  # type: ignore  # noqa: F401
 
     def test_import_db_extractor(self):
-        from cassio.db_extractor import CassandraExtractor  # type: ignore
+        from cassio.db_extractor import CassandraExtractor  # type: ignore  # noqa: F401
 
     def test_import_history(self):
-        from cassio.history import StoredBlobHistory  # type: ignore
+        from cassio.history import StoredBlobHistory  # type: ignore  # noqa: F401
 
     def test_import_keyvalue(self):
-        from cassio.keyvalue import KVCache  # type: ignore
+        from cassio.keyvalue import KVCache  # type: ignore  # noqa: F401
 
     def test_import_table(self):
-        from cassio.table.tables import PlainCassandraTable
+        from cassio.table.tables import PlainCassandraTable  # noqa: F401
 
     def test_import_utils(self):
-        from cassio.utils import distance_metrics
+        from cassio.utils import distance_metrics  # noqa: F401
 
     def test_import_vector(self):
-        from cassio.vector import VectorTable
+        from cassio.vector import VectorTable  # noqa: F401

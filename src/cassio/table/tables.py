@@ -152,7 +152,13 @@ if __name__ == "__main__":
     # vt.clear()
 
     print("=" * 80, "ClusteredVectorCassandraTable")
-    # cvt = ClusteredVectorCassandraTable(session, "k", "tn", row_id_type="UUID", partition_id_type="PUUID")
+    # cvt = ClusteredVectorCassandraTable(
+    #     session,
+    #     "k",
+    #     "tn",
+    #     row_id_type="UUID",
+    #     partition_id_type="PUUID",
+    # )
     # cvt = ClusteredVectorCassandraTable(
     #     session, "k", "tn", vector_dimension=765, primary_key_type=["PUUID", "UUID"]
     # )
@@ -220,7 +226,11 @@ if __name__ == "__main__":
     # cemvt.get(partition_id="PARTITIONID", a="A", b="B")
     # cemvt.delete_partition(partition_id="PARTITION_ID")
     # cemvt.put(
-    #     partition_id="PARTITIONID", a="A", b="B", body_blob="BODYBLOB", vector="VECTOR"
+    #     partition_id="PARTITIONID",
+    #     a="A",
+    #     b="B",
+    #     body_blob="BODYBLOB",
+    #     vector="VECTOR",
     # )
     # md1 = {"num1": 123, "num2": 456, "str1": "STR1", "tru1": True}
     # md2 = {"tru1": True, "tru2": True}
@@ -248,13 +258,27 @@ if __name__ == "__main__":
     # cemvt.ann_search([10, 11], 2, a="A", b="B")
     # search_md = {"mdks": "mdv", "mdkn": 123, "mdke": True}
     # cemvt.get(partition_id="MDPART", a="MDA", b="MDB", metadata=search_md)
-    # cemvt.ann_search([100, 101], 9, a="MDA", b="MDB", partition_id="MDPART", metadata=search_md)
+    # cemvt.ann_search(
+    #     [100, 101],
+    #     9,
+    #     a="MDA",
+    #     b="MDB",
+    #     partition_id="MDPART",
+    #     metadata=search_md,
+    # )
     # cemvt.ann_search([100, 101], 9, a="MDA", b="MDB", metadata=search_md)
     # cemvt.get_partition(partition_id="MDPART", metadata=search_md)
     # cemvt.get_partition(metadata=search_md)
     # search_md_part = {"mdke": True, "mdke2": True}
     # cemvt.get(partition_id="MDPART", a="MDA", b="MDB", metadata=search_md_part)
-    # cemvt.ann_search([100, 101], 9, a="MDA", b="MDB", partition_id="MDPART", metadata=search_md_part)
+    # cemvt.ann_search(
+    #     [100, 101],
+    #     9,
+    #     a="MDA",
+    #     b="MDB",
+    #     partition_id="MDPART",
+    #     metadata=search_md_part,
+    # )
     # cemvt.ann_search([100, 101], 9, a="MDA", b="MDB", metadata=search_md_part)
     # cemvt.get_partition(partition_id="MDPART", metadata=search_md_part)
     # cemvt.get_partition(metadata=search_md_part)

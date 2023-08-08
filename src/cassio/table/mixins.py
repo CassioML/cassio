@@ -7,14 +7,11 @@ from typing import (
     Dict,
     Iterable,
     Optional,
-    Protocol,
     Set,
     Tuple,
-    Type,
     Union,
 )
 
-from cassandra.cluster import ResultSet  # type: ignore
 from cassandra.cluster import ResponseFuture  # type: ignore
 
 from cassio.utils.vector.distance_metrics import distance_metrics
@@ -32,7 +29,6 @@ from cassio.table.table_types import (
     ColumnSpecType,
     RowType,
     RowWithDistanceType,
-    SessionType,
     normalize_type_desc,
     rearrange_pk_type,
     MetadataIndexingMode,
@@ -140,7 +136,7 @@ class ClusteredMixin(BaseTableMixin):
             limit_clause = ""
             limit_cql_vals = []
         else:
-            limit_clause = f"LIMIT %s"
+            limit_clause = "LIMIT %s"
             limit_cql_vals = [n]
         #
         select_cql = SELECT_CQL_TEMPLATE.format(
@@ -244,7 +240,10 @@ class MetadataMixin(BaseTableMixin):
         return json.loads(md_string)
 
     def _split_metadata_fields(self, md_dict: Dict[str, Any]) -> Dict[str, Any]:
-        """Split the *indexed* part of the metadata in separate parts, on per Cassandra column."""
+        """
+        Split the *indexed* part of the metadata in separate parts,
+        one per Cassandra column.
+        """
         # TODO: more care about types here
         stringy_part = {k: v for k, v in md_dict.items() if isinstance(v, str)}
         numeric_part = {
@@ -374,7 +373,7 @@ class MetadataMixin(BaseTableMixin):
         these_wc_vals_list: List[Any] = []
         # WHERE creation:
         for v in sorted(split_metadata.get("metadata_tags", set())):
-            these_wc_blocks.append(f"metadata_tags CONTAINS %s")
+            these_wc_blocks.append("metadata_tags CONTAINS %s")
             these_wc_vals_list.append(v)
         for k, v in sorted(split_metadata.get("metadata_s", {}).items()):
             these_wc_blocks.append(f"metadata_s['{k}'] = %s")
@@ -399,7 +398,7 @@ class MetadataMixin(BaseTableMixin):
         columns_desc, where_clause, get_cql_vals = self._parse_select_core_params(
             **kwargs
         )
-        limit_clause = f"LIMIT %s"
+        limit_clause = "LIMIT %s"
         limit_cql_vals = [n]
         select_vals = tuple(list(get_cql_vals) + limit_cql_vals)
         #
@@ -471,7 +470,7 @@ class VectorMixin(BaseTableMixin):
         else:
             where_clause = "WHERE " + " AND ".join(where_clause_blocks)
         #
-        limit_clause = f"LIMIT %s"
+        limit_clause = "LIMIT %s"
         limit_cql_vals = [n]
         #
         select_ann_cql = SELECT_ANN_CQL_TEMPLATE.format(

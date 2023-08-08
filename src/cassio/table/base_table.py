@@ -1,4 +1,4 @@
-from typing import Any, List, Dict, Iterable, Optional, Protocol, Set, Tuple, Union
+from typing import Any, List, Dict, Iterable, Optional, Set, Tuple, Union
 
 from cassandra.query import SimpleStatement, PreparedStatement  # type: ignore
 from cassandra.cluster import ResultSet  # type: ignore
@@ -91,7 +91,8 @@ class BaseTable:
     def _extract_where_clause_blocks(
         self, args_dict: Any
     ) -> Tuple[Any, List[str], Tuple[Any, ...]]:
-        # Removes some of the passed kwargs and returns the remaining, plus the pieces for a WHERE
+        # Removes some of the passed kwargs and returns the remaining,
+        # plus the pieces for a WHERE
         _allowed_colspecs = self._schema_collist()
         passed_columns = sorted(
             [col for col, _ in _allowed_colspecs if col in args_dict]
@@ -226,7 +227,7 @@ class BaseTable:
             n_kwargs["ttl_seconds"] if "ttl_seconds" in n_kwargs else self.ttl_seconds
         )
         if ttl_seconds is not None:
-            ttl_spec = f"USING TTL %s"
+            ttl_spec = "USING TTL %s"
             ttl_vals = [ttl_seconds]
         else:
             ttl_spec = ""

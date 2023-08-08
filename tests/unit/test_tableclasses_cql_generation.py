@@ -2,8 +2,6 @@
 CQL for mixin-based table classes tests
 """
 
-import pytest
-
 from cassio.table.tables import (
     VectorCassandraTable,
     ClusteredElasticMetadataVectorCassandraTable,
@@ -18,11 +16,11 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "CREATE TABLE IF NOT EXISTS k.tn (  row_id UUID,   body_blob TEXT,   vector VECTOR<FLOAT,765>, PRIMARY KEY ( ( row_id )   )) ;",
+                    "CREATE TABLE IF NOT EXISTS k.tn (  row_id UUID,   body_blob TEXT,   vector VECTOR<FLOAT,765>, PRIMARY KEY ( ( row_id )   )) ;",  # noqa: E501
                     tuple(),
                 ),
                 (
-                    "CREATE CUSTOM INDEX IF NOT EXISTS idx_vector_tn ON k.tn (vector) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",
+                    "CREATE CUSTOM INDEX IF NOT EXISTS idx_vector_tn ON k.tn (vector) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",  # noqa: E501
                     tuple(),
                 ),
             ]
@@ -99,23 +97,23 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "CREATE TABLE IF NOT EXISTS k.tn (  partition_id PUUID,   key_desc TEXT,   key_vals TEXT,   body_blob TEXT,   vector VECTOR<FLOAT,765>, attributes_blob TEXT,  metadata_s MAP<TEXT,TEXT>,   metadata_n MAP<TEXT,FLOAT>,   metadata_tags SET<TEXT>, PRIMARY KEY ( ( partition_id ) , key_desc, key_vals )) WITH CLUSTERING ORDER BY (key_desc ASC, key_vals ASC);",
+                    "CREATE TABLE IF NOT EXISTS k.tn (  partition_id PUUID,   key_desc TEXT,   key_vals TEXT,   body_blob TEXT,   vector VECTOR<FLOAT,765>, attributes_blob TEXT,  metadata_s MAP<TEXT,TEXT>,   metadata_n MAP<TEXT,FLOAT>,   metadata_tags SET<TEXT>, PRIMARY KEY ( ( partition_id ) , key_desc, key_vals )) WITH CLUSTERING ORDER BY (key_desc ASC, key_vals ASC);",  # noqa: E501
                     tuple(),
                 ),
                 (
-                    "CREATE CUSTOM INDEX IF NOT EXISTS idx_vector_tn ON k.tn (vector) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",
+                    "CREATE CUSTOM INDEX IF NOT EXISTS idx_vector_tn ON k.tn (vector) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",  # noqa: E501
                     tuple(),
                 ),
                 (
-                    "CREATE CUSTOM INDEX IF NOT EXISTS idx_metadata_tags_tn ON k.tn (metadata_tags) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",
+                    "CREATE CUSTOM INDEX IF NOT EXISTS idx_metadata_tags_tn ON k.tn (metadata_tags) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",  # noqa: E501
                     tuple(),
                 ),
                 (
-                    "CREATE CUSTOM INDEX IF NOT EXISTS eidx_metadata_s_tn ON k.tn (ENTRIES(metadata_s)) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",
+                    "CREATE CUSTOM INDEX IF NOT EXISTS eidx_metadata_s_tn ON k.tn (ENTRIES(metadata_s)) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",  # noqa: E501
                     tuple(),
                 ),
                 (
-                    "CREATE CUSTOM INDEX IF NOT EXISTS eidx_metadata_n_tn ON k.tn (ENTRIES(metadata_n)) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",
+                    "CREATE CUSTOM INDEX IF NOT EXISTS eidx_metadata_n_tn ON k.tn (ENTRIES(metadata_n)) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",  # noqa: E501
                     tuple(),
                 ),
             ]
@@ -125,7 +123,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "DELETE FROM k.tn WHERE key_desc = ? AND key_vals = ? AND partition_id = ?;",
+                    "DELETE FROM k.tn WHERE key_desc = ? AND key_vals = ? AND partition_id = ?;",  # noqa: E501
                     ('["a","b"]', '["A","B"]', "PARTITIONID"),
                 ),
             ]
@@ -135,7 +133,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE key_desc = ? AND key_vals = ? AND partition_id = ? ;",
+                    "SELECT * FROM k.tn WHERE key_desc = ? AND key_vals = ? AND partition_id = ? ;",  # noqa: E501
                     ('["a","b"]', '["A","B"]', "PARTITIONID"),
                 ),
             ]
@@ -161,7 +159,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (body_blob, vector, key_desc, key_vals, partition_id) VALUES (?, ?, ?, ?, ?) USING TTL ? ;",
+                    "INSERT INTO k.tn (body_blob, vector, key_desc, key_vals, partition_id) VALUES (?, ?, ?, ?, ?) USING TTL ? ;",  # noqa: E501
                     (
                         "BODYBLOB",
                         "VECTOR",
@@ -187,7 +185,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (body_blob, vector, metadata_s, metadata_n, metadata_tags, key_desc, key_vals, partition_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?) USING TTL ? ;",
+                    "INSERT INTO k.tn (body_blob, vector, metadata_s, metadata_n, metadata_tags, key_desc, key_vals, partition_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?) USING TTL ? ;",  # noqa: E501
                     (
                         "BODYBLOB",
                         "VECTOR",
@@ -214,7 +212,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (body_blob, vector, metadata_tags, key_desc, key_vals, partition_id) VALUES (?, ?, ?, ?, ?, ?) USING TTL ? ;",
+                    "INSERT INTO k.tn (body_blob, vector, metadata_tags, key_desc, key_vals, partition_id) VALUES (?, ?, ?, ?, ?, ?) USING TTL ? ;",  # noqa: E501
                     (
                         "BODYBLOB",
                         "VECTOR",
@@ -232,7 +230,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (metadata_tags, key_desc, key_vals, partition_id) VALUES (?, ?, ?, ?) USING TTL ? ;",
+                    "INSERT INTO k.tn (metadata_tags, key_desc, key_vals, partition_id) VALUES (?, ?, ?, ?) USING TTL ? ;",  # noqa: E501
                     ({"tru2", "tru1"}, '["a","b"]', '["A","B"]', "PARTITIONID", 123),
                 ),
             ]
@@ -272,7 +270,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",
+                    "SELECT * FROM k.tn WHERE key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
                     ('["a","b"]', '["A","B"]', "PARTITIONID", [10, 11], 2),
                 ),
             ]
@@ -282,7 +280,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",
+                    "SELECT * FROM k.tn WHERE key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
                     ('["a","b"]', '["A","B"]', "PRE-PART-ID", [10, 11], 2),
                 ),
             ]
@@ -293,7 +291,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_s['mdks'] = ? AND metadata_n['mdkn'] = ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ;",
+                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_s['mdks'] = ? AND metadata_n['mdkn'] = ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ;",  # noqa: E501
                     ("mdke", "mdv", 123.0, '["a","b"]', '["MDA","MDB"]', "MDPART"),
                 ),
             ]
@@ -305,7 +303,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_s['mdks'] = ? AND metadata_n['mdkn'] = ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",
+                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_s['mdks'] = ? AND metadata_n['mdkn'] = ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
                     (
                         "mdke",
                         "mdv",
@@ -324,7 +322,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_s['mdks'] = ? AND metadata_n['mdkn'] = ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",
+                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_s['mdks'] = ? AND metadata_n['mdkn'] = ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
                     (
                         "mdke",
                         "mdv",
@@ -343,7 +341,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_s['mdks'] = ? AND metadata_n['mdkn'] = ? AND partition_id = ? ;",
+                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_s['mdks'] = ? AND metadata_n['mdkn'] = ? AND partition_id = ? ;",  # noqa: E501
                     ("mdke", "mdv", 123.0, "MDPART"),
                 ),
             ]
@@ -353,7 +351,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_s['mdks'] = ? AND metadata_n['mdkn'] = ? AND partition_id = ? ;",
+                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_s['mdks'] = ? AND metadata_n['mdkn'] = ? AND partition_id = ? ;",  # noqa: E501
                     ("mdke", "mdv", 123.0, "PRE-PART-ID"),
                 ),
             ]
@@ -364,7 +362,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_tags CONTAINS ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ;",
+                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_tags CONTAINS ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ;",  # noqa: E501
                     ("mdke", "mdke2", '["a","b"]', '["MDA","MDB"]', "MDPART"),
                 ),
             ]
@@ -381,7 +379,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_tags CONTAINS ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",
+                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_tags CONTAINS ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
                     (
                         "mdke",
                         "mdke2",
@@ -399,7 +397,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_tags CONTAINS ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",
+                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_tags CONTAINS ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
                     (
                         "mdke",
                         "mdke2",
@@ -417,7 +415,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_tags CONTAINS ? AND partition_id = ? ;",
+                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_tags CONTAINS ? AND partition_id = ? ;",  # noqa: E501
                     ("mdke", "mdke2", "MDPART"),
                 ),
             ]
@@ -427,7 +425,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_tags CONTAINS ? AND partition_id = ? ;",
+                    "SELECT * FROM k.tn WHERE metadata_tags CONTAINS ? AND metadata_tags CONTAINS ? AND partition_id = ? ;",  # noqa: E501
                     ("mdke", "mdke2", "PRE-PART-ID"),
                 ),
             ]

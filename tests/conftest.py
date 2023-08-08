@@ -3,7 +3,6 @@ fixtures for testing
 """
 
 import os
-from typing import Union
 
 import pytest
 
@@ -26,7 +25,6 @@ def createDBSessionSingleton():
             ASTRA_DB_SECURE_BUNDLE_PATH = os.environ["ASTRA_DB_SECURE_BUNDLE_PATH"]
             ASTRA_DB_CLIENT_ID = "token"
             ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
-            ASTRA_DB_KEYSPACE = os.environ["ASTRA_DB_KEYSPACE"]
             cluster = Cluster(
                 cloud={
                     "secure_connect_bundle": ASTRA_DB_SECURE_BUNDLE_PATH,
@@ -54,7 +52,6 @@ def createDBSessionSingleton():
                 ]
             else:
                 contact_points = None
-            CASSANDRA_KEYSPACE = os.environ["CASSANDRA_KEYSPACE"]
             #
             cluster = Cluster(
                 contact_points,

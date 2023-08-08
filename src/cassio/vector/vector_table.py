@@ -5,6 +5,7 @@ Compatibility layer for legacy VectorTable (used by LangChain integration
 Note: This is to be replaced by direct usage of the table-class-hierarchy classes.
 """
 
+from warnings import warn
 from typing import List, Dict, Any, Optional
 
 from cassandra.cluster import ResponseFuture  # type: ignore
@@ -35,7 +36,15 @@ class VectorTable:
     integration code.
     """
 
+    DEPRECATION_MESSAGE = (
+        "Class `VectorTable` is a legacy construct and "
+        "will be deprecated in future versions of CassIO."
+    )
+
     def __init__(self, *pargs: Any, **kwargs: Dict[str, Any]):
+        #
+        warn(self.DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
+        #
         if "embedding_dimension" in kwargs:
             vector_dimension = kwargs["embedding_dimension"]
             new_kwargs = {

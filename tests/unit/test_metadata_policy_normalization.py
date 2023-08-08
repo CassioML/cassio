@@ -2,11 +2,8 @@
 Normalization of metadata policy specification options
 """
 
-import pytest
-
 from cassio.table.table_types import (
     MetadataIndexingMode,
-    MetadataIndexingPolicy,
 )
 
 from cassio.table.mixins import MetadataMixin
@@ -21,10 +18,14 @@ class TestNormalizeMetadataPolicy:
         mdp2 = MetadataMixin._normalize_metadata_indexing_policy("none")
         assert mdp2 == (MetadataIndexingMode.ALLOW_LIST, set())
         #
-        mdp3 = MetadataMixin._normalize_metadata_indexing_policy(("allow", ["x", "y"]))
+        mdp3 = MetadataMixin._normalize_metadata_indexing_policy(
+            ("allow", ["x", "y"]),
+        )
         assert mdp3 == (MetadataIndexingMode.ALLOW_LIST, {"x", "y"})
         #
-        mdp4 = MetadataMixin._normalize_metadata_indexing_policy(("DenyList", ["z"]))
+        mdp4 = MetadataMixin._normalize_metadata_indexing_policy(
+            ("DenyList", ["z"]),
+        )
         assert mdp4 == (MetadataIndexingMode.DENY_LIST, {"z"})
         #
         mdp5 = MetadataMixin._normalize_metadata_indexing_policy(

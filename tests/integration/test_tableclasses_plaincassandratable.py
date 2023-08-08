@@ -33,7 +33,8 @@ class TestPlainCassandraTable:
 
 
 if __name__ == "__main__":
-    # TEST_DB_MODE=LOCAL_CASSANDRA python -m pdb -m  tests.integration.test_tableclasses_plaincassandratable
+    # TEST_DB_MODE=LOCAL_CASSANDRA python -m pdb -m  \
+    #   tests.integration.test_tableclasses_plaincassandratable
     from ..conftest import createDBSessionSingleton, getDBKeyspace
 
     s = createDBSessionSingleton()

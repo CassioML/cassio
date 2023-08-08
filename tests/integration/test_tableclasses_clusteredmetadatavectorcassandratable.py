@@ -159,7 +159,8 @@ class TestClusteredMetadataVectorCassandraTable:
 
 
 if __name__ == "__main__":
-    # TEST_DB_MODE=LOCAL_CASSANDRA python -m pdb -m  tests.integration.test_tableclasses_clusteredmetadatavectorcassandratable
+    # TEST_DB_MODE=LOCAL_CASSANDRA python -m pdb -m \
+    #   tests.integration.test_tableclasses_clusteredmetadatavectorcassandratable
     from ..conftest import createDBSessionSingleton, getDBKeyspace
 
     s = createDBSessionSingleton()
