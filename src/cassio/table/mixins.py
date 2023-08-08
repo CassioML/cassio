@@ -166,7 +166,14 @@ class ClusteredMixin(BaseTableMixin):
             limit_clause=limit_clause,
         )
         get_p_cql_vals = tuple(where_cql_vals + limit_cql_vals)
-        return self.execute_cql(select_cql, args=get_p_cql_vals, op_type=CQLOpType.READ)
+        return (
+            self._normalize_row(raw_row)
+            for raw_row in self.execute_cql(
+                select_cql,
+                args=get_p_cql_vals,
+                op_type=CQLOpType.READ,
+            )
+        )
 
     def get_partition_async(
         self, partition_id: Optional[str] = None, n: Optional[int] = None, **kwargs: Any

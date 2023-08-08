@@ -1,1 +1,1 @@
-from cassio.history.history_management import StoredBlobHistory
+from cassio.history.stored_blob_history import StoredBlobHistory  # noqa: F401
