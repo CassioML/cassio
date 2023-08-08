@@ -4,6 +4,8 @@ Table classes integration test - ClusteredMetadataVectorCassandraTable
 import math
 import pytest
 
+from cassandra import InvalidRequest  # type: ignore
+
 from cassio.table.tables import (
     ClusteredMetadataVectorCassandraTable,
 )
@@ -154,6 +156,32 @@ class TestClusteredMetadataVectorCassandraTable:
             "Z_theta_3",
             "Z_theta_13",
         }
+
+        # cross-partition ANN search test
+        t_xpart = ClusteredMetadataVectorCassandraTable(
+            db_session,
+            db_keyspace,
+            table_name,
+            vector_dimension=2,
+            primary_key_type=["INT", "TEXT"],
+            skip_provisioning=True,
+        )
+        # a vector at 1/4 step from the "_0" for both partitions
+        xp_query_theta = 1 * math.pi * 2 / (4 * N)
+        xp_vector = [math.cos(xp_query_theta), math.sin(xp_query_theta)]
+        xpart_results = list(
+            t_xpart.ann_search(
+                xp_vector,
+                n=2,
+            )
+        )
+        assert {r["row_id"] for r in xpart_results} == {"theta_0", "Z_theta_0"}
+        # "cross partition GET" (i.e. partition_id not specified).
+        # Outside of ANN this should throw an error
+        with pytest.raises(InvalidRequest):
+            _ = t.get(row_id="not_enough_info", partition_id=None)
+        with pytest.raises(InvalidRequest):
+            _ = t_xpart.get(row_id="not_enough_info")
 
         t.clear()
 

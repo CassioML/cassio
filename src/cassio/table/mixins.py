@@ -65,6 +65,27 @@ class ClusteredMixin(BaseTableMixin):
     def _schema_cc(self) -> List[ColumnSpecType]:
         return self._schema_row_id()
 
+    def _extract_where_clause_blocks(
+        self, args_dict: Any
+    ) -> Tuple[Any, List[str], Tuple[Any, ...]]:
+        """
+        If a null partition_id arrives to WHERE construction, it is silently
+        discarded from the set of conditions to create.
+        This enables e.g. ANN vector search across partitions of a clustered table.
+
+        It is the database's responsibility to raise an error if unacceptable.
+        """
+        if "partition_id" in args_dict and args_dict["partition_id"] is None:
+            cleaned_args_dict = {
+                k: v
+                for k, v in args_dict.items()
+                if k != "partition_id"
+            }
+        else:
+            cleaned_args_dict = args_dict
+        #
+        return super()._extract_where_clause_blocks(cleaned_args_dict)
+
     def _delete_partition(
         self, is_async: bool, partition_id: Optional[str] = None
     ) -> None:

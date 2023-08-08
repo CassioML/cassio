@@ -213,12 +213,13 @@ class TestVectorTable:
             primary_key_type="TEXT",
         )
         #
-        v_table.put("this is short lived", [1, 0], "short_lived", ttl_seconds=1)
-        v_table.put("this is long lived", [0, 1], "long_lived", ttl_seconds=3)
+        v_table.put("this is short lived", [1, 0], "short_lived", ttl_seconds=2)
+        v_table.put("this is long lived", [0, 1], "long_lived", ttl_seconds=5)
+        time.sleep(0.2)
         assert len(v_table.search([0.5, 0.5], 3, "cos", 0.01)) == 2
-        time.sleep(1.5)
+        time.sleep(2.5)
         assert len(v_table.search([0.5, 0.5], 3, "cos", 0.01)) == 1
-        time.sleep(2.0)
+        time.sleep(3.0)
         assert len(v_table.search([0.5, 0.5], 3, "cos", 0.01)) == 0
 
 
