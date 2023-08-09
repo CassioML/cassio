@@ -40,6 +40,8 @@ class StoredBlobHistory:
             **kwargs,
             **{
                 "primary_key_type": ["TEXT", "TIMEUUID"],
+                # latest entries are returned first
+                "ordering_in_partition": "DESC",
             },
         }
         self.table = ClusteredCassandraTable(
@@ -61,13 +63,14 @@ class StoredBlobHistory:
     def retrieve(
         self, session_id: str, max_count: Optional[int] = None
     ) -> Iterable[str]:
-        return (
+        # The latest are returned, in chronological order
+        return [
             row["body_blob"]
             for row in self.table.get_partition(
                 partition_id=session_id,
                 n=max_count,
             )
-        )
+        ][::-1]
 
     def clear_session_id(self, session_id: str) -> None:
         self.table.delete_partition(session_id)

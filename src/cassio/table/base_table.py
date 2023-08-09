@@ -21,6 +21,9 @@ from cassio.table.cql import (
 
 
 class BaseTable:
+
+    ordering_in_partition: Optional[str] = None
+
     def __init__(
         self,
         session: SessionType,
@@ -266,7 +269,9 @@ class BaseTable:
         cc_spec = ", ".join(col for col, _ in _schema["cc"])
         primkey_spec = f"( ( {pk_spec} ) {',' if _schema['cc'] else ''} {cc_spec} )"
         if _schema["cc"]:
-            clu_core = ", ".join(f"{col} ASC" for col, _ in _schema["cc"])
+            clu_core = ", ".join(
+                f"{col} {self.ordering_in_partition}" for col, _ in _schema["cc"]
+            )
             clustering_spec = f"WITH CLUSTERING ORDER BY ({clu_core})"
         else:
             clustering_spec = ""
