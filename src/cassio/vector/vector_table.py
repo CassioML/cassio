@@ -78,7 +78,7 @@ class VectorTable:
         # get rows by ANN
         enriched_hits = self.table.metric_ann_search(
             vector=embedding_vector,
-            top_k=top_k,
+            n=top_k,
             metric=metric,
             metric_threshold=metric_threshold,
             **kwargs,

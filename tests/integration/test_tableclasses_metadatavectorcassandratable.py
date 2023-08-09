@@ -73,6 +73,33 @@ class TestMetadataVectorCassandraTable:
         assert {r["row_id"] for r in ann_results_md3[:2]} == {"theta_1", "theta_15"}
         assert {r["row_id"] for r in ann_results_md3[2:4]} == {"theta_3", "theta_13"}
 
+        # metric search testing
+        # a vector between 15 and 1 inserted above, but closer to the 1
+        query_theta_mt = 1 * math.pi * 2 / (2 * N + 1)
+        ref_vector_mt = [math.cos(query_theta_mt), math.sin(query_theta_mt)]
+        ann_results_mt = list(
+            t.metric_ann_search(
+                ref_vector_mt,
+                n=2,
+                metric="cos",
+                metric_threshold=0.8,
+                metadata={"group": "odd"},
+            )
+        )
+        assert [r["row_id"] for r in ann_results_mt] == ["theta_1", "theta_15"]
+        assert ann_results_mt[0]["distance"] > ann_results_mt[1]["distance"]
+        # a max distance makes this call return just two results despite the n=3:
+        ann_results_mt_l2 = list(
+            t.metric_ann_search(
+                ref_vector_mt,
+                n=3,
+                metric="l2",
+                metric_threshold=0.6,
+                metadata={"group": "odd"},
+            )
+        )
+        assert [r["row_id"] for r in ann_results_mt_l2] == ["theta_1", "theta_15"]
+        assert ann_results_mt_l2[0]["distance"] < ann_results_mt_l2[1]["distance"]
         t.clear()
 
 

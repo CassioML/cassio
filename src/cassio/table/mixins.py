@@ -534,12 +534,12 @@ class VectorMixin(BaseTableMixin):
     def metric_ann_search(
         self,
         vector: List[float],
-        top_k: int,
+        n: int,
         metric: str,
-        metric_threshold: Optional[float],
+        metric_threshold: Optional[float] = None,
         **kwargs: Any,
     ) -> Iterable[RowWithDistanceType]:
-        rows = list(self.ann_search(vector, top_k, **kwargs))
+        rows = list(self.ann_search(vector, n, **kwargs))
         if rows == []:
             return []
         else:
