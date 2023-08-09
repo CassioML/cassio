@@ -8,8 +8,8 @@ SessionType = Any
 
 
 class MetadataIndexingMode(Enum):
-    ALLOW_LIST = 1
-    DENY_LIST = 2
+    DEFAULT_TO_UNSEARCHABLE = 1
+    DEFAULT_TO_SEARCHABLE = 2
 
 
 MetadataIndexingPolicy = Tuple[MetadataIndexingMode, Set[str]]
@@ -17,9 +17,9 @@ MetadataIndexingPolicy = Tuple[MetadataIndexingMode, Set[str]]
 
 def is_metadata_field_indexed(field_name: str, policy: MetadataIndexingPolicy) -> bool:
     p_mode, p_fields = policy
-    if p_mode == MetadataIndexingMode.ALLOW_LIST:
+    if p_mode == MetadataIndexingMode.DEFAULT_TO_UNSEARCHABLE:
         return field_name in p_fields
-    elif p_mode == MetadataIndexingMode.DENY_LIST:
+    elif p_mode == MetadataIndexingMode.DEFAULT_TO_SEARCHABLE:
         return field_name not in p_fields
     else:
         raise ValueError(f"Unexpected metadata indexing mode {p_mode}")

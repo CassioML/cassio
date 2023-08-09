@@ -200,9 +200,9 @@ class MetadataMixin(BaseTableMixin):
         # metadata indexing policy normalization:
         if isinstance(metadata_indexing, str):
             if metadata_indexing.lower() == "all":
-                mode, fields = (MetadataIndexingMode.DENY_LIST, set())
+                mode, fields = (MetadataIndexingMode.DEFAULT_TO_SEARCHABLE, set())
             elif metadata_indexing.lower() == "none":
-                mode, fields = (MetadataIndexingMode.ALLOW_LIST, set())
+                mode, fields = (MetadataIndexingMode.DEFAULT_TO_UNSEARCHABLE, set())
             else:
                 raise ValueError(
                     f"Unsupported metadata_indexing value '{metadata_indexing}'"
@@ -212,10 +212,20 @@ class MetadataMixin(BaseTableMixin):
             # it's a 2-tuple (mode, fields) still to normalize
             _mode, _field_spec = metadata_indexing
             fields = {_field_spec} if isinstance(_field_spec, str) else set(_field_spec)
-            if _mode.lower() in {"allowlist", "allow", "allow_list"}:
-                mode = MetadataIndexingMode.ALLOW_LIST
-            elif _mode.lower() in {"denylist", "deny", "deny_list"}:
-                mode = MetadataIndexingMode.DENY_LIST
+            if _mode.lower() in {
+                "default_to_unsearchable",
+                "allowlist",
+                "allow",
+                "allow_list",
+            }:
+                mode = MetadataIndexingMode.DEFAULT_TO_UNSEARCHABLE
+            elif _mode.lower() in {
+                "default_to_searchable",
+                "denylist",
+                "deny",
+                "deny_list",
+            }:
+                mode = MetadataIndexingMode.DEFAULT_TO_SEARCHABLE
             else:
                 raise ValueError(
                     f"Unsupported metadata indexing mode specification '{_mode}'"
