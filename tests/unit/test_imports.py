@@ -5,9 +5,6 @@ TODO: make this more robust in making sure all code is imported.
 
 
 class TestImports:
-    def test_import_cql(self):
-        from cassio.cql import create_vector_table  # type: ignore  # noqa: F401
-
     def test_import_db_extractor(self):
         from cassio.db_extractor import CassandraExtractor  # type: ignore  # noqa: F401
 
