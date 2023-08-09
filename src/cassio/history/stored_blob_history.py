@@ -5,7 +5,7 @@ by some 'session id'. Overwrites are not supported by design.
 
 import uuid
 from warnings import warn
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, Optional
 
 from cassandra.cluster import Session  # type: ignore
 

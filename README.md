@@ -49,9 +49,17 @@ be adopted.
 ### Style
 
 We are trying to land on a strictly enforced style. Currently,
-`tests`, `src/cassio/vector`, `src/cassio/table` and `src/cassio/utils`
-are kept in check. This means we try to get clean output from the following
-in each of these directories:
+the following directories are kept in check this way:
+
+- `src/cassio/table`
+- `src/cassio/vector`
+- `src/cassio/utils`
+- `tests`
+- `src/cassio/keyvalue`
+- `src/cassio/history`
+
+This means we try to get clean output from the following
+in each of these directories (up to your good will for the time being):
 
 ```
 black .
