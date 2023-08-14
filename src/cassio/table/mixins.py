@@ -271,7 +271,7 @@ class MetadataMixin(BaseTableMixin):
 
     @staticmethod
     def _serialize_md_dict(md_dict: Dict[str, Any]) -> str:
-        return json.dumps(md_dict, separators=(",", ":"))
+        return json.dumps(md_dict, separators=(",", ":"), sort_keys=True)
 
     @staticmethod
     def _deserialize_md_dict(md_string: str) -> Dict[str, Any]:
@@ -612,7 +612,7 @@ class ElasticKeyMixin(BaseTableMixin):
 
     @staticmethod
     def _serialize_key_list(key_vals: List[Any]) -> str:
-        return json.dumps(key_vals, separators=(",", ":"))
+        return json.dumps(key_vals, separators=(",", ":"), sort_keys=True)
 
     @staticmethod
     def _deserialize_key_list(keys_str: str) -> List[Any]:
