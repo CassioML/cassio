@@ -29,12 +29,12 @@ class TestVectorTable:
             "document",
             [1, 2, 3],
             "doc_id",
-            {"a": 1},
+            {"a": "value_1"},
             None,
         )
         assert v_table.get("doc_id") == {
             "document_id": "doc_id",
-            "metadata": {"a": 1},
+            "metadata": {"a": "value_1"},
             "document": "document",
             "embedding_vector": [1, 2, 3],
         }
@@ -148,12 +148,12 @@ class TestVectorTable:
             "document_int",
             [0.1] * v_emb_dim_3,
             9999,
-            {"a": 1},
+            {"a": "value_1"},
             None,
         )
         match = v_table.get(9999)
         assert match["document"] == "document_int"
-        assert match["metadata"] == {"a": 1}
+        assert match["metadata"] == {"a": "value_1"}
 
         match_no = v_table.get(123)
         assert match_no is None

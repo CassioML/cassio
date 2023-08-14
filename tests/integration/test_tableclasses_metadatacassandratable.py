@@ -27,13 +27,15 @@ class TestMetadataCassandraTable:
         gotten2 = t.get(row_id="row2")
         assert gotten2 == {"row_id": "row2", "body_blob": None, "metadata": {}}
         md3 = {"a": 1, "b": "Bee", "c": True}
+        md3_string = {"a": "1", "b": "Bee", "c": "true"}
         t.put(row_id="row3", metadata=md3)
         gotten3 = t.get(row_id="row3")
-        assert gotten3 == {"row_id": "row3", "body_blob": None, "metadata": md3}
+        assert gotten3 == {"row_id": "row3", "body_blob": None, "metadata": md3_string}
         md4 = {"c1": True, "c2": True, "c3": True}
+        md4_string = {"c1": "true", "c2": "true", "c3": "true"}
         t.put(row_id="row4", metadata=md4)
         gotten4 = t.get(row_id="row4")
-        assert gotten4 == {"row_id": "row4", "body_blob": None, "metadata": md4}
+        assert gotten4 == {"row_id": "row4", "body_blob": None, "metadata": md4_string}
         # metadata searches:
         md_gotten3a = t.get(metadata={"a": 1})
         assert md_gotten3a == gotten3
@@ -48,16 +50,16 @@ class TestMetadataCassandraTable:
         t.put(row_id="twin_b", metadata={"twin": True, "index": 1})
         md_twins_gotten = sorted(
             t.find_entries(metadata={"twin": True}, n=3),
-            key=lambda res: res["metadata"]["index"],
+            key=lambda res: int(res["metadata"]["index"]),
         )
         expected = [
             {
-                "metadata": {"twin": True, "index": 0.0},
+                "metadata": {"twin": "true", "index": "0"},
                 "row_id": "twin_a",
                 "body_blob": None,
             },
             {
-                "metadata": {"twin": True, "index": 1.0},
+                "metadata": {"twin": "true", "index": "1"},
                 "row_id": "twin_b",
                 "body_blob": None,
             },
@@ -69,6 +71,7 @@ class TestMetadataCassandraTable:
 
     def test_md_routing(self, db_session, db_keyspace):
         test_md = {"mds": "string", "mdn": 255, "mdb": True}
+        test_md_string = {"mds": "string", "mdn": "255", "mdb": "true"}
         #
         table_name_all = "m_ct_rtall"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_all};")
@@ -81,7 +84,7 @@ class TestMetadataCassandraTable:
         )
         t_all.put(row_id="row1", body_blob="bb1", metadata=test_md)
         gotten_all = list(t_all.find_entries(metadata={"mds": "string"}, n=1))[0]
-        assert gotten_all["metadata"] == test_md
+        assert gotten_all["metadata"] == test_md_string
         t_all.clear()
         #
         table_name_none = "m_ct_rtnone"
@@ -98,7 +101,7 @@ class TestMetadataCassandraTable:
             # querying on non-indexed metadata fields:
             t_none.find_entries(metadata={"mds": "string"}, n=1)
         gotten_none = t_none.get(row_id="row1")
-        assert gotten_none["metadata"] == test_md
+        assert gotten_none["metadata"] == test_md_string
         t_none.clear()
         #
         test_md_allowdeny = {
@@ -108,6 +111,14 @@ class TestMetadataCassandraTable:
             "mddn": 127,
             "mdab": True,
             "mddb": True,
+        }
+        test_md_allowdeny_string = {
+            "mdas": "MDAS",
+            "mdds": "MDDS",
+            "mdan": "255",
+            "mddn": "127",
+            "mdab": "true",
+            "mddb": "true",
         }
         #
         table_name_allow = "m_ct_rtallow"
@@ -123,7 +134,7 @@ class TestMetadataCassandraTable:
         with pytest.raises(ValueError):
             t_allow.find_entries(metadata={"mdds": "MDDS"}, n=1)
         gotten_allow = list(t_allow.find_entries(metadata={"mdas": "MDAS"}, n=1))[0]
-        assert gotten_allow["metadata"] == test_md_allowdeny
+        assert gotten_allow["metadata"] == test_md_allowdeny_string
         t_allow.clear()
         #
         table_name_deny = "m_ct_rtdeny"
@@ -139,7 +150,7 @@ class TestMetadataCassandraTable:
         with pytest.raises(ValueError):
             t_deny.find_entries(metadata={"mdds": "MDDS"}, n=1)
         gotten_deny = list(t_deny.find_entries(metadata={"mdas": "MDAS"}, n=1))[0]
-        assert gotten_deny["metadata"] == test_md_allowdeny
+        assert gotten_deny["metadata"] == test_md_allowdeny_string
         t_deny.clear()
 
 

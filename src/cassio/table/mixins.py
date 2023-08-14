@@ -238,26 +238,13 @@ class MetadataMixin(BaseTableMixin):
         return super()._schema_da() + [
             ("attributes_blob", "TEXT"),
             ("metadata_s", "MAP<TEXT,TEXT>"),
-            ("metadata_n", "MAP<TEXT,FLOAT>"),
-            ("metadata_tags", "SET<TEXT>"),
         ]
 
     def db_setup(self) -> None:
-        # Currently this supports entries on:
-        # the two entryful metadata parts + just-existence on the tags (set).
-        # No indexes on key existence are created.
+        # Currently: an 'entries' index on the metadata_s column
         super().db_setup()
         #
-        entries_index_columns = ["metadata_s", "metadata_n"]
-        index_columns = ["metadata_tags"]
-        for index_column in index_columns:
-            index_name = f"idx_{index_column}"
-            index_column = f"{index_column}"
-            create_index_cql = CREATE_INDEX_CQL_TEMPLATE.format(
-                index_name=index_name,
-                index_column=index_column,
-            )
-            self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
+        entries_index_columns = ["metadata_s"]
         for entries_index_column in entries_index_columns:
             index_name = f"eidx_{entries_index_column}"
             index_column = f"{entries_index_column}"
@@ -277,43 +264,45 @@ class MetadataMixin(BaseTableMixin):
     def _deserialize_md_dict(md_string: str) -> Dict[str, Any]:
         return json.loads(md_string)
 
+    @staticmethod
+    def _coerce_string(value: Any) -> str:
+        if isinstance(value, str):
+            return value
+        elif isinstance(value, int) or isinstance(value, float):
+            return json.dumps(value)
+        elif isinstance(value, bool):
+            return json.dumps(value)
+        elif value is None:
+            return json.dumps(value)
+        else:
+            # when all else fails ...
+            return str(value)
+
     def _split_metadata_fields(self, md_dict: Dict[str, Any]) -> Dict[str, Any]:
         """
         Split the *indexed* part of the metadata in separate parts,
         one per Cassandra column.
+
+        Currently: everything gets cast to a string and goes to a single table
+        column. This means:
+            - strings are fine
+            - floats and integers v: they are cast to str(v)
+            - booleans: 'true'/'false' (JSON style)
+            - None => 'null' (JSON style)
+            - anything else v => str(v), no questions asked
+
+        Caveat: one gets strings back when reading metadata
         """
+
         # TODO: more care about types here
-        stringy_part = {k: v for k, v in md_dict.items() if isinstance(v, str)}
-        numeric_part = {
-            k: float(v)
-            for k, v in md_dict.items()
-            if isinstance(v, int) or isinstance(v, float)
-            if not isinstance(v, bool)
-        }
-        # these become 'tags'
-        nully_part = {
-            k for k, v in md_dict.items() if isinstance(v, bool) and v is True
-        }
-        assert {
-            k for k, v in md_dict.items() if isinstance(v, bool) and v is False
-        } == set()
-        assert set(stringy_part.keys()) | set(numeric_part.keys()) | nully_part == set(
-            md_dict.keys()
-        )
-        assert len(stringy_part.keys()) + len(numeric_part.keys()) + len(
-            nully_part
-        ) == len(md_dict.keys())
+        stringy_part = {k: self._coerce_string(v) for k, v in md_dict.items()}
         return {
             "metadata_s": stringy_part,
-            "metadata_n": numeric_part,
-            "metadata_tags": nully_part,
         }
 
     def _normalize_row(self, raw_row: Any) -> Dict[str, Any]:
         md_columns_defaults: Dict[str, Any] = {
             "metadata_s": {},
-            "metadata_n": {},
-            "metadata_tags": set(),
         }
         pre_normalized = super()._normalize_row(raw_row)
         #
@@ -330,12 +319,6 @@ class MetadataMixin(BaseTableMixin):
             k: v if v is not None else md_columns_defaults[k]
             for k, v in mergee_md_fields.items()
         }
-        r_md_from_tags = {
-            tag: True for tag in normalized_mergee_md_fields["metadata_tags"]
-        }
-        r_md_from_n = {
-            k: v for k, v in normalized_mergee_md_fields["metadata_n"].items()
-        }
         r_md_from_s = {
             k: v for k, v in normalized_mergee_md_fields["metadata_s"].items()
         }
@@ -349,8 +332,6 @@ class MetadataMixin(BaseTableMixin):
         row_metadata = {
             "metadata": {
                 **r_attrs,
-                **r_md_from_tags,
-                **r_md_from_n,
                 **r_md_from_s,
             },
         }
@@ -370,7 +351,7 @@ class MetadataMixin(BaseTableMixin):
             if is_metadata_field_indexed(k, self.metadata_indexing_policy)
         }
         attributes_dict = {
-            k: v
+            k: self._coerce_string(v)
             for k, v in _metadata_input_dict.items()
             if not is_metadata_field_indexed(k, self.metadata_indexing_policy)
         }
@@ -403,21 +384,15 @@ class MetadataMixin(BaseTableMixin):
         assert "metadata" not in args_dict
         if "attributes_blob" in args_dict:
             raise ValueError("Non-indexed metadata fields cannot be used in queries.")
-        md_keys = {"metadata_s", "metadata_n", "metadata_tags"}
+        md_keys = {"metadata_s"}
         new_args_dict = {k: v for k, v in args_dict.items() if k not in md_keys}
         # Here the "metadata" entry is made into specific where clauses
         split_metadata = {k: v for k, v in args_dict.items() if k in md_keys}
         these_wc_blocks: List[str] = []
         these_wc_vals_list: List[Any] = []
         # WHERE creation:
-        for v in sorted(split_metadata.get("metadata_tags", set())):
-            these_wc_blocks.append("metadata_tags CONTAINS %s")
-            these_wc_vals_list.append(v)
         for k, v in sorted(split_metadata.get("metadata_s", {}).items()):
             these_wc_blocks.append(f"metadata_s['{k}'] = %s")
-            these_wc_vals_list.append(v)
-        for k, v in sorted(split_metadata.get("metadata_n", {}).items()):
-            these_wc_blocks.append(f"metadata_n['{k}'] = %s")
             these_wc_vals_list.append(v)
         # no new kwargs keys are created, all goes to WHERE
         this_args_dict: Dict[str, Any] = {}
