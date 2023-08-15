@@ -8,7 +8,8 @@ from typing import List
 
 from cassandra.query import SimpleStatement
 
-import cassio.cql
+
+RETRIEVE_ONE_ROW_CQL_TEMPLATE = 'SELECT * FROM {keyspace}.{table} WHERE {whereClause} LIMIT 1'
 
 
 def _table_primary_key_columns(session, keyspace, table) -> List[str]:
@@ -42,7 +43,7 @@ class CassandraExtractor:
         #   selecting only those unless function passed)
         def _getter(**kwargs):
             def _retrieve_field(_table2, _key_columns, _column_or_extractor, _key_value_map):
-                selector = SimpleStatement(cassio.cql.retrieve_one_row.format(
+                selector = SimpleStatement(RETRIEVE_ONE_ROW_CQL_TEMPLATE.format(
                     keyspace=keyspace,
                     table=_table2,
                     whereClause=' AND '.join(

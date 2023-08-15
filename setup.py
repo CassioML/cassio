@@ -5,7 +5,7 @@ here = pathlib.Path(__file__).parent.resolve()
 
 setup(
     name='cassio',
-    version='0.0.7',
+    version='0.1.0',
     author='Stefano Lottini',
     author_email='stefano.lottini@datastax.com',
     package_dir={"": "src"},
@@ -18,7 +18,7 @@ setup(
     # },
     url='https://github.com/hemidactylus/cassio',
     license='LICENSE.txt',
-    description='A framework-agnostic Python library to seamlessly integrate Apache Cassandra with ML/LLM/genAI workloads.',
+    description='A framework-agnostic Python library to seamlessly integrate Apache Cassandra(R) with ML/LLM/genAI workloads.',
     long_description=(here / "README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
     install_requires=[
@@ -27,7 +27,7 @@ setup(
     ],
     python_requires=">=3.8",
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
         #
