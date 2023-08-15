@@ -181,7 +181,12 @@ class TestTableClassesCQLGeneration:
                     (
                         "BODYBLOB",
                         "VECTOR",
-                        {"str1": "STR1", "num1": "123", "num2": "456", "tru1": "true"},
+                        {
+                            "str1": "STR1",
+                            "num1": "123.0",
+                            "num2": "456.0",
+                            "tru1": "true",
+                        },
                         '["a","b"]',
                         '["A","B"]',
                         "PARTITIONID",
@@ -288,7 +293,7 @@ class TestTableClassesCQLGeneration:
             [
                 (
                     "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdkn'] = ? AND metadata_s['mdks'] = ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ;",  # noqa: E501
-                    ("true", "123", "mdv", '["a","b"]', '["MDA","MDB"]', "MDPART"),
+                    ("true", "123.0", "mdv", '["a","b"]', '["MDA","MDB"]', "MDPART"),
                 ),
             ]
         )
@@ -302,7 +307,7 @@ class TestTableClassesCQLGeneration:
                     "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdkn'] = ? AND metadata_s['mdks'] = ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
                     (
                         "true",
-                        "123",
+                        "123.0",
                         "mdv",
                         '["a","b"]',
                         '["MDA","MDB"]',
@@ -321,7 +326,7 @@ class TestTableClassesCQLGeneration:
                     "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdkn'] = ? AND metadata_s['mdks'] = ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
                     (
                         "true",
-                        "123",
+                        "123.0",
                         "mdv",
                         '["a","b"]',
                         '["MDA","MDB"]',
@@ -338,7 +343,7 @@ class TestTableClassesCQLGeneration:
             [
                 (
                     "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdkn'] = ? AND metadata_s['mdks'] = ? AND partition_id = ? ;",  # noqa: E501
-                    ("true", "123", "mdv", "MDPART"),
+                    ("true", "123.0", "mdv", "MDPART"),
                 ),
             ]
         )
@@ -348,7 +353,7 @@ class TestTableClassesCQLGeneration:
             [
                 (
                     "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdkn'] = ? AND metadata_s['mdks'] = ? AND partition_id = ? ;",  # noqa: E501
-                    ("true", "123", "mdv", "PRE-PART-ID"),
+                    ("true", "123.0", "mdv", "PRE-PART-ID"),
                 ),
             ]
         )

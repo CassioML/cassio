@@ -21,7 +21,7 @@ class TestNormalizeMetadataPolicy:
         )
 
         expected = {
-            "integer": "1",
+            "integer": "1.0",
             "float": "2.0",
             "boolean": "true",
             "null": "null",

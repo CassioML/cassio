@@ -268,9 +268,14 @@ class MetadataMixin(BaseTableMixin):
     def _coerce_string(value: Any) -> str:
         if isinstance(value, str):
             return value
-        elif isinstance(value, int) or isinstance(value, float):
-            return json.dumps(value)
         elif isinstance(value, bool):
+            # bool MUST come before int in this chain of ifs!
+            return json.dumps(value)
+        elif isinstance(value, int):
+            # we don't want to store '1' and '1.0' differently
+            # for the sake of metadata-filtered retrieval:
+            return json.dumps(float(value))
+        elif isinstance(value, float):
             return json.dumps(value)
         elif value is None:
             return json.dumps(value)

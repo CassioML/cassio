@@ -27,7 +27,7 @@ class TestMetadataCassandraTable:
         gotten2 = t.get(row_id="row2")
         assert gotten2 == {"row_id": "row2", "body_blob": None, "metadata": {}}
         md3 = {"a": 1, "b": "Bee", "c": True}
-        md3_string = {"a": "1", "b": "Bee", "c": "true"}
+        md3_string = {"a": "1.0", "b": "Bee", "c": "true"}
         t.put(row_id="row3", metadata=md3)
         gotten3 = t.get(row_id="row3")
         assert gotten3 == {"row_id": "row3", "body_blob": None, "metadata": md3_string}
@@ -50,16 +50,16 @@ class TestMetadataCassandraTable:
         t.put(row_id="twin_b", metadata={"twin": True, "index": 1})
         md_twins_gotten = sorted(
             t.find_entries(metadata={"twin": True}, n=3),
-            key=lambda res: int(res["metadata"]["index"]),
+            key=lambda res: int(float(res["metadata"]["index"])),
         )
         expected = [
             {
-                "metadata": {"twin": "true", "index": "0"},
+                "metadata": {"twin": "true", "index": "0.0"},
                 "row_id": "twin_a",
                 "body_blob": None,
             },
             {
-                "metadata": {"twin": "true", "index": "1"},
+                "metadata": {"twin": "true", "index": "1.0"},
                 "row_id": "twin_b",
                 "body_blob": None,
             },
@@ -71,7 +71,7 @@ class TestMetadataCassandraTable:
 
     def test_md_routing(self, db_session, db_keyspace):
         test_md = {"mds": "string", "mdn": 255, "mdb": True}
-        test_md_string = {"mds": "string", "mdn": "255", "mdb": "true"}
+        test_md_string = {"mds": "string", "mdn": "255.0", "mdb": "true"}
         #
         table_name_all = "m_ct_rtall"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_all};")
@@ -115,8 +115,8 @@ class TestMetadataCassandraTable:
         test_md_allowdeny_string = {
             "mdas": "MDAS",
             "mdds": "MDDS",
-            "mdan": "255",
-            "mddn": "127",
+            "mdan": "255.0",
+            "mddn": "127.0",
             "mdab": "true",
             "mddb": "true",
         }
