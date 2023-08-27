@@ -4,6 +4,7 @@ from cassandra.query import SimpleStatement, PreparedStatement  # type: ignore
 from cassandra.cluster import ResultSet  # type: ignore
 from cassandra.cluster import ResponseFuture  # type: ignore
 
+from cassio.config import check_resolve_session, check_resolve_keyspace
 from cassio.table.table_types import (
     ColumnSpecType,
     RowType,
@@ -26,15 +27,15 @@ class BaseTable:
 
     def __init__(
         self,
-        session: SessionType,
-        keyspace: str,
         table: str,
+        session: Optional[SessionType] = None,
+        keyspace: Optional[str] = None,
         ttl_seconds: Optional[int] = None,
         row_id_type: Union[str, List[str]] = ["TEXT"],
-        skip_provisioning=False,
+        skip_provisioning: bool = False,
     ) -> None:
-        self.session = session
-        self.keyspace = keyspace
+        self.session = check_resolve_session(session)
+        self.keyspace = check_resolve_keyspace(keyspace)
         self.table = table
         self.ttl_seconds = ttl_seconds
         self.row_id_type = normalize_type_desc(row_id_type)

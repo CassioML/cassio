@@ -29,7 +29,13 @@ class KVCache:
         "will be deprecated in future versions of CassIO."
     )
 
-    def __init__(self, session: Session, keyspace: str, table: str, keys: List[Any]):
+    def __init__(
+        self,
+        table: str,
+        keys: List[Any],
+        session: Optional[Session] = None,
+        keyspace: Optional[str] = None,
+    ):
         #
         warn(self.DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
         # for LangChain this is what we expect - no other uses are planned:
