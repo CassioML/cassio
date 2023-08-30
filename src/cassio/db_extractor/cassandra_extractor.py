@@ -21,13 +21,30 @@ def _table_primary_key_columns(session, keyspace, table) -> List[str]:
     ]
 
 
+def _ensure_full_extraction_tuple(tpl, admit_nulls):
+    if len(tpl) < 2:
+        raise ValueError("At least table and column names are required in the field_mapper.")
+    elif len(tpl) == 2:
+        return tuple(list(tpl) + [admit_nulls, None])
+    elif len(tpl) == 3:
+        return tuple(list(tpl) + [None])
+    elif len(tpl) == 4:
+        return tpl
+    else:
+        raise ValueError("Cannot specify more than (table, column_or_function, admit_nulls, default) in the field_mapper.")
+
+
 class CassandraExtractor:
 
-    def __init__(self, session, keyspace, field_mapper, literal_nones):
+    def __init__(self, session, keyspace, field_mapper, admit_nulls):
         self.session = session
         self.keyspace = keyspace
-        self.field_mapper = field_mapper
-        self.literal_nones = literal_nones  # TODO: handle much better
+        #
+        _field_mapper = {
+            k: _ensure_full_extraction_tuple(v, admit_nulls)
+            for k, v in field_mapper.items()
+        }
+        self.field_mapper = _field_mapper
         # derived fields
         self.tables_needed = {fmv[0] for fmv in field_mapper.values()}
         self.primary_key_map = {
@@ -35,14 +52,21 @@ class CassandraExtractor:
             for table in self.tables_needed
         }
         # all primary-key values needed across tables
-        self.requiredParameters = list(reduce(lambda accum, nw: accum | set(nw), self.primary_key_map.values(), set()))
+        self.input_parameters = set(reduce(lambda accum, nw: accum | set(nw), self.primary_key_map.values(), set()))
+        self.output_parameters = set(field_mapper.keys())
+
+        def _dbc(args_dict):
+            return self(**args_dict)
+
+        self.dictionary_based_call = _dbc
+
 
         # TODOs:
         #   move this getter creation someplace else
         #   query a table only once (grouping required variables by source table,
         #   selecting only those unless function passed)
         def _getter(**kwargs):
-            def _retrieve_field(_table2, _key_columns, _column_or_extractor, _key_value_map):
+            def _retrieve_field(_field, _table2, _key_columns, _column_or_function, _admit_nulls, _default, _all_pkey_value_map):
                 selector = SimpleStatement(RETRIEVE_ONE_ROW_CQL_TEMPLATE.format(
                     keyspace=keyspace,
                     table=_table2,
@@ -52,28 +76,39 @@ class CassandraExtractor:
                     ),
                 ))
                 values = tuple([
-                    _key_value_map[kc]
+                    _all_pkey_value_map[kc]
                     for kc in _key_columns
                 ])
                 row = session.execute(selector, values).one()
                 if row:
-                    if callable(_column_or_extractor):
-                        return _column_or_extractor(row)
+                    # this for robustness against row_factory vs dict_factory of the Session:
+                    _rowdict = row if isinstance(row, dict) else row._asdict()
+                    if callable(_column_or_function):
+                        _retval = _column_or_function(_rowdict)
                     else:
-                        return getattr(row, _column_or_extractor)
+                        _retval = _rowdict[_column_or_function]
                 else:
-                    if literal_nones:
-                        return None
+                    _retval = None
+
+                if _retval is None:
+                    if _admit_nulls:
+                        return _default
                     else:
-                        raise ValueError('No data found for %s from %s.%s' % (
-                            str(_column_or_extractor),
-                            keyspace,
-                            _table2,
-                        ))
+                        raise ValueError('Null data found for "%s"' % _field)
+                else:
+                    return _retval
 
             return {
-                field: _retrieve_field(table, self.primary_key_map[table], columnOrExtractor, kwargs)
-                for field, (table, columnOrExtractor) in field_mapper.items()
+                field: _retrieve_field(
+                    _field=field,
+                    _table2=table,
+                    _key_columns=self.primary_key_map[table],
+                    _column_or_function=column_or_function,
+                    _admit_nulls=admit_nulls,
+                    _default=default,
+                    _all_pkey_value_map=kwargs,
+                )
+                for field, (table, column_or_function, admit_nulls, default) in self.field_mapper.items()
             }
 
         self.getter = _getter
