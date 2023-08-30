@@ -23,7 +23,7 @@ def _table_primary_key_columns(session, keyspace, table) -> List[str]:
 
 def _ensure_full_extraction_tuple(tpl, admit_nulls):
     if len(tpl) < 2:
-        raise ValueError("At least table and column names are required.")
+        raise ValueError("At least table and column names are required in the field_mapper.")
     elif len(tpl) == 2:
         return tuple(list(tpl) + [admit_nulls, None])
     elif len(tpl) == 3:
@@ -31,7 +31,7 @@ def _ensure_full_extraction_tuple(tpl, admit_nulls):
     elif len(tpl) == 4:
         return tpl
     else:
-        raise ValueError("Cannot specify more than (table, column_or_function, admit_nulls, default")
+        raise ValueError("Cannot specify more than (table, column_or_function, admit_nulls, default) in the field_mapper.")
 
 
 class CassandraExtractor:
@@ -94,7 +94,7 @@ class CassandraExtractor:
                     if _admit_nulls:
                         return _default
                     else:
-                        raise ValueError('Null data found for %s' % _field)
+                        raise ValueError('Null data found for "%s"' % _field)
                 else:
                     return _retval
 
