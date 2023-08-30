@@ -1,3 +1,15 @@
+v 0.1.1
+=======
+Interface changes in the CassandraExtractor object:
+  init param literal_nones -> admit_nulls
+  member name change self.requiredParameters -> self.input_parameters
+  new member (a function) self.dictionary_based_call
+  new member (a list) self.output_parameters
+
+v 0.1.0
+=======
+The mixin refactoring of all the table abstractions is introduced.
+
 v 0.0.7
 =======
 * VectorTable loses `auto_id` parameter and gains `primary_key_type`
