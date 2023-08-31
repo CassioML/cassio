@@ -7,7 +7,7 @@ import uuid
 from warnings import warn
 from typing import Any, Dict, Iterable, Optional
 
-from cassandra.cluster import Session  # type: ignore
+from cassandra.cluster import Session
 
 from cassio.table.tables import ClusteredCassandraTable
 
@@ -51,7 +51,7 @@ class StoredBlobHistory:
             **full_kwargs,
         )
 
-    def store(self, session_id: str, blob: str, ttl_seconds: Optional[int]):
+    def store(self, session_id: str, blob: str, ttl_seconds: Optional[int]) -> None:
         this_row_id = uuid.uuid1()
         self.table.put(
             partition_id=session_id,

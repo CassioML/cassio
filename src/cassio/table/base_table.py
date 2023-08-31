@@ -1,8 +1,8 @@
-from typing import Any, List, Dict, Iterable, Optional, Set, Tuple, Union
+from typing import Any, cast, Dict, List, Iterable, Optional, Set, Tuple, Union
 
-from cassandra.query import SimpleStatement, PreparedStatement  # type: ignore
-from cassandra.cluster import ResultSet  # type: ignore
-from cassandra.cluster import ResponseFuture  # type: ignore
+from cassandra.query import SimpleStatement, PreparedStatement
+from cassandra.cluster import ResultSet
+from cassandra.cluster import ResponseFuture
 
 from cassio.table.table_types import (
     ColumnSpecType,
@@ -31,7 +31,7 @@ class BaseTable:
         table: str,
         ttl_seconds: Optional[int] = None,
         row_id_type: Union[str, List[str]] = ["TEXT"],
-        skip_provisioning=False,
+        skip_provisioning: bool = False,
     ) -> None:
         self.session = session
         self.keyspace = keyspace
@@ -120,7 +120,9 @@ class BaseTable:
         #
         return dict_row
 
-    def _delete(self, is_async: bool, **kwargs: Any) -> Union[None, ResponseFuture]:
+    def _delete(
+        self, is_async: bool, **kwargs: Dict[str, Any]
+    ) -> Union[None, ResponseFuture]:
         n_kwargs = self._normalize_kwargs(kwargs)
         (
             rest_kwargs,
@@ -140,11 +142,11 @@ class BaseTable:
             self.execute_cql(delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE)
             return None
 
-    def delete(self, **kwargs: Any) -> None:
+    def delete(self, **kwargs: Dict[str, Any]) -> None:
         self._delete(is_async=False, **kwargs)
         return None
 
-    def delete_async(self, **kwargs: Any) -> ResponseFuture:
+    def delete_async(self, **kwargs: Dict[str, Any]) -> ResponseFuture:
         return self._delete(is_async=True, **kwargs)
 
     def _clear(self, is_async: bool) -> Union[None, ResponseFuture]:
@@ -165,7 +167,7 @@ class BaseTable:
         return self._clear(is_async=True)
 
     def _parse_select_core_params(
-        self, **kwargs: Any
+        self, **kwargs: Dict[str, Any]
     ) -> Tuple[str, str, Tuple[Any, ...]]:
         n_kwargs = self._normalize_kwargs(kwargs)
         # TODO: work on a columns: Optional[List[str]] = None
@@ -214,10 +216,12 @@ class BaseTable:
         else:
             return self._normalize_row(result)
 
-    def get_async(self, **kwargs) -> ResponseFuture:
+    def get_async(self, **kwargs: Dict[str, Any]) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
 
-    def _put(self, is_async: bool, **kwargs: Any) -> Union[None, ResponseFuture]:
+    def _put(
+        self, is_async: bool, **kwargs: Dict[str, Any]
+    ) -> Union[None, ResponseFuture]:
         n_kwargs = self._normalize_kwargs(kwargs)
         primary_key = self._schema_primary_key()
         assert set(col for col, _ in primary_key) - set(n_kwargs.keys()) == set()
@@ -291,7 +295,7 @@ class BaseTable:
         )
         return final_cql
 
-    def _obtain_prepared_statement(self, final_cql) -> PreparedStatement:
+    def _obtain_prepared_statement(self, final_cql: str) -> PreparedStatement:
         # TODO: improve this placeholder handling
         _preparable_cql = final_cql.replace("%s", "?")
         # handle the cache of prepared statements
@@ -319,7 +323,7 @@ class BaseTable:
             else:
                 statement = self._obtain_prepared_statement(final_cql)
             #
-            return self.session.execute(statement, args)
+            return cast(Iterable[RowType], self.session.execute(statement, args))
 
     def execute_cql_async(
         self,

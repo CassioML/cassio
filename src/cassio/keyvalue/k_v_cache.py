@@ -4,9 +4,9 @@ One row per partition, serializes a multiple partition key into a string
 """
 
 from warnings import warn
-from typing import Any, Dict, List, Optional
+from typing import Any, cast, Dict, List, Optional
 
-from cassandra.cluster import Session  # type: ignore
+from cassandra.cluster import Session
 
 from cassio.table.tables import ElasticCassandraTable
 
@@ -57,14 +57,14 @@ class KVCache:
         self.table.put(body_blob=cache_value, ttl_seconds=ttl_seconds, **key_dict)
         return None
 
-    def get(self, key_dict) -> Optional[str]:
+    def get(self, key_dict: Dict[str, Any]) -> Optional[str]:
         entry = self.table.get(**key_dict)
         if entry is None:
             return None
         else:
-            return entry["body_blob"]
+            return cast(str, entry["body_blob"])
 
-    def delete(self, key_dict) -> None:
+    def delete(self, key_dict: Dict[str, Any]) -> None:
         """Will not complain if the row does not exist."""
         self.table.delete(**key_dict)
         return None

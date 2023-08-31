@@ -3,8 +3,9 @@ import json
 
 from typing import (
     Any,
-    List,
+    cast,
     Dict,
+    List,
     Iterable,
     Optional,
     Set,
@@ -12,7 +13,7 @@ from typing import (
     Union,
 )
 
-from cassandra.cluster import ResponseFuture  # type: ignore
+from cassandra.cluster import ResponseFuture
 
 from cassio.utils.vector.distance_metrics import distance_metrics
 
@@ -88,7 +89,7 @@ class ClusteredMixin(BaseTableMixin):
 
     def _delete_partition(
         self, is_async: bool, partition_id: Optional[str] = None
-    ) -> None:
+    ) -> Union[None, ResponseFuture]:
         _partition_id = self.partition_id if partition_id is None else partition_id
         #
         where_clause = "WHERE " + "partition_id = %s"
@@ -102,7 +103,7 @@ class ClusteredMixin(BaseTableMixin):
             )
         else:
             self.execute_cql(delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE)
-            return
+            return None
 
     def delete_partition(self, partition_id: Optional[str] = None) -> None:
         self._delete_partition(is_async=False, partition_id=partition_id)
@@ -262,7 +263,7 @@ class MetadataMixin(BaseTableMixin):
 
     @staticmethod
     def _deserialize_md_dict(md_string: str) -> Dict[str, Any]:
-        return json.loads(md_string)
+        return cast(Dict[str, Any], json.loads(md_string))
 
     @staticmethod
     def _coerce_string(value: Any) -> str:
@@ -536,28 +537,27 @@ class VectorMixin(BaseTableMixin):
             )
             # sort rows by metric score. First handle metric/threshold
             if metric_threshold is not None:
+                _used_thr = metric_threshold
                 if distance_reversed:
 
-                    def _thresholder(mtx, thr):
+                    def _thresholder(mtx: float, thr: float) -> bool:
                         return mtx >= thr
 
                 else:
 
-                    def _thresholder(mtx, thr):
+                    def _thresholder(mtx: float, thr: float) -> bool:
                         return mtx <= thr
 
             else:
+                # this to satisfy the type checker
+                _used_thr = 0.0
                 # no hits are discarded
-                def _thresholder(mtx, thr):
+                def _thresholder(mtx: float, thr: float) -> bool:
                     return True
 
             #
             sorted_passing_rows = sorted(
-                (
-                    pair
-                    for pair in rows_with_metric
-                    if _thresholder(pair[0], metric_threshold)
-                ),
+                (pair for pair in rows_with_metric if _thresholder(pair[0], _used_thr)),
                 key=itemgetter(0),
                 reverse=distance_reversed,
             )
@@ -596,7 +596,7 @@ class ElasticKeyMixin(BaseTableMixin):
 
     @staticmethod
     def _deserialize_key_list(keys_str: str) -> List[Any]:
-        return json.loads(keys_str)
+        return cast(List[Any], json.loads(keys_str))
 
     def _normalize_row(self, raw_row: Any) -> Dict[str, Any]:
         key_fields = {"key_desc", "key_vals"}

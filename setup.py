@@ -4,21 +4,24 @@ import pathlib
 here = pathlib.Path(__file__).parent.resolve()
 
 setup(
-    name='cassio',
-    version='0.1.1',
-    author='Stefano Lottini',
-    author_email='stefano.lottini@datastax.com',
+    name="cassio",
+    version="0.1.1",
+    author="Stefano Lottini",
+    author_email="stefano.lottini@datastax.com",
     package_dir={"": "src"},
-    packages=find_packages(where='src'),
+    packages=find_packages(where="src"),
     # entry_points={
     #     "console_scripts": [
     #         # will we ever have a command-line cassio script?
     #         "cassio=cassio:main",
     #     ],
     # },
-    url='https://github.com/hemidactylus/cassio',
-    license='LICENSE.txt',
-    description='A framework-agnostic Python library to seamlessly integrate Apache Cassandra(R) with ML/LLM/genAI workloads.',
+    url="https://github.com/hemidactylus/cassio",
+    license="LICENSE.txt",
+    description=(
+        "A framework-agnostic Python library to seamlessly integrate "
+        "Apache Cassandra(R) with ML/LLM/genAI workloads."
+    ),
     long_description=(here / "README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
     install_requires=[
