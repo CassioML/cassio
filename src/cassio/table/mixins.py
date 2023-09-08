@@ -433,6 +433,27 @@ class MetadataMixin(BaseTableMixin):
     def find_entries_async(self, n: int, **kwargs: Any) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
 
+    def find_and_delete_entries(self, **kwargs: Any) -> None:
+        # EXPERIMENTAL: use find_entries to delete entries based
+        # on queries with metadata, etc.
+        # Draft implementation. Todo: (1) column proj, (2) batches until nothing
+        _pk_cols = [col for col, _ in self._schema_primary_key()]
+        del_pkargs = [
+            {
+                pkc: found_row[pkc]
+                for pkc in _pk_cols
+            }
+            for found_row in self.find_entries(n=10, **kwargs)
+        ]
+        d_futures = [
+            self.delete_async(**del_pkarg)
+            for del_pkarg in del_pkargs
+        ]
+        for d_future in d_futures:
+            _ = d_future.result()
+        #
+        return None
+
 
 class VectorMixin(BaseTableMixin):
     def __init__(self, *pargs: Any, vector_dimension: int, **kwargs: Any) -> None:
