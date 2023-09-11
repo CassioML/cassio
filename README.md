@@ -80,7 +80,7 @@ catch versions-specific issues
 - Commit the very code that will be built:
 
 ```
-rm upload dist/*
+rm dist/*
 python setup.py sdist bdist_wheel
 twine upload dist/*
 # (login to PyPI ...)
