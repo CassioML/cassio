@@ -24,13 +24,14 @@ def _reset_cassio_globals():
 
 
 @pytest.mark.skipif(
-    os.environ["TEST_DB_MODE"] != "ASTRA_DB", reason="requires a test on Astra DB"
+    os.environ["TEST_DB_MODE"] != "ASTRA_DB", reason="requires a test Astra DB instance"
 )
-class TestZeroBundleInit:
+class TestInitAstra:
     """
-    Init methods and facilities around bundle conversions.
-    Save for `test_bundle_to_valid_init_string`, all other
-    require a "INIT_STRING" environment variable with the init string to run.
+    Init method signatures, Astra side. Trying various possible ways to supply
+    Astra-related initialization to CassIO.
+    Also testing the init string packing/unpacking.
+    Requires a "INIT_STRING" environment variable with the init string to run.
     """
 
     def test_bundle_to_valid_init_string(self):

@@ -1,6 +1,6 @@
 import tempfile
 import shutil
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from cassandra.cluster import Cluster, Session  # type: ignore
 from cassandra.auth import PlainTextAuthProvider  # type: ignore
@@ -20,31 +20,54 @@ def init(
     init_string: Optional[str] = None,
     token: Optional[str] = None,
     keyspace: Optional[str] = None,
+    contact_points: Optional[Union[str, List[str]]] = None,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
     cluster_kwargs: Optional[Dict[str, Any]] = None,
     tempfile_basedir: Optional[str] = None,
 ) -> None:
     """
     Globally set the default Cassandra connection (/keyspace) for CassIO.
-    This default will be used by all other CassIO instantiations, unless
-    passed at instantiation time there.
+    This default will be used by all other db-requiring CassIO instantiations,
+    unless passed to the respective classes' __init__.
 
     There are various ways to achieve this, depending on which of the following
-    parameters is passes (all optional).
+    parameters is passed (all optional).
+    Broadly speaking, this method allows to pass one's own ready Session,
+    or to have it created in the method. For this second case, both Astra DB
+    and a regular Cassandra cluster can be targeted.
+
+    CASSANDRA
+    If one passes `contact_points`, it is assumed that this is Cassandra.
+    In that case, only the following arguments will be used:
+    `contact_points`, `keyspace`, `username`, `password`, `cluster_kwargs`
+    Note that when passing a `session` all other parameters are ignored.
+
+    ASTRA DB:
+    If `contact_points` is not passed, one of several methods to connect to
+    Astra should be supplied for the connection to Astra. These overlap:
+    see below for their precedence.
+    Note that when passing a `session` all other parameters are ignored.
+
+    PARAMETERS:
         `session` (optional cassandra.cluster.Session), an established connection.
         `secure_connect_bundle` (optional str), full path to a Secure Bundle.
         `init_string` (optional str), a stand-alone "db init string" credential
             (which can optionally contain keyspace and/or token).
         `token` (optional str), the Astra DB "AstraCS:..." token.
         `keyspace` (optional str), the keyspace to work.
+        `contact_points` (optional List[str]), for Cassandra connection
+        `username` (optional str), username for Cassandra connection
+        `password` (optional str), password for Cassandra connection
         `cluster_kwargs` (optional dict), additional arguments to `Cluster(...)`.
         `tempfile_basedir` (optional str), where to create temporary work directories.
 
-    The above parameters are arranged in a chain of fallbacks,
-    just in case redundant information is supplied:
+    ASTRA DB:
+    The Astra-related parameters are arranged in a chain of fallbacks.
+    In case redundant information is supplied, these are the precedences:
         session > secure_connect_bundle > init_string
         token > (from init_string if any)
         keyspace > (from init_string if any)
-
     Constraints and caveats:
         `secure_connect_bundle` requires `token`.
         `session` does not make use of `cluster_kwargs` and will ignore it.
@@ -89,26 +112,97 @@ def init(
         bundle_from_arg = secure_connect_bundle
         token_from_arg = token
         keyspace_from_arg = keyspace
+        can_be_astra = any(
+            [
+                secure_connect_bundle is not None,
+                init_string is not None,
+                token is not None,
+            ]
+        )
         # resolution of priority among args
         if direct_session:
             default_session = direct_session
         else:
-            chosen_bundle = _first_valid(bundle_from_arg, bundle_from_is)
-            if chosen_bundle:
+            # first determine if Cassandra or Astra
+            is_cassandra = all(
+                [
+                    secure_connect_bundle is None,
+                    init_string is None,
+                    token is None,
+                    contact_points is not None,
+                ]
+            )
+            if is_cassandra:
+                is_astra_db = False
+            else:
+                # determine if Astra DB
+                is_astra_db = can_be_astra
+            #
+            if is_cassandra:
+                # need to take care of:
+                #   contact_points, username, password, cluster_kwargs
+                chosen_contact_points: Union[List[str], None]
+                if contact_points:
+                    if isinstance(contact_points, str):
+                        chosen_contact_points = [
+                            cp.strip() for cp in contact_points.split(",") if cp.strip()
+                        ]
+                    else:
+                        # assume it's a list already
+                        chosen_contact_points = contact_points
+                else:
+                    # normalize "" to None for later `Cluster(...)` call
+                    chosen_contact_points = None
+                #
+                if username is not None and password is not None:
+                    chosen_auth_provider = PlainTextAuthProvider(
+                        username,
+                        password,
+                    )
+                else:
+                    if username is not None or password is not None:
+                        raise ValueError(
+                            "Please provide both usename/password or none."
+                        )
+                    else:
+                        chosen_auth_provider = None
+                #
+                if chosen_contact_points is None:
+                    cluster = Cluster(
+                        auth_provider=chosen_auth_provider,
+                        **(cluster_kwargs if cluster_kwargs is not None else {})
+                    )
+                else:
+                    cluster = Cluster(
+                        contact_points=chosen_contact_points,
+                        auth_provider=chosen_auth_provider,
+                        **(cluster_kwargs if cluster_kwargs is not None else {})
+                    )
+                default_session = cluster.connect()
+            elif is_astra_db:
+                # Astra DB
                 chosen_token = _first_valid(token_from_arg, token_from_is)
                 if chosen_token is None:
                     raise ValueError(
                         "A token must be supplied if connection is to be established."
                     )
-                cluster = Cluster(
-                    cloud={"secure_connect_bundle": chosen_bundle},
-                    auth_provider=PlainTextAuthProvider(
-                        ASTRA_CLOUD_AUTH_USERNAME,
-                        chosen_token,
-                    ),
-                    **(cluster_kwargs if cluster_kwargs is not None else {})
-                )
-                default_session = cluster.connect()
+                chosen_bundle_pre_token = _first_valid(bundle_from_arg, bundle_from_is)
+                # TODO: try to get the bundle from the token if not supplied otherwise
+                # and re-evaluate chosen_bundle. For now:
+                chosen_bundle = chosen_bundle_pre_token
+                #
+                if chosen_bundle:
+                    cluster = Cluster(
+                        cloud={"secure_connect_bundle": chosen_bundle},
+                        auth_provider=PlainTextAuthProvider(
+                            ASTRA_CLOUD_AUTH_USERNAME,
+                            chosen_token,
+                        ),
+                        **(cluster_kwargs if cluster_kwargs is not None else {})
+                    )
+                    default_session = cluster.connect()
+                else:
+                    raise ValueError("No secure-connect-bundle was available.")
         # keyspace to be resolved in any case
         chosen_keyspace = _first_valid(keyspace_from_arg, keyspace_from_is)
         default_keyspace = chosen_keyspace
