@@ -3,6 +3,7 @@ fixtures for testing
 """
 
 import os
+from typing import Dict, List
 
 import pytest
 
@@ -10,6 +11,8 @@ from cassandra.cluster import Cluster  # type: ignore
 from cassandra.auth import PlainTextAuthProvider  # type: ignore
 
 from cassio.table.cql import MockDBSession
+
+import cassio
 
 
 # DB session (as per settings detected in env vars)
@@ -90,3 +93,23 @@ def db_keyspace():
 @pytest.fixture(scope="function")
 def mock_db_session():
     return MockDBSession()
+
+
+# Utilities
+
+
+def _reset_cassio_globals():
+    cassio.config.default_session = None
+    cassio.config.default_keyspace = None
+
+
+def _freeze_envvars(var_names: List[str]) -> Dict[str, str]:
+    frozen = {var: os.environ[var] for var in var_names if var in os.environ}
+    for var in frozen.keys():
+        del os.environ[var]
+    return frozen
+
+
+def _unfreeze_envvars(var_map: Dict[str, str]) -> None:
+    for var, val in var_map.items():
+        os.environ[var] = val

@@ -145,7 +145,7 @@ def create_init_string_utility():
         print(f"- Token={'Y' if token else 'N'}.")
         this_init_string = bundle_path_to_init_string(bundle_path, keyspace, token)
         print("=> Export command:")
-        print(f'export INIT_STRING="{this_init_string}"')
+        print(f'export ASTRA_DB_INIT_STRING="{this_init_string}"')
 
 
 if __name__ == "__main__":

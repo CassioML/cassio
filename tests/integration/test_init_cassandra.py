@@ -10,16 +10,17 @@ from cassandra.auth import PlainTextAuthProvider  # type: ignore
 import cassio  # type: ignore
 from cassio.config import resolve_session, resolve_keyspace
 
+from tests.conftest import (
+    _freeze_envvars,
+    _reset_cassio_globals,
+    _unfreeze_envvars,
+)
+
 
 CASSANDRA_USERNAME = os.environ.get("CASSANDRA_USERNAME")
 CASSANDRA_PASSWORD = os.environ.get("CASSANDRA_PASSWORD")
 CASSANDRA_CONTACT_POINTS = os.environ.get("CASSANDRA_CONTACT_POINTS")
 CASSANDRA_KEYSPACE = os.environ.get("CASSANDRA_KEYSPACE")
-
-
-def _reset_cassio_globals():
-    cassio.config.default_session = None
-    cassio.config.default_keyspace = None
 
 
 @pytest.mark.skipif(
@@ -135,3 +136,27 @@ class TestInitCassandra:
         assert resolve_keyspace() == CASSANDRA_KEYSPACE
         assert resolve_session("s") == "s"
         assert resolve_keyspace("k") == "k"
+
+    def test_init_auto(self):
+        _reset_cassio_globals()
+        stolen = _freeze_envvars(
+            [
+                "ASTRA_DB_APPLICATION_TOKEN",
+                "ASTRA_DB_INIT_STRING",
+                "ASTRA_DB_SECURE_BUNDLE_PATH",
+                "ASTRA_DB_KEYSPACE",
+                "ASTRA_DB_DATABASE_ID",
+            ]
+        )
+        _prev_cp = os.environ.get("CASSANDRA_CONTACT_POINTS")
+        os.environ["CASSANDRA_CONTACT_POINTS"] = ""
+        cassio.init(auto=True)
+        assert resolve_session() is not None
+        assert resolve_keyspace() == os.environ.get("CASSANDRA_KEYSPACE")
+        assert resolve_session("s") == "s"
+        assert resolve_keyspace("k") == "k"
+        _unfreeze_envvars(stolen)
+        if _prev_cp is not None:
+            os.environ["CASSANDRA_CONTACT_POINTS"] = _prev_cp
+        else:
+            del os.environ["CASSANDRA_CONTACT_POINTS"]

@@ -18,6 +18,7 @@ default_keyspace: Optional[str] = None
 
 
 def init(
+    auto: bool = False,
     session: Optional[Session] = None,
     secure_connect_bundle: Optional[str] = None,
     init_string: Optional[str] = None,
@@ -35,11 +36,12 @@ def init(
     This default will be used by all other db-requiring CassIO instantiations,
     unless passed to the respective classes' __init__.
 
-    There are various ways to achieve this, depending on which of the following
-    parameters is passed (all optional).
+    There are various ways to achieve this, depending on the passed parameters.
     Broadly speaking, this method allows to pass one's own ready Session,
     or to have it created in the method. For this second case, both Astra DB
     and a regular Cassandra cluster can be targeted.
+    One can also simply call cassio.init(auto=True) and let it figure out
+    what to do based on standard environment variables.
 
     CASSANDRA
     If one passes `contact_points`, it is assumed that this is Cassandra.
@@ -53,7 +55,22 @@ def init(
     see below for their precedence.
     Note that when passing a `session` all other parameters are ignored.
 
+    AUTO:
+    If passing auto=True, no other parameter is allowed except for
+    `tempfile_basedir`. The rest, including choosing Astra DB / Cassandra,
+    is autofilled by inspecting the following environment variables:
+        CASSANDRA_CONTACT_POINTS
+        CASSANDRA_USERNAME
+        CASSANDRA_PASSWORD
+        CASSANDRA_KEYSPACE
+        ASTRA_DB_APPLICATION_TOKEN
+        ASTRA_DB_INIT_STRING
+        ASTRA_DB_SECURE_BUNDLE_PATH
+        ASTRA_DB_KEYSPACE
+        ASTRA_DB_DATABASE_ID
+
     PARAMETERS:
+        `auto`: (bool = False), whether to auto-guess all connection params.
         `session` (optional cassandra.cluster.Session), an established connection.
         `secure_connect_bundle` (optional str), full path to a Secure Bundle.
         `init_string` (optional str), a stand-alone "db init string" credential
@@ -96,6 +113,42 @@ def init(
     keyspace_from_arg: Optional[str] = None
     token_from_is: Optional[str] = None
     token_from_arg: Optional[str] = None
+    #
+    if auto:
+        if any(
+            v is not None
+            for v in (
+                session,
+                secure_connect_bundle,
+                init_string,
+                token,
+                database_id,
+                keyspace,
+                contact_points,
+                username,
+                password,
+                cluster_kwargs,
+            )
+        ):
+            raise ValueError("When auto=True, no arguments can be passed.")
+        # setting some arguments from environment variables
+        if "CASSANDRA_CONTACT_POINTS" in os.environ:
+            contact_points = os.environ["CASSANDRA_CONTACT_POINTS"]
+            username = os.environ.get("CASSANDRA_USERNAME")
+            password = os.environ.get("CASSANDRA_PASSWORD")
+            keyspace = os.environ.get("CASSANDRA_KEYSPACE")
+        elif any(
+            avar in os.environ
+            for avar in [
+                "ASTRA_DB_APPLICATION_TOKEN",
+                "ASTRA_DB_INIT_STRING",
+            ]
+        ):
+            token = os.environ.get("ASTRA_DB_APPLICATION_TOKEN")
+            init_string = os.environ.get("ASTRA_DB_INIT_STRING")
+            secure_connect_bundle = os.environ.get("ASTRA_DB_SECURE_BUNDLE_PATH")
+            keyspace = os.environ.get("ASTRA_DB_KEYSPACE")
+            database_id = os.environ.get("ASTRA_DB_DATABASE_ID")
     #
     try:
         # process init_string

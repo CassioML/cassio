@@ -17,10 +17,11 @@ from cassio.config.bundle_management import (
     init_string_to_bundle_path_and_options,
 )
 
-
-def _reset_cassio_globals():
-    cassio.config.default_session = None
-    cassio.config.default_keyspace = None
+from tests.conftest import (
+    _freeze_envvars,
+    _reset_cassio_globals,
+    _unfreeze_envvars,
+)
 
 
 @pytest.mark.skipif(
@@ -31,7 +32,7 @@ class TestInitAstra:
     Init method signatures, Astra side. Trying various possible ways to supply
     Astra-related initialization to CassIO.
     Also testing the init string packing/unpacking.
-    Requires a "INIT_STRING" environment variable with the init string to run.
+    Requires a "ASTRA_DB_INIT_STRING" environment variable with the init string to run.
     """
 
     def test_bundle_to_valid_init_string(self):
@@ -116,33 +117,50 @@ class TestInitAstra:
         assert resolve_keyspace() is not None
 
     @pytest.mark.skipif(
-        os.environ.get("INIT_STRING") is None,
+        os.environ.get("ASTRA_DB_INIT_STRING") is None,
         reason="requires the init-string available as environment variable",
     )
     def test_init_init_string(self):
         _reset_cassio_globals()
-        inst = os.environ["INIT_STRING"]
+        inst = os.environ["ASTRA_DB_INIT_STRING"]
         cassio.init(init_string=inst)
         assert resolve_session() is not None
         assert resolve_keyspace() is not None
 
     @pytest.mark.skipif(
-        os.environ.get("INIT_STRING") is None,
+        os.environ.get("ASTRA_DB_INIT_STRING") is None,
         reason="requires the init-string available as environment variable",
     )
     def test_init_init_string_overwrite_ks(self):
         _reset_cassio_globals()
-        inst = os.environ["INIT_STRING"]
+        inst = os.environ["ASTRA_DB_INIT_STRING"]
         cassio.init(init_string=inst, keyspace="my_keyspace")
         assert resolve_session() is not None
         assert resolve_keyspace() == "my_keyspace"
 
     @pytest.mark.skipif(
-        os.environ.get("INIT_STRING") is None,
+        os.environ.get("ASTRA_DB_INIT_STRING") is None,
         reason="requires the init-string available as environment variable",
     )
     def test_init_init_string_overwrite_tk(self):
         _reset_cassio_globals()
-        inst = os.environ["INIT_STRING"]
+        inst = os.environ["ASTRA_DB_INIT_STRING"]
         with pytest.raises(NoHostAvailable):
             cassio.init(init_string=inst, token="AstraCS:wrong")
+
+    def test_init_auto(self):
+        _reset_cassio_globals()
+        stolen = _freeze_envvars(
+            [
+                "CASSANDRA_CONTACT_POINTS",
+                "CASSANDRA_USERNAME",
+                "CASSANDRA_PASSWORD",
+                "CASSANDRA_KEYSPACE",
+            ]
+        )
+        cassio.init(auto=True)
+        assert resolve_session() is not None
+        assert resolve_keyspace() == os.environ.get("ASTRA_DB_KEYSPACE")
+        assert resolve_session("s") == "s"
+        assert resolve_keyspace("k") == "k"
+        _unfreeze_envvars(stolen)
