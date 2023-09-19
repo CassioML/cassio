@@ -68,11 +68,8 @@ class TestInitCassandra:
         assert resolve_session("s") == "s"
         assert resolve_keyspace("k") == "k"
 
-    @pytest.mark.skipif(
-        CASSANDRA_CONTACT_POINTS is not None,
-        reason="requires no contact points defined",
-    )
     def test_init_empty_cps(self):
+        stolen = _freeze_envvars(["CASSANDRA_CONTACT_POINTS"])
         _reset_cassio_globals()
         assert resolve_session() is None
         assert resolve_keyspace() is None
@@ -87,6 +84,7 @@ class TestInitCassandra:
         assert resolve_keyspace() is None
         assert resolve_session("s") == "s"
         assert resolve_keyspace("k") == "k"
+        _unfreeze_envvars(stolen)
 
     def test_init_cps(self):
         _reset_cassio_globals()
