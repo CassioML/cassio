@@ -18,7 +18,10 @@ setup(
     },
     url="https://github.com/hemidactylus/cassio",
     license="LICENSE.txt",
-    description="A framework-agnostic Python library to seamlessly integrate Apache Cassandra(R) with ML/LLM/genAI workloads.",
+    description=(
+        "A framework-agnostic Python library to seamlessly integrate "
+        "Apache Cassandra(R) with ML/LLM/genAI workloads."
+    ),
     long_description=(here / "README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
     install_requires=[

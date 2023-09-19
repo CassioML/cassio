@@ -1,7 +1,7 @@
-from typing import Union
+from typing import Any, List, Tuple, Union
 from enum import Enum
 
-from cassandra.query import SimpleStatement, PreparedStatement  # type: ignore
+from cassandra.query import SimpleStatement, PreparedStatement
 
 
 class CQLOpType(Enum):
@@ -31,12 +31,14 @@ CREATE_ENTRIES_INDEX_CQL_TEMPLATE = """CREATE CUSTOM INDEX IF NOT EXISTS {index_
 SELECT_ANN_CQL_TEMPLATE = """SELECT {columns_desc} FROM {{table_fqname}} {where_clause} ORDER BY {vector_column} ANN OF %s {limit_clause};"""  # noqa: E501
 
 CQLStatementType = Union[str, SimpleStatement, PreparedStatement]
+StatementWithArgs = Tuple[CQLStatementType, Tuple[Any, ...]]
+StatementStrWithArgs = Tuple[str, Tuple[Any, ...]]
 
 # Mock DB session
 class MockDBSession:
-    def __init__(self, verbose=False):
+    def __init__(self, verbose: bool = False):
         self.verbose = verbose
-        self.statements = []
+        self.statements: List[StatementWithArgs] = []
 
     @staticmethod
     def getStatementBody(statement: CQLStatementType) -> str:
@@ -67,11 +69,13 @@ class MockDBSession:
         )
 
     @staticmethod
-    def prepare(statement):
+    def prepare(statement: str) -> PreparedStatement:
         # A very unusable 'prepared statement' just for tracing/debugging:
         return PreparedStatement(None, 0, 0, statement, "keyspace", None, None, None)
 
-    def execute(self, statement, arguments=tuple()):
+    def execute(
+        self, statement: CQLStatementType, arguments: Tuple[Any, ...] = tuple()
+    ) -> List[Any]:
         if self.verbose:
             #
             st_body = self.getStatementBody(statement)
@@ -97,13 +101,13 @@ class MockDBSession:
         self.statements.append((statement, arguments))
         return []
 
-    def last_raw(self, n):
+    def last_raw(self, n: int) -> List[StatementWithArgs]:
         if n <= 0:
             return []
         else:
             return self.statements[-n:]
 
-    def last(self, n):
+    def last(self, n: int) -> List[StatementStrWithArgs]:
         return [
             (
                 self.normalizeCQLStatement(stmt),
@@ -112,7 +116,9 @@ class MockDBSession:
             for stmt, data in self.last_raw(n)
         ]
 
-    def assert_last_equal(self, expected_statements):
+    def assert_last_equal(
+        self, expected_statements: List[StatementStrWithArgs]
+    ) -> None:
         # used for testing
         last_executed = self.last(len(expected_statements))
         assert len(last_executed) == len(expected_statements)
@@ -121,3 +127,4 @@ class MockDBSession:
             exe_cql = self.normalizeCQLStatement(s_exe[0])
             expe_cql = self.normalizeCQLStatement(s_expe[0])
             assert exe_cql == expe_cql, f"EXE#{exe_cql}# != EXPE#{expe_cql}#"
+        return None

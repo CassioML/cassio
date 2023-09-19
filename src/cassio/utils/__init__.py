@@ -1,1 +1,1 @@
-from cassio.utils.vector import distance_metrics  # noqa: F401
+from cassio.utils.vector.distance_metrics import distance_metrics  # noqa: F401

@@ -94,7 +94,6 @@ def db_keyspace():
 def mock_db_session():
     return MockDBSession()
 
-
 # Utilities
 
 
@@ -113,3 +112,28 @@ def _freeze_envvars(var_names: List[str]) -> Dict[str, str]:
 def _unfreeze_envvars(var_map: Dict[str, str]) -> None:
     for var, val in var_map.items():
         os.environ[var] = val
+
+P_TABLE_NAME = "people_x"
+C_TABLE_NAME = "nicknames_x"
+
+
+@pytest.fixture(scope="class")
+def extractor_tables(db_session, db_keyspace):
+    db_session.execute(
+        f"CREATE TABLE IF NOT EXISTS {db_keyspace}.{P_TABLE_NAME} (city text, name text, age int, PRIMARY KEY (city, name)) WITH CLUSTERING ORDER BY (name ASC);"  # noqa: E501
+    )
+    db_session.execute(
+        f"INSERT INTO {db_keyspace}.{P_TABLE_NAME} (city, name, age) VALUES ('milan', 'alba', 11);"  # noqa: E501
+    )
+    db_session.execute(
+        f"CREATE TABLE IF NOT EXISTS {db_keyspace}.{C_TABLE_NAME} (city text PRIMARY KEY, nickname text);"  # noqa: E501
+    )
+    db_session.execute(
+        f"INSERT INTO {db_keyspace}.{C_TABLE_NAME} (city, nickname) VALUES ('milan', 'Taaac');"  # noqa: E501
+    )
+
+    yield (P_TABLE_NAME, C_TABLE_NAME)
+
+    db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{C_TABLE_NAME};")
+    db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{P_TABLE_NAME};")
+

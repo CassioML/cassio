@@ -2,10 +2,11 @@ from typing import List, Dict, Tuple, Callable
 
 import numpy as np
 
+VectorType = List[float]
 
 # distance definitions. These all work batched in the first argument.
 def distance_dot_product(
-    embedding_vectors: List[List[float]], reference_embedding_vector: List[float]
+    embedding_vectors: List[VectorType], reference_embedding_vector: VectorType
 ) -> List[float]:
     """
     Given a list [emb_i] and a reference rEmb vector,
@@ -27,7 +28,7 @@ def distance_dot_product(
 
 
 def distance_cos_difference(
-    embedding_vectors: List[List[float]], reference_embedding_vector: List[float]
+    embedding_vectors: List[VectorType], reference_embedding_vector: VectorType
 ) -> List[float]:
     v1s = np.array(embedding_vectors, dtype=float)
     v2 = np.array(reference_embedding_vector, dtype=float)
@@ -41,7 +42,7 @@ def distance_cos_difference(
 
 
 def distance_l1(
-    embedding_vectors: List[List[float]], reference_embedding_vector: List[float]
+    embedding_vectors: List[VectorType], reference_embedding_vector: VectorType
 ) -> List[float]:
     v1s = np.array(embedding_vectors, dtype=float)
     v2 = np.array(reference_embedding_vector, dtype=float)
@@ -49,7 +50,7 @@ def distance_l1(
 
 
 def distance_l2(
-    embedding_vectors: List[List[float]], reference_embedding_vector: List[float]
+    embedding_vectors: List[VectorType], reference_embedding_vector: VectorType
 ) -> List[float]:
     v1s = np.array(embedding_vectors, dtype=float)
     v2 = np.array(reference_embedding_vector, dtype=float)
@@ -57,7 +58,7 @@ def distance_l2(
 
 
 def distance_max(
-    embedding_vectors: List[List[float]], reference_embedding_vector: List[float]
+    embedding_vectors: List[VectorType], reference_embedding_vector: VectorType
 ) -> List[float]:
     v1s = np.array(embedding_vectors, dtype=float)
     v2 = np.array(reference_embedding_vector, dtype=float)
@@ -72,7 +73,9 @@ def distance_max(
 # (i.e. True means that:
 #     - in that metric higher is closer and that
 #     - cutoff should be metric > threshold)
-distance_metrics: Dict[str, Tuple[Callable, bool]] = {
+distance_metrics: Dict[
+    str, Tuple[Callable[[List[VectorType], VectorType], List[float]], bool]
+] = {
     "cos": (
         distance_cos_difference,
         True,
