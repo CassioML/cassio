@@ -1,14 +1,17 @@
 import tempfile
 import shutil
+import os
 from typing import Any, Dict, List, Optional, Union
 
 from cassandra.cluster import Cluster, Session  # type: ignore
 from cassandra.auth import PlainTextAuthProvider  # type: ignore
 
 from cassio.config.bundle_management import init_string_to_bundle_path_and_options
+from cassio.config.bundle_download import download_astra_bundle_url
 
 
 ASTRA_CLOUD_AUTH_USERNAME = "token"
+DOWNLOADED_BUNDLE_FILE_NAME = "secure-connect-bundle_devopsapi.zip"
 
 default_session: Optional[Session] = None
 default_keyspace: Optional[str] = None
@@ -19,6 +22,7 @@ def init(
     secure_connect_bundle: Optional[str] = None,
     init_string: Optional[str] = None,
     token: Optional[str] = None,
+    database_id: Optional[str] = None,
     keyspace: Optional[str] = None,
     contact_points: Optional[Union[str, List[str]]] = None,
     username: Optional[str] = None,
@@ -55,6 +59,8 @@ def init(
         `init_string` (optional str), a stand-alone "db init string" credential
             (which can optionally contain keyspace and/or token).
         `token` (optional str), the Astra DB "AstraCS:..." token.
+        `database_id` (optional str), the Astra DB ID. Used only for Astra
+            connections with no `secure_connect_bundle` parameter passed.
         `keyspace` (optional str), the keyspace to work.
         `contact_points` (optional List[str]), for Cassandra connection
         `username` (optional str), username for Cassandra connection
@@ -68,6 +74,8 @@ def init(
         session > secure_connect_bundle > init_string
         token > (from init_string if any)
         keyspace > (from init_string if any)
+    If a secure-connect-bundle is needed and not passed, it will be downloaded:
+        this requires `database_id` to be passed, suitable token permissions.
     Constraints and caveats:
         `secure_connect_bundle` requires `token`.
         `session` does not make use of `cluster_kwargs` and will ignore it.
@@ -83,6 +91,7 @@ def init(
     direct_session: Optional[Session] = None
     bundle_from_is: Optional[str] = None
     bundle_from_arg: Optional[str] = None
+    bundle_from_download: Optional[str] = None
     keyspace_from_is: Optional[str] = None
     keyspace_from_arg: Optional[str] = None
     token_from_is: Optional[str] = None
@@ -90,8 +99,8 @@ def init(
     #
     try:
         # process init_string
+        base_dir = tempfile_basedir if tempfile_basedir else tempfile.gettempdir()
         if init_string:
-            base_dir = tempfile_basedir if tempfile_basedir else tempfile.gettempdir()
             temp_dir = tempfile.mkdtemp(dir=base_dir)
             temp_dir_created = True
             bundle_from_is, options_from_is = init_string_to_bundle_path_and_options(
@@ -187,9 +196,26 @@ def init(
                         "A token must be supplied if connection is to be established."
                     )
                 chosen_bundle_pre_token = _first_valid(bundle_from_arg, bundle_from_is)
-                # TODO: try to get the bundle from the token if not supplied otherwise
-                # and re-evaluate chosen_bundle. For now:
-                chosen_bundle = chosen_bundle_pre_token
+                # Try to get the bundle from the token if not supplied otherwise
+                if chosen_bundle_pre_token is None:
+                    if database_id is None:
+                        raise ValueError(
+                            "A database_id must be supplied if no "
+                            "secure_connect_bundle is provided."
+                        )
+                    if not temp_dir_created:
+                        temp_dir = tempfile.mkdtemp(dir=base_dir)
+                        temp_dir_created = True
+                    bundle_from_download = os.path.join(
+                        temp_dir or "", DOWNLOADED_BUNDLE_FILE_NAME
+                    )
+                    download_astra_bundle_url(
+                        database_id, chosen_token, bundle_from_download
+                    )
+                # After the devops-api part, re-evaluate chosen_bundle:
+                chosen_bundle = _first_valid(
+                    bundle_from_download, chosen_bundle_pre_token
+                )
                 #
                 if chosen_bundle:
                     cluster = Cluster(

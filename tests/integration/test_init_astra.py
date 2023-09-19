@@ -102,6 +102,23 @@ class TestInitAstra:
         assert resolve_session() is not None
         assert resolve_keyspace() is not None
 
+    @pytest.mark.skipif(
+        os.environ.get("ASTRA_DB_DATABASE_ID") is None,
+        reason="requires the database ID to download the secure bundle",
+    )
+    def test_init_download_scb(self):
+        _reset_cassio_globals()
+        dbid = os.environ["ASTRA_DB_DATABASE_ID"]
+        tok = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
+        kys = os.environ["ASTRA_DB_KEYSPACE"]
+        cassio.init(database_id=dbid, token=tok, keyspace=kys)
+        assert resolve_session() is not None
+        assert resolve_keyspace() is not None
+
+    @pytest.mark.skipif(
+        os.environ.get("INIT_STRING") is None,
+        reason="requires the init-string available as environment variable",
+    )
     def test_init_init_string(self):
         _reset_cassio_globals()
         inst = os.environ["INIT_STRING"]
@@ -109,6 +126,10 @@ class TestInitAstra:
         assert resolve_session() is not None
         assert resolve_keyspace() is not None
 
+    @pytest.mark.skipif(
+        os.environ.get("INIT_STRING") is None,
+        reason="requires the init-string available as environment variable",
+    )
     def test_init_init_string_overwrite_ks(self):
         _reset_cassio_globals()
         inst = os.environ["INIT_STRING"]
@@ -116,6 +137,10 @@ class TestInitAstra:
         assert resolve_session() is not None
         assert resolve_keyspace() == "my_keyspace"
 
+    @pytest.mark.skipif(
+        os.environ.get("INIT_STRING") is None,
+        reason="requires the init-string available as environment variable",
+    )
     def test_init_init_string_overwrite_tk(self):
         _reset_cassio_globals()
         inst = os.environ["INIT_STRING"]
