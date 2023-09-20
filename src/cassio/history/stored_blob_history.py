@@ -7,7 +7,7 @@ import uuid
 from warnings import warn
 from typing import Any, Dict, Iterable, Optional
 
-from cassandra.cluster import Session
+from cassandra.cluster import Session  # type: ignore
 
 from cassio.table.tables import ClusteredCassandraTable
 

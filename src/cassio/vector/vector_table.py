@@ -8,7 +8,7 @@ Note: This is to be replaced by direct usage of the table-class-hierarchy classe
 from warnings import warn
 from typing import List, Dict, Any, Optional
 
-from cassandra.cluster import ResponseFuture
+from cassandra.cluster import ResponseFuture  # type: ignore
 
 from cassio.table.table_types import RowType
 from cassio.table.tables import (

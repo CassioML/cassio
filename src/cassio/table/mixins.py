@@ -13,7 +13,7 @@ from typing import (
     Union,
 )
 
-from cassandra.cluster import ResponseFuture
+from cassandra.cluster import ResponseFuture  # type: ignore
 
 from cassio.utils.vector.distance_metrics import distance_metrics
 

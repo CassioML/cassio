@@ -16,7 +16,10 @@ class TestMetadataCassandraTable:
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #
         t = MetadataCassandraTable(
-            db_session, db_keyspace, table_name, primary_key_type="TEXT"
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name,
+            primary_key_type="TEXT",
         )
         t.put(row_id="row1", body_blob="bb1")
         gotten1 = t.get(row_id="row1")
@@ -76,9 +79,9 @@ class TestMetadataCassandraTable:
         table_name_all = "m_ct_rtall"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_all};")
         t_all = MetadataCassandraTable(
-            db_session,
-            db_keyspace,
-            table_name_all,
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name_all,
             primary_key_type="TEXT",
             metadata_indexing="all",
         )
@@ -90,9 +93,9 @@ class TestMetadataCassandraTable:
         table_name_none = "m_ct_rtnone"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_none};")
         t_none = MetadataCassandraTable(
-            db_session,
-            db_keyspace,
-            table_name_none,
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name_none,
             primary_key_type="TEXT",
             metadata_indexing="none",
         )
@@ -124,9 +127,9 @@ class TestMetadataCassandraTable:
         table_name_allow = "m_ct_rtallow"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_allow};")
         t_allow = MetadataCassandraTable(
-            db_session,
-            db_keyspace,
-            table_name_allow,
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name_allow,
             primary_key_type="TEXT",
             metadata_indexing=("allow", {"mdas", "mdan", "mdab"}),
         )
@@ -140,9 +143,9 @@ class TestMetadataCassandraTable:
         table_name_deny = "m_ct_rtdeny"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_deny};")
         t_deny = MetadataCassandraTable(
-            db_session,
-            db_keyspace,
-            table_name_deny,
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name_deny,
             primary_key_type="TEXT",
             metadata_indexing=("deny", {"mdds", "mddn", "mddb"}),
         )

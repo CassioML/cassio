@@ -19,8 +19,8 @@ class TestVectorTable:
         v_emb_dim_1 = 3
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name1};")
         v_table = VectorTable(
-            db_session,
-            db_keyspace,
+            session=db_session,
+            keyspace=db_keyspace,
             table=vtable_name1,
             embedding_dimension=v_emb_dim_1,
             primary_key_type="TEXT",
@@ -44,8 +44,8 @@ class TestVectorTable:
         v_emb_dim_2 = 3
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name_2};")
         v_table = VectorTable(
-            db_session,
-            db_keyspace,
+            session=db_session,
+            keyspace=db_keyspace,
             table=vtable_name_2,
             embedding_dimension=v_emb_dim_2,
             primary_key_type="TEXT",
@@ -89,8 +89,8 @@ class TestVectorTable:
         v_emb_dim_2a = 3
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name_2a};")
         v_table = VectorTable(
-            db_session,
-            db_keyspace,
+            session=db_session,
+            keyspace=db_keyspace,
             table=vtable_name_2a,
             embedding_dimension=v_emb_dim_2a,
             primary_key_type="TEXT",
@@ -138,8 +138,8 @@ class TestVectorTable:
         v_emb_dim_3 = 6
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name_3};")
         v_table = VectorTable(
-            db_session,
-            db_keyspace,
+            session=db_session,
+            keyspace=db_keyspace,
             table=vtable_name_3,
             embedding_dimension=v_emb_dim_3,
             primary_key_type="INT",
@@ -163,8 +163,8 @@ class TestVectorTable:
         v_emb_dim_4 = 3
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name4};")
         v_table = VectorTable(
-            db_session,
-            db_keyspace,
+            session=db_session,
+            keyspace=db_keyspace,
             table=vtable_name4,
             embedding_dimension=v_emb_dim_4,
             primary_key_type="TEXT",
@@ -188,8 +188,8 @@ class TestVectorTable:
         v_emb_dim_5 = 5
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name5};")
         v_table = VectorTable(
-            db_session,
-            db_keyspace,
+            session=db_session,
+            keyspace=db_keyspace,
             table=vtable_name5,
             embedding_dimension=v_emb_dim_5,
             primary_key_type="INT",
@@ -206,8 +206,8 @@ class TestVectorTable:
         v_emb_dim_6 = 2
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name6};")
         v_table = VectorTable(
-            db_session,
-            db_keyspace,
+            session=db_session,
+            keyspace=db_keyspace,
             table=vtable_name6,
             embedding_dimension=v_emb_dim_6,
             primary_key_type="TEXT",

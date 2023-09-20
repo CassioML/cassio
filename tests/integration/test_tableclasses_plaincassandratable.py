@@ -16,7 +16,10 @@ class TestPlainCassandraTable:
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #
         t = PlainCassandraTable(
-            db_session, db_keyspace, table_name, primary_key_type="TEXT"
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name,
+            primary_key_type="TEXT",
         )
         t.put(row_id="empty_row")
         gotten1 = t.get(row_id="empty_row")

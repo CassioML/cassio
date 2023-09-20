@@ -94,6 +94,7 @@ def db_keyspace():
 def mock_db_session():
     return MockDBSession()
 
+
 # Utilities
 
 
@@ -112,6 +113,7 @@ def _freeze_envvars(var_names: List[str]) -> Dict[str, str]:
 def _unfreeze_envvars(var_map: Dict[str, str]) -> None:
     for var, val in var_map.items():
         os.environ[var] = val
+
 
 P_TABLE_NAME = "people_x"
 C_TABLE_NAME = "nicknames_x"
@@ -136,4 +138,3 @@ def extractor_tables(db_session, db_keyspace):
 
     db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{C_TABLE_NAME};")
     db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{P_TABLE_NAME};")
-

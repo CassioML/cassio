@@ -19,9 +19,9 @@ from typing import (
     Union,
 )
 
-from cassandra.query import PreparedStatement
-from cassandra.concurrent import execute_concurrent, ExecutionResult
-from cassandra.cluster import Session
+from cassandra.query import PreparedStatement  # type: ignore
+from cassandra.concurrent import execute_concurrent, ExecutionResult  # type: ignore
+from cassandra.cluster import Session  # type: ignore
 
 from cassio.utils.db_inspection import table_partitionkey
 from cassio.table.cql import SELECT_CQL_TEMPLATE

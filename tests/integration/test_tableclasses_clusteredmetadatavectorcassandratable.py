@@ -22,9 +22,9 @@ class TestClusteredMetadataVectorCassandraTable:
         #
         # "INT" here means: partition_id is a number (for fun)
         t = ClusteredMetadataVectorCassandraTable(
-            db_session,
-            db_keyspace,
-            table_name,
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name,
             vector_dimension=2,
             primary_key_type=["INT", "TEXT"],
             partition_id=0,
@@ -159,9 +159,9 @@ class TestClusteredMetadataVectorCassandraTable:
 
         # cross-partition ANN search test
         t_xpart = ClusteredMetadataVectorCassandraTable(
-            db_session,
-            db_keyspace,
-            table_name,
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name,
             vector_dimension=2,
             primary_key_type=["INT", "TEXT"],
             skip_provisioning=True,

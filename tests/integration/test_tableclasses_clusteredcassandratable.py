@@ -16,7 +16,10 @@ class TestClusteredCassandraTable:
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #
         t = ClusteredCassandraTable(
-            db_session, db_keyspace, table_name, partition_id="my_part"
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name,
+            partition_id="my_part",
         )
         t.put(row_id="reg_row", body_blob="reg_blob")
         gotten1 = t.get(row_id="reg_row")
@@ -57,12 +60,15 @@ class TestClusteredCassandraTable:
         table_name_desc = "c_ct_desc"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_desc};")
         t_asc = ClusteredCassandraTable(
-            db_session, db_keyspace, table_name_asc, partition_id="my_part"
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name_asc,
+            partition_id="my_part",
         )
         t_desc = ClusteredCassandraTable(
-            db_session,
-            db_keyspace,
-            table_name_desc,
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name_desc,
             partition_id="my_part",
             ordering_in_partition="desc",
         )
@@ -91,7 +97,10 @@ class TestClusteredCassandraTable:
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #
         t = ClusteredCassandraTable(
-            db_session, db_keyspace, table_name, partition_id="my_part"
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name,
+            partition_id="my_part",
         )
         rf1 = t.put_async(row_id="reg_row", body_blob="reg_blob")
         _ = rf1.result()

@@ -1,7 +1,7 @@
 from typing import Any, List, Tuple, Union
 from enum import Enum
 
-from cassandra.query import SimpleStatement, PreparedStatement
+from cassandra.query import SimpleStatement, PreparedStatement  # type: ignore
 
 
 class CQLOpType(Enum):

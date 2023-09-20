@@ -19,9 +19,9 @@ class TestMetadataVectorCassandraTable:
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #
         t = MetadataVectorCassandraTable(
-            db_session,
-            db_keyspace,
-            table_name,
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name,
             vector_dimension=2,
             primary_key_type="TEXT",
         )

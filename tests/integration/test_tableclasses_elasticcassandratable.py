@@ -16,9 +16,9 @@ class TestElasticCassandraTable:
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #
         t = ElasticCassandraTable(
-            db_session,
-            db_keyspace,
-            table_name,
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name,
             keys=["k1", "k2"],
             primary_key_type=["INT", "TEXT"],
         )

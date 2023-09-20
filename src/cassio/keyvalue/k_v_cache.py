@@ -6,7 +6,7 @@ One row per partition, serializes a multiple partition key into a string
 from warnings import warn
 from typing import Any, cast, Dict, List, Optional
 
-from cassandra.cluster import Session
+from cassandra.cluster import Session  # type: ignore
 
 from cassio.table.tables import ElasticCassandraTable
 

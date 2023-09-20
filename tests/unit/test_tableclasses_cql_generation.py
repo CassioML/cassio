@@ -11,7 +11,11 @@ from cassio.table.tables import (
 class TestTableClassesCQLGeneration:
     def test_vector_cassandra_table(self, mock_db_session):
         vt = VectorCassandraTable(
-            mock_db_session, "k", "tn", vector_dimension=765, primary_key_type="UUID"
+            session=mock_db_session,
+            keyspace="k",
+            table="tn",
+            vector_dimension=765,
+            primary_key_type="UUID",
         )
         mock_db_session.assert_last_equal(
             [
@@ -85,9 +89,9 @@ class TestTableClassesCQLGeneration:
 
     def test_clustered_elastic_metadata_vector_cassandra_table(self, mock_db_session):
         cemvt = ClusteredElasticMetadataVectorCassandraTable(
-            mock_db_session,
-            "k",
-            "tn",
+            session=mock_db_session,
+            keyspace="k",
+            table="tn",
             keys=["a", "b"],
             vector_dimension=765,
             primary_key_type=["PUUID", "AT", "BT"],

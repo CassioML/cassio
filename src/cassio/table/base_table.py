@@ -1,8 +1,8 @@
 from typing import Any, cast, Dict, List, Iterable, Optional, Set, Tuple, Union
 
-from cassandra.query import SimpleStatement, PreparedStatement
-from cassandra.cluster import ResultSet
-from cassandra.cluster import ResponseFuture
+from cassandra.query import SimpleStatement, PreparedStatement  # type: ignore
+from cassandra.cluster import ResultSet  # type: ignore
+from cassandra.cluster import ResponseFuture  # type: ignore
 
 from cassio.config import check_resolve_session, check_resolve_keyspace
 from cassio.table.table_types import (
