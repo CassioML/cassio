@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Union
 from cassandra.cluster import Cluster, Session  # type: ignore
 from cassandra.auth import PlainTextAuthProvider  # type: ignore
 
-from cassio.config.bundle_management import init_string_to_bundle_path_and_options
+from cassio.config.bundle_management import init_string_to_bundle_path_and_options, infer_keyspace_from_bundle
 from cassio.config.bundle_download import download_astra_bundle_url
 
 
@@ -90,7 +90,7 @@ def init(
     In case redundant information is supplied, these are the precedences:
         session > secure_connect_bundle > init_string
         token > (from init_string if any)
-        keyspace > (from init_string if any)
+        keyspace > (from init_string if any) > (from bundle if any)
     If a secure-connect-bundle is needed and not passed, it will be downloaded:
         this requires `database_id` to be passed, suitable token permissions.
     Constraints and caveats:
@@ -110,6 +110,7 @@ def init(
     bundle_from_arg: Optional[str] = None
     bundle_from_download: Optional[str] = None
     keyspace_from_is: Optional[str] = None
+    keyspace_from_bundle: Optional[str] = None
     keyspace_from_arg: Optional[str] = None
     token_from_is: Optional[str] = None
     token_from_arg: Optional[str] = None
@@ -271,6 +272,7 @@ def init(
                 )
                 #
                 if chosen_bundle:
+                    keyspace_from_bundle = infer_keyspace_from_bundle(chosen_bundle)
                     cluster = Cluster(
                         cloud={"secure_connect_bundle": chosen_bundle},
                         auth_provider=PlainTextAuthProvider(
@@ -283,7 +285,7 @@ def init(
                 else:
                     raise ValueError("No secure-connect-bundle was available.")
         # keyspace to be resolved in any case
-        chosen_keyspace = _first_valid(keyspace_from_arg, keyspace_from_is)
+        chosen_keyspace = _first_valid(keyspace_from_arg, keyspace_from_is, keyspace_from_bundle)
         default_keyspace = chosen_keyspace
     finally:
         if temp_dir_created and temp_dir is not None:

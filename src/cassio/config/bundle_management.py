@@ -45,6 +45,25 @@ def _clean_filename(fn: str) -> str:
         return fn
 
 
+def infer_keyspace_from_bundle(bundle_path: Optional[str]) -> Optional[str]:
+    """
+    Given a bundle zipfile path, try to peek at its config.json
+    and extract a default keyspace name on it.
+    Do not raise errors: rather, silently return None instead.
+    """
+    if bundle_path:
+        try:
+            bundle_zip = ZipFile(bundle_path)
+            open_config = bundle_zip.open("config.json")
+            ascii_lines = [line.decode() for line in open_config.readlines()]
+            config = json.loads("".join(ascii_lines))
+            return config.get("keyspace")
+        except Exception:
+            return None
+    else:
+        return None
+
+
 def bundle_path_to_init_string(
     secure_bundle: str,
     keyspace: Optional[str] = None,
