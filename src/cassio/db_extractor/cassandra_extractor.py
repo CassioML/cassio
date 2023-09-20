@@ -21,10 +21,11 @@ from typing import (
 
 from cassandra.query import PreparedStatement  # type: ignore
 from cassandra.concurrent import execute_concurrent, ExecutionResult  # type: ignore
-from cassandra.cluster import Session  # type: ignore
 
 from cassio.utils.db_inspection import table_partitionkey
+from cassio.config import check_resolve_session, check_resolve_keyspace
 from cassio.table.cql import SELECT_CQL_TEMPLATE
+from cassio.table.table_types import SessionType
 
 
 C = TypeVar("C")
@@ -93,13 +94,13 @@ def _pick_value(
 class CassandraExtractor:
     def __init__(
         self,
-        session: Session,
-        keyspace: str,
         field_mapper: Dict[str, Tuple[Any, ...]],
         admit_nulls: bool,
+        session: Optional[SessionType] = None,
+        keyspace: Optional[str] = None,
     ):
-        self.session = session
-        self.keyspace = keyspace
+        self.session = check_resolve_session(session)
+        self.keyspace = check_resolve_keyspace(keyspace)
         #
         _field_mapper = {
             k: _ensure_full_extraction_tuple(v, admit_nulls)

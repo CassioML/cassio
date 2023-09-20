@@ -91,8 +91,8 @@ class TestInitAstra:
         scb = os.environ["ASTRA_DB_SECURE_BUNDLE_PATH"]
         tok = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
         cassio.init(secure_connect_bundle=scb, token=tok)
+        assert resolve_keyspace() is not None  # through inspecting the scb
         assert resolve_session() is not None
-        assert resolve_keyspace() is None
 
     def test_init_scb_keyspace(self):
         _reset_cassio_globals()

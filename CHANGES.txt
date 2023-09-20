@@ -1,3 +1,21 @@
+v 0.1.2
+=======
+Introducing "init()" global method:
+  set session (and keyspace) globally for all objects created thereafter
+  can accept a range of different initialization signatures
+  added a command-line util to generate the "init string"
+  added extensive testing support
+  usage of the global db/keyspace throughout the table classes
+Stricter mypy config for testing (and made code compliant)
+Rework of CassandraExtractor modules:
+  typing support
+  optimized query planning and their concurrent execution
+  idiomatic internal class structure
+  factoring of db-inspection login to common utils
+  added extensive testing support
+  usage of the global db/keyspace in the extractor
+WARNING: passing session/keyspace as pargs might incur breaking-changes! Use kwargs
+
 v 0.1.1
 =======
 Interface changes in the CassandraExtractor object:

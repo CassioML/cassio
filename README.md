@@ -25,6 +25,26 @@ To use the dev version in an integration (e.g. your branch of LangChain),
 `pip install -e .` in this `cassio` repo from within the virtual environment
 you are using to develop your integration.
 
+#### Poetry
+
+If the integration is Poetry-based (e.g. LangChain itself), you should get this
+in your `pyproject.toml`:
+
+```
+cassio = { "path": "../../cassio", develop = true }
+```
+
+Then you do
+
+```
+poetry remove cassio                                      # if necessary
+poetry lock --no-update
+poetry install -E all --with dev --with test_integration  # or similar, this is for langchain
+```
+
+[Inspired from this](https://github.com/orgs/python-poetry/discussions/1135).
+You also need a recent Poetry for this to work.
+
 ### Git flow
 
 _Note: this is a rough guide, use your common sense and consider exceptions._
@@ -48,23 +68,11 @@ be adopted.
 
 ### Style
 
-We are trying to land on a strictly enforced style. Currently,
-the following directories are kept in check this way:
-
-- `src/cassio/table`
-- `src/cassio/vector`
-- `src/cassio/utils`
-- `tests`
-- `src/cassio/keyvalue`
-- `src/cassio/history`
-
-This means we try to get clean output from the following
-in each of these directories (up to your good will for the time being):
+Style is enforced both in `/src` and `/tests`. The following should not
+complain in either directory:
 
 ```
-black .
-ruff .
-mypy .
+black . ; ruff . ; mypy .
 ```
 
 ### Python version coverage
@@ -115,6 +123,8 @@ Launch the tests with
 pytest tests/integration
 ```
 
-(you can specify `TEST_DB_MODE` in the env file or override it by prepending
+You can specify `TEST_DB_MODE` in the env file or override it by prepending
 the above command with `TEST_DB_MODE=LOCAL_CASSANDRA` or `ASTRA_DB` for
-easy switching).
+easy switching.
+
+_Ideally you should test with both, since some tests are skipped in either case._

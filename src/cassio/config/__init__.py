@@ -6,7 +6,10 @@ from typing import Any, Dict, List, Optional, Union
 from cassandra.cluster import Cluster, Session  # type: ignore
 from cassandra.auth import PlainTextAuthProvider  # type: ignore
 
-from cassio.config.bundle_management import init_string_to_bundle_path_and_options, infer_keyspace_from_bundle
+from cassio.config.bundle_management import (
+    init_string_to_bundle_path_and_options,
+    infer_keyspace_from_bundle,
+)
 from cassio.config.bundle_download import download_astra_bundle_url
 
 
@@ -285,7 +288,9 @@ def init(
                 else:
                     raise ValueError("No secure-connect-bundle was available.")
         # keyspace to be resolved in any case
-        chosen_keyspace = _first_valid(keyspace_from_arg, keyspace_from_is, keyspace_from_bundle)
+        chosen_keyspace = _first_valid(
+            keyspace_from_arg, keyspace_from_is, keyspace_from_bundle
+        )
         default_keyspace = chosen_keyspace
     finally:
         if temp_dir_created and temp_dir is not None:
