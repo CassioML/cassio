@@ -31,11 +31,7 @@ class StoredBlobHistory:
     )
 
     def __init__(
-        self,
-        table_name: str,
-        session: Optional[Session] = None,
-        keyspace: Optional[str] = None,
-        **kwargs: Dict[str, Any]
+        self, session: Session, keyspace: str, table_name: str, **kwargs: Dict[str, Any]
     ):
         #
         warn(self.DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
