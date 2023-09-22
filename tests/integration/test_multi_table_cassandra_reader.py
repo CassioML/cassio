@@ -5,11 +5,11 @@ and performing client-side joins hiding the table schema away).
 
 import pytest
 
-from cassio.db_extractor import CassandraExtractor
+from cassio.db_reader import MultiTableCassandraReader
 
 
 @pytest.mark.usefixtures("db_session", "db_keyspace", "extractor_tables")
-class TestCassandraExtractor:
+class TestMultiTableCassandraReader:
     """
     Tests for the extractor.
     """
@@ -25,7 +25,7 @@ class TestCassandraExtractor:
             "r_nickname3": (c_table, lambda row: row["nickname"].upper()),
             "r_city": (c_table, "city"),
         }
-        ext = CassandraExtractor(
+        ext = MultiTableCassandraReader(
             session=db_session,
             keyspace=db_keyspace,
             field_mapper=f_mapper,
@@ -63,7 +63,7 @@ class TestCassandraExtractor:
             "r_age_t_d": (p_table, "age", True, 999),
             "r_age": (p_table, "age"),
         }
-        ext_f = CassandraExtractor(
+        ext_f = MultiTableCassandraReader(
             session=db_session,
             keyspace=db_keyspace,
             field_mapper=f_mapper,
@@ -78,7 +78,7 @@ class TestCassandraExtractor:
         with pytest.raises(ValueError):
             _ = ext_f(city="milan", name="albax")
         #
-        ext_t = CassandraExtractor(
+        ext_t = MultiTableCassandraReader(
             session=db_session,
             keyspace=db_keyspace,
             field_mapper=f_mapper,

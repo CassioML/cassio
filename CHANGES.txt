@@ -7,7 +7,7 @@ Introducing "init()" global method:
   added extensive testing support
   usage of the global db/keyspace throughout the table classes
 Stricter mypy config for testing (and made code compliant)
-Rework of CassandraExtractor modules:
+Rework of MultiTableCassandraReader (formerly CassandraExtractor) modules:
   typing support
   optimized query planning and their concurrent execution
   idiomatic internal class structure

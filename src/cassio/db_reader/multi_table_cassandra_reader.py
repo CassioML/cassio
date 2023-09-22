@@ -1,6 +1,6 @@
 """
-An extractor able to resolve single-row lookups from Cassandra tables in
-a keyspace, with a fair amount of metadata inspection.
+A reader able to resolve single-row lookups from several Cassandra tables
+in a given keyspace, with a fair amount of metadata inspection.
 """
 
 from functools import reduce
@@ -35,6 +35,11 @@ ColumnOrFunctionType = Union[str, Callable[[Dict[str, Any]], C]]
 def _ensure_full_extraction_tuple(
     tpl: Tuple[Any, ...], admit_nulls: bool
 ) -> Tuple[Any, ...]:
+    """
+    Normalize a tuple, used to describe how to extract a value from a table,
+    into the full form (table, column_or_function, admit_nulls, default).
+    The input tuple can be shorter to an extent.
+    """
     if len(tpl) < 2:
         raise ValueError(
             "At least table and column names are required in the field_mapper."
@@ -53,7 +58,10 @@ def _ensure_full_extraction_tuple(
 
 
 def _extract_first_row(e_r: ExecutionResult) -> Union[None, Dict[str, Any]]:
-    """this acts on the items returned in a list by execute_concurrent."""
+    """
+    Given an "ExecutionResult" as those in the list returned by
+    `execute_concurrent`, make sure the row is made into a dict (or None)
+    """
     if not e_r[0]:
         raise ValueError(f"Error reading from DB: {e_r[1]}")
     else:
@@ -74,6 +82,10 @@ def _pick_value(
     admit_nulls: bool,
     default: C,
 ) -> Union[C, None]:
+    """
+    Apply a full prescription to extract a value to the dict of a row
+    and end up with (either raising an exception or) the required value.
+    """
     if row_dict is None:
         _v = None
     else:
@@ -91,7 +103,22 @@ def _pick_value(
         return _v
 
 
-class CassandraExtractor:
+class MultiTableCassandraReader:
+    """
+    A DB-bound reader able to run lookup(s) on Cassandra table(s)
+    and come up with the required value found on DB when provided
+    with the required fields forming the (union of the) primary key(s).
+
+    When instantiated, this will do some schema inspection and come up
+    with a set of queries. When being __call__'ed, these queries are run
+    and the rows that are found are made into a final (dict) answer.
+
+    This can work on multiple tables and requires the full primary
+    key fields to single out up to a single row in each table
+    (i.e. there is no concept of multiple rows for a given query).
+
+    Fallback behaviour when rows are not found can be configured.
+    """
     def __init__(
         self,
         field_mapper: Dict[str, Tuple[Any, ...]],
@@ -99,6 +126,29 @@ class CassandraExtractor:
         session: Optional[SessionType] = None,
         keyspace: Optional[str] = None,
     ):
+        """
+        Creates a MultiTableCassandraReader ready to do lookups from some tables.
+        The reader, when invoked, returns a map {field_name: field_value}, where
+        the field names are not necessarily related to column names on DB.
+
+        Parameters:
+            `field_mapper`: this is a map {field_name: prescription} detailing
+                how each field is obtained. The `prescription` can have the
+                following shapes:
+                    (table_name, column_spec)
+                    (table_name, column_spec, admit_nulls)
+                    (table_name, column_spec, admit_nulls, default)
+                where the defaults for the last two are the class-level
+                `admit_nulls` and None respectively.
+                The table_name is a string, while column_spec can be
+                    - a string, the column name
+                    - a callable, a user-supplied function row_as_dict -> value
+            `admit_nulls` (boolean): whether to quietly return None if rows
+                are not found, or raise an error. This is overridden by per-field
+                settings, if provided.
+            `session` (optional Session): defaults to global setting if available
+            `keyspace` (optional str): defaults to global setting if available
+        """
         self.session = check_resolve_session(session)
         self.keyspace = check_resolve_keyspace(keyspace)
         #
@@ -165,9 +215,23 @@ class CassandraExtractor:
         self.output_parameters = set(field_mapper.keys())
 
     def dictionary_based_call(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Turn the __call__ signature
+            a, b, c => fields_map
+        into a dict-based form
+            {'a': a, 'b': b, 'c': c} => fields_map
+        """
         return self(**args_dict)
 
     def __call__(self, **kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Given the union of all the primary key fields from all tables involved,
+        run the necessary lookups, extracts the requested columns (or values,
+        in general) and return a dictionary {field_name: field_value}.
+
+        Note: in a given lookup step, one cannot request different values for
+        a same-named primary-key column on different tables.
+        """
         # prepare value tuples for the queries
         values_map = {
             table_name: tuple(kwargs[primary_key] for primary_key in primary_keys)

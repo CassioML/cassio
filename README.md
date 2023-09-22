@@ -31,7 +31,7 @@ If the integration is Poetry-based (e.g. LangChain itself), you should get this
 in your `pyproject.toml`:
 
 ```
-cassio = { "path": "../../cassio", develop = true }
+cassio = {path = "../../cassio", develop = true}
 ```
 
 Then you do
