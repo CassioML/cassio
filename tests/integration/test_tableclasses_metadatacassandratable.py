@@ -73,7 +73,7 @@ class TestMetadataCassandraTable:
         test_md = {"mds": "string", "mdn": 255, "mdb": True}
         test_md_string = {"mds": "string", "mdn": "255.0", "mdb": "true"}
         #
-        table_name_all = "m_ct_rtall"
+        table_name_all = "m_ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_all};")
         t_all = MetadataCassandraTable(
             db_session,
@@ -152,6 +152,40 @@ class TestMetadataCassandraTable:
         gotten_deny = list(t_deny.find_entries(metadata={"mdas": "MDAS"}, n=1))[0]
         assert gotten_deny["metadata"] == test_md_allowdeny_string
         t_deny.clear()
+
+    def test_find_and_delete_entries(self, db_session, db_keyspace):
+        table_name_fad = "m_ct"
+        N_ROWS = 640
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_fad};")
+        t_fad = MetadataCassandraTable(
+            db_session,
+            db_keyspace,
+            table_name_fad,
+            primary_key_type="TEXT",
+            metadata_indexing="all",
+        )
+        futures = [
+            t_fad.put_async(
+                row_id=f"r_{row_i}_md_{mdf}",
+                body_blob=f"r_{row_i}_md_{mdf}",
+                metadata={"field": mdf},
+            )
+            for row_i in range(N_ROWS)
+            for mdf in ['alpha', 'omega']
+        ]
+        for f in futures:
+            _ = f.result()
+        #
+        q_md = {"field": "alpha"}
+        #
+        num_found_items = len(list(t_fad.find_entries(n=N_ROWS +1, metadata=q_md)))
+        assert num_found_items == N_ROWS
+        #
+        num_deleted = t_fad.find_and_delete_entries(metadata=q_md, batch_size=120)
+        num_found_items = len(list(t_fad.find_entries(n=N_ROWS +1, metadata=q_md)))
+        assert num_deleted == N_ROWS
+        assert num_found_items == 0
+        
 
 
 if __name__ == "__main__":
