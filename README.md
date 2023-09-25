@@ -63,17 +63,13 @@ for wider testing. Then, with a slower cadence (such as, when releasing),
 #### Versioning
 
 We are still at `0.*`. Occasional breaking changes are to be expected,
-but please think carefully. A later stronger model of versioning will
-be adopted.
+but please think carefully. Later, a stronger versioning model will be adopted.
 
 ### Style
 
-Style is enforced both in `/src` and `/tests`. The following should not
-complain in either directory:
-
-```
-black . ; ruff . ; mypy .
-```
+Style is enforced through `black` and linting with `ruff`. We also take
+type-checking seriously. The code should run through `make format` without
+issues.
 
 ### Python version coverage
 
@@ -88,23 +84,23 @@ catch versions-specific issues
 - Commit the very code that will be built:
 
 ```
-rm dist/*
-python setup.py sdist bdist_wheel
-twine upload dist/*
-# (login to PyPI ...)
+make build
+twine upload dist/*  # (login to PyPI ...)
 ```
 
 ### Testing
 
 Please run tests (and add some coverage for new features). This is not
-enforced other than to your conscience.
+enforced other than to your conscience. Type `make` for the available tests.
+
+To run the full tests, there's `make test-all`.
 
 #### Unit testing
 
 You need a virtualenv with the `requirements-dev.txt` installed.
 
 ```
-pytest tests/unit
+make test-unit
 ```
 
 #### Integration with the DB
@@ -115,16 +111,14 @@ Create the DB connection settings file, `cp TEMPLATE.testing.env .testing.env`
 and then edit the properties. You need at least one of either Astra DB or a
 Cassandra cluster to use, with vector-search support.
 
-Source with `. .testing.env`.
-
-Launch the tests with
+Launch the tests with either of:
 
 ```
-pytest tests/integration
+make test-integration
+make test-astra-integration
+make test-cassandra-integration
 ```
 
-You can specify `TEST_DB_MODE` in the env file or override it by prepending
-the above command with `TEST_DB_MODE=LOCAL_CASSANDRA` or `ASTRA_DB` for
-easy switching.
-
-_Ideally you should test with both, since some tests are skipped in either case._
+The latter two above specify `TEST_DB_MODE` as either `LOCAL_CASSANDRA` or
+`ASTRA_DB`. _Ideally you should test with both, since some tests are
+skipped in either case._

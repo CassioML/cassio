@@ -6,7 +6,9 @@ TODO: make this more robust in making sure all code is imported.
 
 class TestImports:
     def test_import_db_extractor(self):
-        from cassio.db_reader import CassandraExtractor  # type: ignore  # noqa: F401
+        from cassio.db_reader import (
+            MultiTableCassandraReader,  # type: ignore  # noqa: F401
+        )
 
     def test_import_history(self):
         from cassio.history import StoredBlobHistory  # type: ignore  # noqa: F401

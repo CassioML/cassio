@@ -119,6 +119,7 @@ class MultiTableCassandraReader:
 
     Fallback behaviour when rows are not found can be configured.
     """
+
     def __init__(
         self,
         field_mapper: Dict[str, Tuple[Any, ...]],
