@@ -34,7 +34,7 @@ test-cassandra-integration:
 	TEST_DB_MODE="LOCAL_CASSANDRA" pytest tests/integration
 
 build:
-	rm dist/*
+	- rm dist/*
 	python setup.py sdist bdist_wheel
 
 help:

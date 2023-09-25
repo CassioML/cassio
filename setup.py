@@ -9,6 +9,8 @@ setup(
     author="Stefano Lottini",
     author_email="stefano.lottini@datastax.com",
     package_dir={"": "src"},
+    package_data={"cassio": ["py.typed"]},
+    include_package_data=True,
     packages=find_packages(where="src"),
     entry_points={
         "console_scripts": [
@@ -44,5 +46,5 @@ setup(
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
-    keywords="cassandra, ai, llm",
+    keywords="cassandra, ai, llm, genai, astradb",
 )
