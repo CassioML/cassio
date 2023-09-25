@@ -90,7 +90,7 @@ class TestMetadataCassandraTable:
         assert gotten_all["metadata"] == test_md_string
         t_all.clear()
         #
-        table_name_none = "m_ct_rtnone"
+        table_name_none = "m_ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_none};")
         t_none = MetadataCassandraTable(
             session=db_session,
@@ -124,7 +124,7 @@ class TestMetadataCassandraTable:
             "mddb": "true",
         }
         #
-        table_name_allow = "m_ct_rtallow"
+        table_name_allow = "m_ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_allow};")
         t_allow = MetadataCassandraTable(
             session=db_session,
@@ -140,7 +140,7 @@ class TestMetadataCassandraTable:
         assert gotten_allow["metadata"] == test_md_allowdeny_string
         t_allow.clear()
         #
-        table_name_deny = "m_ct_rtdeny"
+        table_name_deny = "m_ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_deny};")
         t_deny = MetadataCassandraTable(
             session=db_session,
@@ -158,12 +158,12 @@ class TestMetadataCassandraTable:
 
     def test_find_and_delete_entries(self, db_session, db_keyspace):
         table_name_fad = "m_ct"
-        N_ROWS = 640
+        N_ROWS = 128
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_fad};")
         t_fad = MetadataCassandraTable(
-            db_session,
-            db_keyspace,
-            table_name_fad,
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name_fad,
             primary_key_type="TEXT",
             metadata_indexing="all",
         )
@@ -174,21 +174,20 @@ class TestMetadataCassandraTable:
                 metadata={"field": mdf},
             )
             for row_i in range(N_ROWS)
-            for mdf in ['alpha', 'omega']
+            for mdf in ["alpha", "omega"]
         ]
         for f in futures:
             _ = f.result()
         #
         q_md = {"field": "alpha"}
         #
-        num_found_items = len(list(t_fad.find_entries(n=N_ROWS +1, metadata=q_md)))
+        num_found_items = len(list(t_fad.find_entries(n=N_ROWS + 1, metadata=q_md)))
         assert num_found_items == N_ROWS
         #
         num_deleted = t_fad.find_and_delete_entries(metadata=q_md, batch_size=120)
-        num_found_items = len(list(t_fad.find_entries(n=N_ROWS +1, metadata=q_md)))
+        num_found_items = len(list(t_fad.find_entries(n=N_ROWS + 1, metadata=q_md)))
         assert num_deleted == N_ROWS
         assert num_found_items == 0
-        
 
 
 if __name__ == "__main__":

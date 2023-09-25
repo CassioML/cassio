@@ -15,7 +15,7 @@ class TestVectorTable:
     """
 
     def test_put_and_get(self, db_session, db_keyspace):
-        vtable_name1 = "vector_table_1"
+        vtable_name1 = "vector_test_table"
         v_emb_dim_1 = 3
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name1};")
         v_table = VectorTable(
@@ -40,7 +40,7 @@ class TestVectorTable:
         }
 
     def test_put_and_search(self, db_session, db_keyspace):
-        vtable_name_2 = "vector_table_2"
+        vtable_name_2 = "vector_test_table"
         v_emb_dim_2 = 3
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name_2};")
         v_table = VectorTable(
@@ -85,7 +85,7 @@ class TestVectorTable:
         assert matches[0]["document_id"] == "doc_id3"
 
     def test_put_and_search_async(self, db_session, db_keyspace):
-        vtable_name_2a = "vector_table_2async"
+        vtable_name_2a = "vector_test_table"
         v_emb_dim_2a = 3
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name_2a};")
         v_table = VectorTable(
@@ -134,7 +134,7 @@ class TestVectorTable:
         assert matches[0]["document_id"] == "doc_id3"
 
     def test_put_intpk_and_get(self, db_session, db_keyspace):
-        vtable_name_3 = "vector_table_3"
+        vtable_name_3 = "vector_test_table"
         v_emb_dim_3 = 6
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name_3};")
         v_table = VectorTable(
@@ -159,7 +159,7 @@ class TestVectorTable:
         assert match_no is None
 
     def test_null_json(self, db_session, db_keyspace):
-        vtable_name4 = "vector_table_4"
+        vtable_name4 = "vector_test_table"
         v_emb_dim_4 = 3
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name4};")
         v_table = VectorTable(
@@ -184,7 +184,7 @@ class TestVectorTable:
         }
 
     def test_nullsearch_results(self, db_session, db_keyspace):
-        vtable_name5 = "vector_table_5"
+        vtable_name5 = "vector_test_table"
         v_emb_dim_5 = 5
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name5};")
         v_table = VectorTable(
@@ -202,7 +202,7 @@ class TestVectorTable:
         v_table.clear()
 
     def test_ttl(self, db_session, db_keyspace):
-        vtable_name6 = "vector_table_6"
+        vtable_name6 = "vector_test_table"
         v_emb_dim_6 = 2
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name6};")
         v_table = VectorTable(

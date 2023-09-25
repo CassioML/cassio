@@ -55,24 +55,14 @@ class TestClusteredCassandraTable:
         t.clear()
 
     def test_partition_ordering(self, db_session, db_keyspace):
-        table_name_asc = "c_ct_asc"
+        table_name_asc = "c_ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_asc};")
-        table_name_desc = "c_ct_desc"
-        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_desc};")
         t_asc = ClusteredCassandraTable(
             session=db_session,
             keyspace=db_keyspace,
             table=table_name_asc,
             partition_id="my_part",
         )
-        t_desc = ClusteredCassandraTable(
-            session=db_session,
-            keyspace=db_keyspace,
-            table=table_name_desc,
-            partition_id="my_part",
-            ordering_in_partition="desc",
-        )
-        #
         t_asc.put(row_id="row1", body_blob="blob1")
         t_asc.put(row_id="row2", body_blob="blob1")
         t_asc.put(row_id="row3", body_blob="blob1")
@@ -80,7 +70,17 @@ class TestClusteredCassandraTable:
         assert [gotten["row_id"] for gotten in part_rows] == ["row1", "row2"]
         assert len(list(t_asc.get_partition())) == 3
         assert len(list(t_asc.get_partition(n=10))) == 3
+        t_asc.clear()
         #
+        table_name_desc = "c_ct_desc"
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_desc};")
+        t_desc = ClusteredCassandraTable(
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name_desc,
+            partition_id="my_part",
+            ordering_in_partition="desc",
+        )
         t_desc.put(row_id="row1", body_blob="blob1")
         t_desc.put(row_id="row2", body_blob="blob1")
         t_desc.put(row_id="row3", body_blob="blob1")
@@ -89,11 +89,10 @@ class TestClusteredCassandraTable:
         assert len(list(t_desc.get_partition())) == 3
         assert len(list(t_desc.get_partition(n=10))) == 3
         #
-        t_asc.clear()
         t_desc.clear()
 
     def test_crud_async(self, db_session, db_keyspace):
-        table_name = "c_ct_asy"
+        table_name = "c_ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #
         t = ClusteredCassandraTable(

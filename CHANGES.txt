@@ -6,7 +6,8 @@ Introducing "init()" global method:
   added a command-line util to generate the "init string"
   added extensive testing support
   usage of the global db/keyspace throughout the table classes
-Stricter mypy config for testing (and made code compliant)
+Introducing "find_and_delete_entries" method for metadata classes:
+  internally based on find_entries. Will collect rows to delete and delete them.
 Rework of MultiTableCassandraReader (formerly CassandraExtractor) modules:
   typing support
   optimized query planning and their concurrent execution
@@ -14,7 +15,9 @@ Rework of MultiTableCassandraReader (formerly CassandraExtractor) modules:
   factoring of db-inspection login to common utils
   added extensive testing support
   usage of the global db/keyspace in the extractor
-WARNING: passing session/keyspace as pargs might incur breaking-changes! Use kwargs
+Makefile with: testing, linting/style/typing, building
+Stricter mypy config for testing (and made code compliant)
+WARNING: passing session/keyspace as pargs can break! Use kwargs!
 
 v 0.1.1
 =======

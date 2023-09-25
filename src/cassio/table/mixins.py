@@ -434,7 +434,9 @@ class MetadataMixin(BaseTableMixin):
     def find_entries_async(self, n: int, **kwargs: Any) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
 
-    def find_and_delete_entries(self, n: Optional[int] = None, batch_size: int = 20, **kwargs: Any) -> int:
+    def find_and_delete_entries(
+        self, n: Optional[int] = None, batch_size: int = 20, **kwargs: Any
+    ) -> int:
         # Use `find_entries` to delete entries based
         # on queries with metadata, etc. Suitable when `find_entries` is a fit.
         # Returns the number of rows supposedly deleted.
@@ -444,7 +446,7 @@ class MetadataMixin(BaseTableMixin):
         # TODO: decouple finding and deleting (streaming) for faster performance
         primary_key_cols = [col for col, _ in self._schema_primary_key()]
         #
-        visited_tuples = set()
+        visited_tuples: Set[Tuple] = set()
         batch_size = 20
         if n is not None:
             to_delete = min(batch_size, n - len(visited_tuples))
@@ -452,16 +454,15 @@ class MetadataMixin(BaseTableMixin):
             to_delete = batch_size
         while to_delete > 0:
             del_pkargs = [
-                [
-                    found_row[pkc]
-                    for pkc in primary_key_cols
-                ]
+                [found_row[pkc] for pkc in primary_key_cols]
                 for found_row in self.find_entries(n=to_delete, **kwargs)
             ]
             if del_pkargs == []:
                 break
             d_futures = [
-                self.delete_async(**{pkc: pkv for pkc, pkv in zip(primary_key_cols, del_pkarg)})
+                self.delete_async(
+                    **{pkc: pkv for pkc, pkv in zip(primary_key_cols, del_pkarg)}
+                )
                 for del_pkarg in del_pkargs
                 if tuple(del_pkarg) not in visited_tuples
             ]
@@ -469,7 +470,9 @@ class MetadataMixin(BaseTableMixin):
                 break
             for d_future in d_futures:
                 _ = d_future.result()
-            visited_tuples = visited_tuples | {tuple(del_pkarg) for del_pkarg in del_pkargs}
+            visited_tuples = visited_tuples | {
+                tuple(del_pkarg) for del_pkarg in del_pkargs
+            }
             if n is not None:
                 to_delete = min(batch_size, n - len(visited_tuples))
             else:
