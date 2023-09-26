@@ -1,4 +1,4 @@
-v 0.1.2
+v 0.1.3
 =======
 Introducing "init()" global method:
   set session (and keyspace) globally for all objects created thereafter
@@ -18,6 +18,10 @@ Rework of MultiTableCassandraReader (formerly CassandraExtractor) modules:
 Makefile with: testing, linting/style/typing, building
 Stricter mypy config for testing (and made code compliant)
 WARNING: passing session/keyspace as pargs can break! Use kwargs!
+
+v 0.1.2
+=======
+(same as 0.1.3 with a missing dependency, sorry)
 
 v 0.1.1
 =======

@@ -5,7 +5,7 @@ here = pathlib.Path(__file__).parent.resolve()
 
 setup(
     name="cassio",
-    version="0.1.2",
+    version="0.1.3",
     author="Stefano Lottini",
     author_email="stefano.lottini@datastax.com",
     package_dir={"": "src"},
@@ -29,6 +29,7 @@ setup(
     install_requires=[
         "numpy>=1.0",
         "cassandra-driver>=3.28.0",
+        "requests>=2",
     ],
     python_requires=">=3.8",
     classifiers=[
