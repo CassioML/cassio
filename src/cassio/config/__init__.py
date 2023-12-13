@@ -33,6 +33,7 @@ def init(
     password: Optional[str] = None,
     cluster_kwargs: Optional[Dict[str, Any]] = None,
     tempfile_basedir: Optional[str] = None,
+    bundle_url_template: Optional[str] = None
 ) -> None:
     """
     Globally set the default Cassandra connection (/keyspace) for CassIO.
@@ -87,6 +88,8 @@ def init(
         `password` (optional str), password for Cassandra connection
         `cluster_kwargs` (optional dict), additional arguments to `Cluster(...)`.
         `tempfile_basedir` (optional str), where to create temporary work directories.
+        `bundle_url_template` (optional str), url template for getting the database
+            secure bundle. The "databaseId" variable is resolved with the actual value.
 
     ASTRA DB:
     The Astra-related parameters are arranged in a chain of fallbacks.
@@ -267,7 +270,7 @@ def init(
                         temp_dir or "", DOWNLOADED_BUNDLE_FILE_NAME
                     )
                     download_astra_bundle_url(
-                        database_id, chosen_token, bundle_from_download
+                        database_id, chosen_token, bundle_from_download, bundle_url_template
                     )
                 # After the devops-api part, re-evaluate chosen_bundle:
                 chosen_bundle = _first_valid(
