@@ -491,14 +491,14 @@ class VectorMixin(BaseTableMixin):
 
     def _schema_da(self) -> List[ColumnSpecType]:
         return super()._schema_da() + [
-            ("vector", f"VECTOR<FLOAT,{self.vector_dimension}>")
+            ("row_vector", f"VECTOR<FLOAT,{self.vector_dimension}>")
         ]
 
     def db_setup(self) -> None:
         super().db_setup()
         # index on the vector column:
         index_name = "idx_vector"
-        index_column = "vector"
+        index_column = "row_vector"
         create_index_cql = CREATE_INDEX_CQL_TEMPLATE.format(
             index_name=index_name,
             index_column=index_column,
@@ -524,7 +524,7 @@ class VectorMixin(BaseTableMixin):
             # TODO: lift/relax this constraint when non-cosine metrics are there.
             raise ValueError("Cannot use identically-zero vectors in cos/ANN search.")
         #
-        vector_column = "vector"
+        vector_column = "row_vector"
         vector_cql_vals = [vector]
         #
         (
@@ -576,7 +576,7 @@ class VectorMixin(BaseTableMixin):
             # sort, cut, validate and prepare for returning
             # evaluate metric
             distance_function, distance_reversed = distance_metrics[metric]
-            row_vectors = [row["vector"] for row in rows]
+            row_vectors = [row["row_vector"] for row in rows]
             # enrich with their metric score
             rows_with_metric = list(
                 zip(
