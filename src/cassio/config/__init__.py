@@ -33,7 +33,7 @@ def init(
     password: Optional[str] = None,
     cluster_kwargs: Optional[Dict[str, Any]] = None,
     tempfile_basedir: Optional[str] = None,
-    bundle_url_template: Optional[str] = None
+    bundle_url_template: Optional[str] = None,
 ) -> None:
     """
     Globally set the default Cassandra connection (/keyspace) for CassIO.
@@ -272,7 +272,10 @@ def init(
                         temp_dir or "", DOWNLOADED_BUNDLE_FILE_NAME
                     )
                     download_astra_bundle_url(
-                        database_id, chosen_token, bundle_from_download, bundle_url_template
+                        database_id,
+                        chosen_token,
+                        bundle_from_download,
+                        bundle_url_template,
                     )
                 # After the devops-api part, re-evaluate chosen_bundle:
                 chosen_bundle = _first_valid(

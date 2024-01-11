@@ -11,7 +11,9 @@ DEFAULT_GET_BUNDLE_URL_TEMPLATE = (
 )
 
 
-def get_astra_bundle_url(database_id: str, token: str, bundle_url_template: Optional[str] = None) -> str:
+def get_astra_bundle_url(
+    database_id: str, token: str, bundle_url_template: Optional[str] = None
+) -> str:
     """
     Given a database ID and a token, provide a (temporarily-valid)
     URL for downloading the secure-connect-bundle.
@@ -53,12 +55,18 @@ def get_astra_bundle_url(database_id: str, token: str, bundle_url_template: Opti
         )
 
 
-def download_astra_bundle_url(database_id: str, token: str, out_file_path: str,
-                              bundle_url_template: Optional[str] = None) -> None:
+def download_astra_bundle_url(
+    database_id: str,
+    token: str,
+    out_file_path: str,
+    bundle_url_template: Optional[str] = None,
+) -> None:
     """
     Obtain the secure-connect-bundle and save it to a specified file.
     """
-    bundle_url = get_astra_bundle_url(database_id=database_id, token=token, bundle_url_template=bundle_url_template)
+    bundle_url = get_astra_bundle_url(
+        database_id=database_id, token=token, bundle_url_template=bundle_url_template
+    )
     bundle_data = requests.get(bundle_url)
     with open(out_file_path, "wb") as f:
         f.write(bundle_data.content)
