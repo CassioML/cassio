@@ -3,21 +3,26 @@ Facilities to manage the download of a secure-connect-bundle from an Astra DB
 token.
 """
 import requests  # type: ignore
+from typing import Optional
 
 
-GET_BUNDLE_URL_TEMPLATE = (
+DEFAULT_GET_BUNDLE_URL_TEMPLATE = (
     "https://api.astra.datastax.com/v2/databases/{database_id}/secureBundleURL"
 )
 
 
-def get_astra_bundle_url(database_id: str, token: str) -> str:
+def get_astra_bundle_url(
+    database_id: str, token: str, bundle_url_template: Optional[str] = None
+) -> str:
     """
     Given a database ID and a token, provide a (temporarily-valid)
     URL for downloading the secure-connect-bundle.
 
     Courtesy of @phact (thank you!).
     """
-    url = GET_BUNDLE_URL_TEMPLATE.format(database_id=database_id)
+    if not bundle_url_template:
+        bundle_url_template = DEFAULT_GET_BUNDLE_URL_TEMPLATE
+    url = bundle_url_template.format(database_id=database_id)
 
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
@@ -50,11 +55,18 @@ def get_astra_bundle_url(database_id: str, token: str) -> str:
         )
 
 
-def download_astra_bundle_url(database_id: str, token: str, out_file_path: str) -> None:
+def download_astra_bundle_url(
+    database_id: str,
+    token: str,
+    out_file_path: str,
+    bundle_url_template: Optional[str] = None,
+) -> None:
     """
     Obtain the secure-connect-bundle and save it to a specified file.
     """
-    bundle_url = get_astra_bundle_url(database_id=database_id, token=token)
+    bundle_url = get_astra_bundle_url(
+        database_id=database_id, token=token, bundle_url_template=bundle_url_template
+    )
     bundle_data = requests.get(bundle_url)
     with open(out_file_path, "wb") as f:
         f.write(bundle_data.content)
