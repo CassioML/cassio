@@ -93,7 +93,8 @@ twine upload dist/*  # (login to PyPI ...)
 Please run tests (and add some coverage for new features). This is not
 enforced other than to your conscience. Type `make` for the available tests.
 
-To run the full tests, there's `make test-all`.
+To run the full tests (except specific tests targeting Cassandra),
+there's `make test-all`.
 
 #### Unit testing
 
