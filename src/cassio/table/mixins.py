@@ -15,6 +15,7 @@ from typing import (
 
 from cassandra.cluster import ResponseFuture  # type: ignore
 
+from cassio.table.utils import call_wrapped_async
 from cassio.utils.vector.distance_metrics import distance_metrics
 
 from cassio.table.cql import (
@@ -113,6 +114,9 @@ class ClusteredMixin(BaseTableMixin):
         self, partition_id: Optional[str] = None
     ) -> ResponseFuture:
         return self._delete_partition(is_async=True, partition_id=partition_id)
+
+    async def adelete_partition(self, partition_id: Optional[str] = None) -> None:
+        await call_wrapped_async(self.delete_partition_async, partition_id=partition_id)
 
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
         # if partition id provided in call, takes precedence over instance value
@@ -600,6 +604,7 @@ class VectorMixin(BaseTableMixin):
             else:
                 # this to satisfy the type checker
                 _used_thr = 0.0
+
                 # no hits are discarded
                 def _thresholder(mtx: float, thr: float) -> bool:
                     return True
@@ -702,7 +707,6 @@ class ElasticKeyMixin(BaseTableMixin):
 
 
 class TypeNormalizerMixin(BaseTableMixin):
-
     clustered: bool = False
     elastic: bool = False
 

@@ -3,10 +3,12 @@ Table classes integration test - ClusteredCassandraTable
 """
 
 import pytest
+from cassandra.cluster import Session
 
 from cassio.table.tables import (
     ClusteredCassandraTable,
 )
+from cassio.table.utils import call_wrapped_async
 
 
 @pytest.mark.usefixtures("db_session", "db_keyspace")
@@ -145,6 +147,54 @@ class TestClusteredCassandraTable:
         rf9 = t.clear_async()
         _ = rf9.result()
         assert t.get(row_id="nr2", partition_id="another_p") is None
+
+    @pytest.mark.asyncio
+    async def test_crud_asyncio(self, db_session: Session, db_keyspace: str) -> None:
+        table_name = "c_ct"
+        await call_wrapped_async(
+            db_session.execute_async,
+            f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};",
+        )
+        #
+        t = ClusteredCassandraTable(
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name,
+            partition_id="my_part",
+        )
+        await t.aput(row_id="reg_row", body_blob="reg_blob")
+        gotten1 = await t.aget(row_id="reg_row")
+        assert gotten1 == {
+            "row_id": "reg_row",
+            "partition_id": "my_part",
+            "body_blob": "reg_blob",
+        }
+        await t.aput(row_id="irr_row", partition_id="other_p", body_blob="irr_blob")
+        gotten2n = await t.aget(row_id="irr_row")
+        assert gotten2n is None
+        gotten2 = await t.aget(row_id="irr_row", partition_id="other_p")
+        assert gotten2 == {
+            "row_id": "irr_row",
+            "partition_id": "other_p",
+            "body_blob": "irr_blob",
+        }
+        #
+        await t.adelete(row_id="reg_row")
+        assert await t.aget(row_id="reg_row") is None
+        await t.adelete(row_id="irr_row")
+        assert await t.aget(row_id="irr_row", partition_id="other_p") is not None
+        await t.adelete(row_id="irr_row", partition_id="other_p")
+        assert await t.aget(row_id="irr_row", partition_id="other_p") is None
+        #
+        await t.aput(row_id="nr1")
+        await t.aput(row_id="nr2", partition_id="another_p")
+        assert await t.aget(row_id="nr1") is not None
+        assert await t.aget(row_id="nr2", partition_id="another_p") is not None
+        await t.adelete_partition()
+        assert await t.aget(row_id="nr1") is None
+        assert await t.aget(row_id="nr2", partition_id="another_p") is not None
+        await t.aclear()
+        assert await t.aget(row_id="nr2", partition_id="another_p") is None
 
 
 if __name__ == "__main__":

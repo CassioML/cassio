@@ -1,4 +1,14 @@
-from typing import Any, cast, Dict, List, Iterable, Optional, Set, Tuple, Union
+from typing import (
+    Any,
+    cast,
+    Dict,
+    List,
+    Iterable,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 from cassandra.query import SimpleStatement, PreparedStatement  # type: ignore
 from cassandra.cluster import ResultSet  # type: ignore
@@ -19,10 +29,10 @@ from cassio.table.cql import (
     SELECT_CQL_TEMPLATE,
     INSERT_ROW_CQL_TEMPLATE,
 )
+from cassio.table.utils import call_wrapped_async
 
 
 class BaseTable:
-
     ordering_in_partition: Optional[str] = None
 
     def __init__(
@@ -150,6 +160,9 @@ class BaseTable:
     def delete_async(self, **kwargs: Dict[str, Any]) -> ResponseFuture:
         return self._delete(is_async=True, **kwargs)
 
+    async def adelete(self, **kwargs: Any) -> None:
+        await call_wrapped_async(self.delete_async, **kwargs)
+
     def _clear(self, is_async: bool) -> Union[None, ResponseFuture]:
         truncate_table_cql = TRUNCATE_TABLE_CQL_TEMPLATE.format()
         if is_async:
@@ -166,6 +179,9 @@ class BaseTable:
 
     def clear_async(self) -> ResponseFuture:
         return self._clear(is_async=True)
+
+    async def aclear(self) -> None:
+        await call_wrapped_async(self.clear_async)
 
     def _parse_select_core_params(
         self, **kwargs: Dict[str, Any]
@@ -190,7 +206,7 @@ class BaseTable:
         where_clause = "WHERE " + " AND ".join(where_clause_blocks)
         return columns_desc, where_clause, select_cql_vals
 
-    def get(self, **kwargs: Any) -> Optional[RowType]:
+    def _get_select_cql(self, **kwargs: Any) -> Tuple[str, Tuple[Any, ...]]:
         columns_desc, where_clause, get_cql_vals = self._parse_select_core_params(
             **kwargs
         )
@@ -203,10 +219,11 @@ class BaseTable:
             where_clause=where_clause,
             limit_clause=limit_clause,
         )
-        # dancing around the result set (to comply with type checking):
-        result_set = self.execute_cql(
-            select_cql, args=select_vals, op_type=CQLOpType.READ
-        )
+        return select_cql, select_vals
+
+    def _handle_select_result_set(
+        self, result_set: Iterable[RowType]
+    ) -> Optional[Dict[str, Any]]:
         if isinstance(result_set, ResultSet):
             result = result_set.one()
         else:
@@ -217,8 +234,24 @@ class BaseTable:
         else:
             return self._normalize_row(result)
 
+    def get(self, **kwargs: Any) -> Optional[RowType]:
+        select_cql, select_vals = self._get_select_cql(**kwargs)
+        # dancing around the result set (to comply with type checking):
+        result_set = self.execute_cql(
+            select_cql, args=select_vals, op_type=CQLOpType.READ
+        )
+        return self._handle_select_result_set(result_set)
+
     def get_async(self, **kwargs: Dict[str, Any]) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
+
+    async def aget(self, **kwargs: Any) -> Optional[RowType]:
+        select_cql, select_vals = self._get_select_cql(**kwargs)
+        # dancing around the result set (to comply with type checking):
+        result_set = await self.aexecute_cql(
+            select_cql, args=select_vals, op_type=CQLOpType.READ
+        )
+        return self._handle_select_result_set(result_set)
 
     def _put(
         self, is_async: bool, **kwargs: Dict[str, Any]
@@ -262,6 +295,9 @@ class BaseTable:
 
     def put_async(self, **kwargs: Any) -> ResponseFuture:
         return self._put(is_async=True, **kwargs)
+
+    async def aput(self, **kwargs: Any) -> None:
+        await call_wrapped_async(self.put_async, **kwargs)
 
     def db_setup(self) -> None:
         _schema = self._schema()
@@ -340,3 +376,16 @@ class BaseTable:
             statement = self._obtain_prepared_statement(final_cql)
             #
             return self.session.execute_async(statement, args)
+
+    async def aexecute_cql(
+        self,
+        cql_semitemplate: str,
+        op_type: CQLOpType,
+        args: Tuple[Any, ...] = tuple(),
+    ) -> Iterable[RowType]:
+        return cast(
+            Iterable[RowType],
+            await call_wrapped_async(
+                self.execute_cql_async, cql_semitemplate, op_type, args
+            ),
+        )
