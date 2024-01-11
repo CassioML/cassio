@@ -90,6 +90,8 @@ def init(
         `tempfile_basedir` (optional str), where to create temporary work directories.
         `bundle_url_template` (optional str), url template for getting the database
             secure bundle. The "databaseId" variable is resolved with the actual value.
+            Default (for Astra DB):
+                "https://api.astra.datastax.com/v2/databases/{database_id}/secureBundleURL"
 
     ASTRA DB:
     The Astra-related parameters are arranged in a chain of fallbacks.
