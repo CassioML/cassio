@@ -531,9 +531,9 @@ class VectorMixin(BaseTableMixin):
         )
         self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
 
-    def ann_search(
+    def _get_ann_search_cql(
         self, vector: List[float], n: int, **kwargs: Any
-    ) -> Iterable[RowType]:
+    ) -> Tuple[str, Tuple[Any, ...]]:
         n_kwargs = self._normalize_kwargs(kwargs)
         # TODO: work on a columns: Optional[List[str]] = None
         # (but with nuanced handling of the column-magic we have here)
@@ -576,6 +576,14 @@ class VectorMixin(BaseTableMixin):
         select_ann_cql_vals = tuple(
             list(where_cql_vals) + vector_cql_vals + limit_cql_vals
         )
+        return select_ann_cql, select_ann_cql_vals
+
+    def ann_search(
+        self, vector: List[float], n: int, **kwargs: Any
+    ) -> Iterable[RowType]:
+        select_ann_cql, select_ann_cql_vals = self._get_ann_search_cql(
+            vector, n, **kwargs
+        )
         result_set = self.execute_cql(
             select_ann_cql, args=select_ann_cql_vals, op_type=CQLOpType.READ
         )
@@ -586,15 +594,24 @@ class VectorMixin(BaseTableMixin):
     ) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
 
-    def metric_ann_search(
-        self,
+    async def aann_search(
+        self, vector: List[float], n: int, **kwargs: Any
+    ) -> Iterable[RowType]:
+        select_ann_cql, select_ann_cql_vals = self._get_ann_search_cql(
+            vector, n, **kwargs
+        )
+        result_set = await self.aexecute_cql(
+            select_ann_cql, args=select_ann_cql_vals, op_type=CQLOpType.READ
+        )
+        return (self._normalize_row(result) for result in result_set)
+
+    @staticmethod
+    def _get_rows_with_distance(
+        rows: Iterable[RowType],
         vector: List[float],
-        n: int,
         metric: str,
         metric_threshold: Optional[float] = None,
-        **kwargs: Any,
     ) -> Iterable[RowWithDistanceType]:
-        rows = list(self.ann_search(vector, n, **kwargs))
         if rows == []:
             return []
         else:
@@ -646,10 +663,32 @@ class VectorMixin(BaseTableMixin):
             )
             return enriched_hits
 
+    def metric_ann_search(
+        self,
+        vector: List[float],
+        n: int,
+        metric: str,
+        metric_threshold: Optional[float] = None,
+        **kwargs: Any,
+    ) -> Iterable[RowWithDistanceType]:
+        rows = list(self.ann_search(vector, n, **kwargs))
+        return self._get_rows_with_distance(rows, vector, metric, metric_threshold)
+
     def metric_ann_search_async(
         self, vector: List[float], n: int, **kwargs: Any
     ) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
+
+    async def ametric_ann_search(
+        self,
+        vector: List[float],
+        n: int,
+        metric: str,
+        metric_threshold: Optional[float] = None,
+        **kwargs: Any,
+    ) -> Iterable[RowWithDistanceType]:
+        rows = list(await self.aann_search(vector, n, **kwargs))
+        return self._get_rows_with_distance(rows, vector, metric, metric_threshold)
 
 
 class ElasticKeyMixin(BaseTableMixin):
