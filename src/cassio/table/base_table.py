@@ -221,7 +221,7 @@ class BaseTable:
         )
         return select_cql, select_vals
 
-    def _handle_select_result_set(
+    def _normalize_result_set(
         self, result_set: Iterable[RowType]
     ) -> Optional[Dict[str, Any]]:
         if isinstance(result_set, ResultSet):
@@ -240,7 +240,7 @@ class BaseTable:
         result_set = self.execute_cql(
             select_cql, args=select_vals, op_type=CQLOpType.READ
         )
-        return self._handle_select_result_set(result_set)
+        return self._normalize_result_set(result_set)
 
     def get_async(self, **kwargs: Dict[str, Any]) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
@@ -251,7 +251,7 @@ class BaseTable:
         result_set = await self.aexecute_cql(
             select_cql, args=select_vals, op_type=CQLOpType.READ
         )
-        return self._handle_select_result_set(result_set)
+        return self._normalize_result_set(result_set)
 
     def _put(
         self, is_async: bool, **kwargs: Dict[str, Any]

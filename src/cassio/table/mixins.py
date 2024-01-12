@@ -129,11 +129,10 @@ class ClusteredMixin(BaseTableMixin):
         }
         return super()._normalize_kwargs(new_args_dict)
 
-    def get_partition(
+    def _get_get_partition_cql(
         self, partition_id: Optional[str] = None, n: Optional[int] = None, **kwargs: Any
-    ) -> Iterable[RowType]:
+    ) -> Tuple[str, Tuple[Any, ...]]:
         _partition_id = self.partition_id if partition_id is None else partition_id
-        get_p_cql_vals: Tuple[Any, ...] = tuple()
         #
         # TODO: work on a columns: Optional[List[str]] = None
         # (but with nuanced handling of the column-magic we have here)
@@ -171,6 +170,14 @@ class ClusteredMixin(BaseTableMixin):
             limit_clause=limit_clause,
         )
         get_p_cql_vals = tuple(where_cql_vals + limit_cql_vals)
+        return select_cql, get_p_cql_vals
+
+    def get_partition(
+        self, partition_id: Optional[str] = None, n: Optional[int] = None, **kwargs: Any
+    ) -> Iterable[RowType]:
+        select_cql, get_p_cql_vals = self._get_get_partition_cql(
+            partition_id, n, **kwargs
+        )
         return (
             self._normalize_row(raw_row)
             for raw_row in self.execute_cql(
@@ -184,6 +191,21 @@ class ClusteredMixin(BaseTableMixin):
         self, partition_id: Optional[str] = None, n: Optional[int] = None, **kwargs: Any
     ) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
+
+    async def aget_partition(
+        self, partition_id: Optional[str] = None, n: Optional[int] = None, **kwargs: Any
+    ) -> Iterable[RowType]:
+        select_cql, get_p_cql_vals = self._get_get_partition_cql(
+            partition_id, n, **kwargs
+        )
+        return (
+            self._normalize_row(raw_row)
+            for raw_row in await self.aexecute_cql(
+                select_cql,
+                args=get_p_cql_vals,
+                op_type=CQLOpType.READ,
+            )
+        )
 
 
 class MetadataMixin(BaseTableMixin):
@@ -508,7 +530,6 @@ class VectorMixin(BaseTableMixin):
             index_column=index_column,
         )
         self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
-        return
 
     def ann_search(
         self, vector: List[float], n: int, **kwargs: Any

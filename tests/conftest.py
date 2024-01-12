@@ -22,7 +22,7 @@ dbSession = None
 def createDBSessionSingleton():
     global dbSession
     if dbSession is None:
-        mode = os.environ["TEST_DB_MODE"]
+        mode = os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA")
         # the proper DB session is created as required
         if mode == "ASTRA_DB":
             ASTRA_DB_SECURE_BUNDLE_PATH = os.environ["ASTRA_DB_SECURE_BUNDLE_PATH"]
@@ -68,12 +68,12 @@ def createDBSessionSingleton():
 
 
 def getDBKeyspace():
-    mode = os.environ["TEST_DB_MODE"]
+    mode = os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA")
     if mode == "ASTRA_DB":
         ASTRA_DB_KEYSPACE = os.environ["ASTRA_DB_KEYSPACE"]
         return ASTRA_DB_KEYSPACE
     elif mode == "LOCAL_CASSANDRA":
-        CASSANDRA_KEYSPACE = os.environ["CASSANDRA_KEYSPACE"]
+        CASSANDRA_KEYSPACE = os.getenv("CASSANDRA_KEYSPACE", "default_keyspace")
         return CASSANDRA_KEYSPACE
 
 

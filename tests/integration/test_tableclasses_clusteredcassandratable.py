@@ -196,6 +196,52 @@ class TestClusteredCassandraTable:
         await t.aclear()
         assert await t.aget(row_id="nr2", partition_id="another_p") is None
 
+    @pytest.mark.asyncio
+    async def test_partition_ordering_asyncio(
+        self, db_session: Session, db_keyspace: str
+    ) -> None:
+        table_name_asc = "c_ct"
+        await call_wrapped_async(
+            db_session.execute_async,
+            f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_asc};",
+        )
+        t_asc = ClusteredCassandraTable(
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name_asc,
+            partition_id="my_part",
+        )
+        await t_asc.aput(row_id="row1", body_blob="blob1")
+        await t_asc.aput(row_id="row2", body_blob="blob1")
+        await t_asc.aput(row_id="row3", body_blob="blob1")
+        part_rows = await t_asc.aget_partition(n=2)
+        assert [gotten["row_id"] for gotten in part_rows] == ["row1", "row2"]
+        assert len(list(await t_asc.aget_partition())) == 3
+        assert len(list(await t_asc.aget_partition(n=10))) == 3
+        await t_asc.aclear()
+        #
+        table_name_desc = "c_ct_desc"
+        await call_wrapped_async(
+            db_session.execute_async,
+            f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_desc};",
+        )
+        t_desc = ClusteredCassandraTable(
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name_desc,
+            partition_id="my_part",
+            ordering_in_partition="desc",
+        )
+        await t_desc.aput(row_id="row1", body_blob="blob1")
+        await t_desc.aput(row_id="row2", body_blob="blob1")
+        await t_desc.aput(row_id="row3", body_blob="blob1")
+        part_rows = await t_desc.aget_partition(n=2)
+        assert [gotten["row_id"] for gotten in part_rows] == ["row3", "row2"]
+        assert len(list(await t_desc.aget_partition())) == 3
+        assert len(list(await t_desc.aget_partition(n=10))) == 3
+        #
+        await t_desc.aclear()
+
 
 if __name__ == "__main__":
     from ..conftest import createDBSessionSingleton, getDBKeyspace
