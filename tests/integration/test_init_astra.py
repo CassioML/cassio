@@ -25,7 +25,8 @@ from tests.conftest import (
 
 
 @pytest.mark.skipif(
-    os.environ["TEST_DB_MODE"] != "ASTRA_DB", reason="requires a test Astra DB instance"
+    os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA") != "ASTRA_DB",
+    reason="requires a test Astra DB instance",
 )
 class TestInitAstra:
     """

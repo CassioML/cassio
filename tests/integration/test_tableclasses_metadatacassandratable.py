@@ -1,12 +1,15 @@
 """
 Table classes integration test - MetadataCassandraTable
 """
+import asyncio
 
 import pytest
+from cassandra.cluster import Session  # type: ignore
 
 from cassio.table.tables import (
     MetadataCassandraTable,
 )
+from cassio.table.utils import call_wrapped_async
 
 
 @pytest.mark.usefixtures("db_session", "db_keyspace")
@@ -186,6 +189,51 @@ class TestMetadataCassandraTable:
         #
         num_deleted = t_fad.find_and_delete_entries(metadata=q_md, batch_size=120)
         num_found_items = len(list(t_fad.find_entries(n=N_ROWS + 1, metadata=q_md)))
+        assert num_deleted == N_ROWS
+        assert num_found_items == 0
+
+    @pytest.mark.asyncio
+    async def test_find_and_delete_entries_asyncio(
+        self, db_session: Session, db_keyspace: str
+    ) -> None:
+        table_name_fad = "m_ct"
+        N_ROWS = 128
+        await call_wrapped_async(
+            db_session.execute_async,
+            f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_fad};",
+        )
+        t_fad = MetadataCassandraTable(
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name_fad,
+            primary_key_type="TEXT",
+            metadata_indexing="all",
+            is_async=True,
+        )
+        coros = [
+            t_fad.aput(
+                row_id=f"r_{row_i}_md_{mdf}",
+                body_blob=f"r_{row_i}_md_{mdf}",
+                metadata={"field": mdf},
+            )
+            for row_i in range(N_ROWS)
+            for mdf in ["alpha", "omega"]
+        ]
+        await asyncio.gather(*coros)
+        #
+        q_md = {"field": "alpha"}
+        #
+        num_found_items = len(
+            list(await t_fad.afind_entries(n=N_ROWS + 1, metadata=q_md))
+        )
+        assert num_found_items == N_ROWS
+        #
+        num_deleted = await t_fad.afind_and_delete_entries(
+            metadata=q_md, batch_size=120
+        )
+        num_found_items = len(
+            list(await t_fad.afind_entries(n=N_ROWS + 1, metadata=q_md))
+        )
         assert num_deleted == N_ROWS
         assert num_found_items == 0
 

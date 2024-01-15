@@ -24,7 +24,8 @@ CASSANDRA_KEYSPACE = os.environ.get("CASSANDRA_KEYSPACE")
 
 
 @pytest.mark.skipif(
-    os.environ["TEST_DB_MODE"] != "LOCAL_CASSANDRA", reason="requires a test Cassandra"
+    os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA") != "LOCAL_CASSANDRA",
+    reason="requires a test Cassandra",
 )
 class TestInitCassandra:
     """

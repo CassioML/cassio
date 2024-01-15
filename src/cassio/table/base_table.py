@@ -1,4 +1,16 @@
-from typing import Any, cast, Dict, List, Iterable, Optional, Set, Tuple, Union
+import asyncio
+from asyncio import Task
+from typing import (
+    Any,
+    cast,
+    Dict,
+    List,
+    Iterable,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 from cassandra.query import SimpleStatement, PreparedStatement  # type: ignore
 from cassandra.cluster import ResultSet  # type: ignore
@@ -19,10 +31,10 @@ from cassio.table.cql import (
     SELECT_CQL_TEMPLATE,
     INSERT_ROW_CQL_TEMPLATE,
 )
+from cassio.table.utils import call_wrapped_async
 
 
 class BaseTable:
-
     ordering_in_partition: Optional[str] = None
 
     def __init__(
@@ -33,6 +45,7 @@ class BaseTable:
         ttl_seconds: Optional[int] = None,
         row_id_type: Union[str, List[str]] = ["TEXT"],
         skip_provisioning: bool = False,
+        is_async: bool = False,
     ) -> None:
         self.session = check_resolve_session(session)
         self.keyspace = check_resolve_keyspace(keyspace)
@@ -41,7 +54,11 @@ class BaseTable:
         self.row_id_type = normalize_type_desc(row_id_type)
         self.skip_provisioning = skip_provisioning
         self._prepared_statements: Dict[str, PreparedStatement] = {}
-        self.db_setup()
+        self.db_setup_task: Optional[Task[None]] = None
+        if is_async:
+            self.db_setup_task = asyncio.create_task(self.adb_setup())
+        else:
+            self.db_setup()
 
     def _schema_row_id(self) -> List[ColumnSpecType]:
         assert len(self.row_id_type) == 1
@@ -150,6 +167,10 @@ class BaseTable:
     def delete_async(self, **kwargs: Dict[str, Any]) -> ResponseFuture:
         return self._delete(is_async=True, **kwargs)
 
+    async def adelete(self, **kwargs: Any) -> None:
+        await self._ensure_db_setup()
+        await call_wrapped_async(self.delete_async, **kwargs)
+
     def _clear(self, is_async: bool) -> Union[None, ResponseFuture]:
         truncate_table_cql = TRUNCATE_TABLE_CQL_TEMPLATE.format()
         if is_async:
@@ -166,6 +187,10 @@ class BaseTable:
 
     def clear_async(self) -> ResponseFuture:
         return self._clear(is_async=True)
+
+    async def aclear(self) -> None:
+        await self._ensure_db_setup()
+        await call_wrapped_async(self.clear_async)
 
     def _parse_select_core_params(
         self, **kwargs: Dict[str, Any]
@@ -190,7 +215,7 @@ class BaseTable:
         where_clause = "WHERE " + " AND ".join(where_clause_blocks)
         return columns_desc, where_clause, select_cql_vals
 
-    def get(self, **kwargs: Any) -> Optional[RowType]:
+    def _get_select_cql(self, **kwargs: Any) -> Tuple[str, Tuple[Any, ...]]:
         columns_desc, where_clause, get_cql_vals = self._parse_select_core_params(
             **kwargs
         )
@@ -203,10 +228,11 @@ class BaseTable:
             where_clause=where_clause,
             limit_clause=limit_clause,
         )
-        # dancing around the result set (to comply with type checking):
-        result_set = self.execute_cql(
-            select_cql, args=select_vals, op_type=CQLOpType.READ
-        )
+        return select_cql, select_vals
+
+    def _normalize_result_set(
+        self, result_set: Iterable[RowType]
+    ) -> Optional[Dict[str, Any]]:
         if isinstance(result_set, ResultSet):
             result = result_set.one()
         else:
@@ -217,8 +243,25 @@ class BaseTable:
         else:
             return self._normalize_row(result)
 
+    def get(self, **kwargs: Any) -> Optional[RowType]:
+        select_cql, select_vals = self._get_select_cql(**kwargs)
+        # dancing around the result set (to comply with type checking):
+        result_set = self.execute_cql(
+            select_cql, args=select_vals, op_type=CQLOpType.READ
+        )
+        return self._normalize_result_set(result_set)
+
     def get_async(self, **kwargs: Dict[str, Any]) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
+
+    async def aget(self, **kwargs: Any) -> Optional[RowType]:
+        await self._ensure_db_setup()
+        select_cql, select_vals = self._get_select_cql(**kwargs)
+        # dancing around the result set (to comply with type checking):
+        result_set = await self.aexecute_cql(
+            select_cql, args=select_vals, op_type=CQLOpType.READ
+        )
+        return self._normalize_result_set(result_set)
 
     def _put(
         self, is_async: bool, **kwargs: Dict[str, Any]
@@ -263,7 +306,11 @@ class BaseTable:
     def put_async(self, **kwargs: Any) -> ResponseFuture:
         return self._put(is_async=True, **kwargs)
 
-    def db_setup(self) -> None:
+    async def aput(self, **kwargs: Any) -> None:
+        await self._ensure_db_setup()
+        await call_wrapped_async(self.put_async, **kwargs)
+
+    def _get_db_setup_cql(self) -> str:
         _schema = self._schema()
         column_specs = [
             f"{col_spec[0]} {col_spec[1]}"
@@ -286,7 +333,19 @@ class BaseTable:
             primkey_spec=primkey_spec,
             clustering_spec=clustering_spec,
         )
+        return create_table_cql
+
+    def db_setup(self) -> None:
+        create_table_cql = self._get_db_setup_cql()
         self.execute_cql(create_table_cql, op_type=CQLOpType.SCHEMA)
+
+    async def adb_setup(self) -> None:
+        create_table_cql = self._get_db_setup_cql()
+        await self.aexecute_cql(create_table_cql, op_type=CQLOpType.SCHEMA)
+
+    async def _ensure_db_setup(self) -> None:
+        if self.db_setup_task:
+            await self.db_setup_task
 
     def _finalize_cql_semitemplate(self, cql_semitemplate: str) -> str:
         table_fqname = f"{self.keyspace}.{self.table}"
@@ -317,14 +376,12 @@ class BaseTable:
         if op_type == CQLOpType.SCHEMA and self.skip_provisioning:
             # these operations are not executed for this instance:
             return []
+        if op_type == CQLOpType.SCHEMA:
+            # schema operations are not to be 'prepared'
+            statement = SimpleStatement(final_cql)
         else:
-            if op_type == CQLOpType.SCHEMA:
-                # schema operations are not to be 'prepared'
-                statement = SimpleStatement(final_cql)
-            else:
-                statement = self._obtain_prepared_statement(final_cql)
-            #
-            return cast(Iterable[RowType], self.session.execute(statement, args))
+            statement = self._obtain_prepared_statement(final_cql)
+        return cast(Iterable[RowType], self.session.execute(statement, args))
 
     def execute_cql_async(
         self,
@@ -336,7 +393,26 @@ class BaseTable:
         #
         if op_type == CQLOpType.SCHEMA:
             raise RuntimeError("Schema operations cannot be asynchronous")
+        statement = self._obtain_prepared_statement(final_cql)
+        return self.session.execute_async(statement, args)
+
+    async def aexecute_cql(
+        self,
+        cql_semitemplate: str,
+        op_type: CQLOpType,
+        args: Tuple[Any, ...] = tuple(),
+    ) -> Iterable[RowType]:
+        final_cql = self._finalize_cql_semitemplate(cql_semitemplate)
+        #
+        if op_type == CQLOpType.SCHEMA and self.skip_provisioning:
+            # these operations are not executed for this instance:
+            return []
+        if op_type == CQLOpType.SCHEMA:
+            # schema operations are not to be 'prepared'
+            statement = SimpleStatement(final_cql)
         else:
             statement = self._obtain_prepared_statement(final_cql)
-            #
-            return self.session.execute_async(statement, args)
+        return cast(
+            Iterable[RowType],
+            await call_wrapped_async(self.session.execute_async, statement, args),
+        )

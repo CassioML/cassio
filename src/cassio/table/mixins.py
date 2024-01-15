@@ -1,3 +1,4 @@
+import asyncio
 from operator import itemgetter
 import json
 
@@ -15,6 +16,7 @@ from typing import (
 
 from cassandra.cluster import ResponseFuture  # type: ignore
 
+from cassio.table.utils import call_wrapped_async
 from cassio.utils.vector.distance_metrics import distance_metrics
 
 from cassio.table.cql import (
@@ -114,6 +116,9 @@ class ClusteredMixin(BaseTableMixin):
     ) -> ResponseFuture:
         return self._delete_partition(is_async=True, partition_id=partition_id)
 
+    async def adelete_partition(self, partition_id: Optional[str] = None) -> None:
+        await call_wrapped_async(self.delete_partition_async, partition_id=partition_id)
+
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
         # if partition id provided in call, takes precedence over instance value
         arg_pid = args_dict.get("partition_id")
@@ -125,11 +130,10 @@ class ClusteredMixin(BaseTableMixin):
         }
         return super()._normalize_kwargs(new_args_dict)
 
-    def get_partition(
+    def _get_get_partition_cql(
         self, partition_id: Optional[str] = None, n: Optional[int] = None, **kwargs: Any
-    ) -> Iterable[RowType]:
+    ) -> Tuple[str, Tuple[Any, ...]]:
         _partition_id = self.partition_id if partition_id is None else partition_id
-        get_p_cql_vals: Tuple[Any, ...] = tuple()
         #
         # TODO: work on a columns: Optional[List[str]] = None
         # (but with nuanced handling of the column-magic we have here)
@@ -167,6 +171,14 @@ class ClusteredMixin(BaseTableMixin):
             limit_clause=limit_clause,
         )
         get_p_cql_vals = tuple(where_cql_vals + limit_cql_vals)
+        return select_cql, get_p_cql_vals
+
+    def get_partition(
+        self, partition_id: Optional[str] = None, n: Optional[int] = None, **kwargs: Any
+    ) -> Iterable[RowType]:
+        select_cql, get_p_cql_vals = self._get_get_partition_cql(
+            partition_id, n, **kwargs
+        )
         return (
             self._normalize_row(raw_row)
             for raw_row in self.execute_cql(
@@ -180,6 +192,21 @@ class ClusteredMixin(BaseTableMixin):
         self, partition_id: Optional[str] = None, n: Optional[int] = None, **kwargs: Any
     ) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
+
+    async def aget_partition(
+        self, partition_id: Optional[str] = None, n: Optional[int] = None, **kwargs: Any
+    ) -> Iterable[RowType]:
+        select_cql, get_p_cql_vals = self._get_get_partition_cql(
+            partition_id, n, **kwargs
+        )
+        return (
+            self._normalize_row(raw_row)
+            for raw_row in await self.aexecute_cql(
+                select_cql,
+                args=get_p_cql_vals,
+                op_type=CQLOpType.READ,
+            )
+        )
 
 
 class MetadataMixin(BaseTableMixin):
@@ -241,21 +268,31 @@ class MetadataMixin(BaseTableMixin):
             ("metadata_s", "MAP<TEXT,TEXT>"),
         ]
 
+    @staticmethod
+    def _get_create_entries_index_cql(entries_index_column: str) -> str:
+        index_name = f"eidx_{entries_index_column}"
+        index_column = f"{entries_index_column}"
+        create_index_cql = CREATE_ENTRIES_INDEX_CQL_TEMPLATE.format(
+            index_name=index_name,
+            index_column=index_column,
+        )
+        return create_index_cql
+
     def db_setup(self) -> None:
         # Currently: an 'entries' index on the metadata_s column
         super().db_setup()
         #
-        entries_index_columns = ["metadata_s"]
-        for entries_index_column in entries_index_columns:
-            index_name = f"eidx_{entries_index_column}"
-            index_column = f"{entries_index_column}"
-            create_index_cql = CREATE_ENTRIES_INDEX_CQL_TEMPLATE.format(
-                index_name=index_name,
-                index_column=index_column,
-            )
+        for entries_index_column in ["metadata_s"]:
+            create_index_cql = self._get_create_entries_index_cql(entries_index_column)
             self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
+
+    async def adb_setup(self) -> None:
+        # Currently: an 'entries' index on the metadata_s column
+        await super().adb_setup()
         #
-        return
+        for entries_index_column in ["metadata_s"]:
+            create_index_cql = self._get_create_entries_index_cql(entries_index_column)
+            await self.aexecute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
 
     @staticmethod
     def _serialize_md_dict(md_dict: Dict[str, Any]) -> str:
@@ -413,7 +450,9 @@ class MetadataMixin(BaseTableMixin):
             tuple(list(these_wc_vals) + list(s_wc_vals)),
         )
 
-    def find_entries(self, n: int, **kwargs: Any) -> Iterable[RowType]:
+    def _get_find_entries_cql(
+        self, n: int, **kwargs: Any
+    ) -> Tuple[str, Tuple[Any, ...]]:
         columns_desc, where_clause, get_cql_vals = self._parse_select_core_params(
             **kwargs
         )
@@ -426,6 +465,10 @@ class MetadataMixin(BaseTableMixin):
             where_clause=where_clause,
             limit_clause=limit_clause,
         )
+        return select_cql, select_vals
+
+    def find_entries(self, n: int, **kwargs: Any) -> Iterable[RowType]:
+        select_cql, select_vals = self._get_find_entries_cql(n, **kwargs)
         result_set = self.execute_cql(
             select_cql, args=select_vals, op_type=CQLOpType.READ
         )
@@ -433,6 +476,28 @@ class MetadataMixin(BaseTableMixin):
 
     def find_entries_async(self, n: int, **kwargs: Any) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
+
+    async def afind_entries(self, n: int, **kwargs: Any) -> Iterable[RowType]:
+        select_cql, select_vals = self._get_find_entries_cql(n, **kwargs)
+        result_set = await self.aexecute_cql(
+            select_cql, args=select_vals, op_type=CQLOpType.READ
+        )
+        return (self._normalize_row(result) for result in result_set)
+
+    @staticmethod
+    def _get_to_delete_and_visited(
+        n: Optional[int],
+        batch_size: int,
+        visited_tuples: Set[Tuple[Any, ...]],
+        del_pkargs: Optional[List[Any]] = None,
+    ) -> Tuple[int, Set[Tuple[Any, ...]]]:
+        if del_pkargs is not None:
+            visited_tuples.update(tuple(del_pkarg) for del_pkarg in del_pkargs)
+        if n is not None:
+            to_delete = min(batch_size, n - len(visited_tuples))
+        else:
+            to_delete = batch_size
+        return to_delete, visited_tuples
 
     def find_and_delete_entries(
         self, n: Optional[int] = None, batch_size: int = 20, **kwargs: Any
@@ -446,12 +511,10 @@ class MetadataMixin(BaseTableMixin):
         # TODO: decouple finding and deleting (streaming) for faster performance
         primary_key_cols = [col for col, _ in self._schema_primary_key()]
         #
-        visited_tuples: Set[Tuple] = set()
         batch_size = 20
-        if n is not None:
-            to_delete = min(batch_size, n - len(visited_tuples))
-        else:
-            to_delete = batch_size
+        to_delete, visited_tuples = self._get_to_delete_and_visited(
+            n, batch_size, set()
+        )
         while to_delete > 0:
             del_pkargs = [
                 [found_row[pkc] for pkc in primary_key_cols]
@@ -470,18 +533,45 @@ class MetadataMixin(BaseTableMixin):
                 break
             for d_future in d_futures:
                 _ = d_future.result()
-            visited_tuples = visited_tuples | {
-                tuple(del_pkarg) for del_pkarg in del_pkargs
-            }
-            if n is not None:
-                to_delete = min(batch_size, n - len(visited_tuples))
-            else:
-                to_delete = batch_size
+            to_delete, visited_tuples = self._get_to_delete_and_visited(
+                n, batch_size, visited_tuples, del_pkargs
+            )
         #
         return len(visited_tuples)
 
     def find_and_delete_entries_async(self, **kwargs: Any) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
+
+    async def afind_and_delete_entries(
+        self, n: Optional[int] = None, batch_size: int = 20, **kwargs: Any
+    ) -> int:
+        primary_key_cols = [col for col, _ in self._schema_primary_key()]
+        #
+        batch_size = 20
+        to_delete, visited_tuples = self._get_to_delete_and_visited(
+            n, batch_size, set()
+        )
+        while to_delete > 0:
+            del_pkargs = [
+                [found_row[pkc] for pkc in primary_key_cols]
+                for found_row in await self.afind_entries(n=to_delete, **kwargs)
+            ]
+            delete_coros = [
+                self.adelete(
+                    **{pkc: pkv for pkc, pkv in zip(primary_key_cols, del_pkarg)}
+                )
+                for del_pkarg in del_pkargs
+                if tuple(del_pkarg) not in visited_tuples
+            ]
+            if not delete_coros:
+                break
+            await asyncio.gather(*delete_coros)
+
+            to_delete, visited_tuples = self._get_to_delete_and_visited(
+                n, batch_size, visited_tuples, del_pkargs
+            )
+        #
+        return len(visited_tuples)
 
 
 class VectorMixin(BaseTableMixin):
@@ -494,21 +584,31 @@ class VectorMixin(BaseTableMixin):
             ("vector", f"VECTOR<FLOAT,{self.vector_dimension}>")
         ]
 
-    def db_setup(self) -> None:
-        super().db_setup()
-        # index on the vector column:
+    @staticmethod
+    def _get_create_index_cql() -> str:
         index_name = "idx_vector"
         index_column = "vector"
         create_index_cql = CREATE_INDEX_CQL_TEMPLATE.format(
             index_name=index_name,
             index_column=index_column,
         )
-        self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
-        return
+        return create_index_cql
 
-    def ann_search(
+    def db_setup(self) -> None:
+        super().db_setup()
+        # index on the vector column:
+        create_index_cql = self._get_create_index_cql()
+        self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
+
+    async def adb_setup(self) -> None:
+        await super().adb_setup()
+        # index on the vector column:
+        create_index_cql = self._get_create_index_cql()
+        await self.aexecute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
+
+    def _get_ann_search_cql(
         self, vector: List[float], n: int, **kwargs: Any
-    ) -> Iterable[RowType]:
+    ) -> Tuple[str, Tuple[Any, ...]]:
         n_kwargs = self._normalize_kwargs(kwargs)
         # TODO: work on a columns: Optional[List[str]] = None
         # (but with nuanced handling of the column-magic we have here)
@@ -551,6 +651,14 @@ class VectorMixin(BaseTableMixin):
         select_ann_cql_vals = tuple(
             list(where_cql_vals) + vector_cql_vals + limit_cql_vals
         )
+        return select_ann_cql, select_ann_cql_vals
+
+    def ann_search(
+        self, vector: List[float], n: int, **kwargs: Any
+    ) -> Iterable[RowType]:
+        select_ann_cql, select_ann_cql_vals = self._get_ann_search_cql(
+            vector, n, **kwargs
+        )
         result_set = self.execute_cql(
             select_ann_cql, args=select_ann_cql_vals, op_type=CQLOpType.READ
         )
@@ -561,15 +669,24 @@ class VectorMixin(BaseTableMixin):
     ) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
 
-    def metric_ann_search(
-        self,
+    async def aann_search(
+        self, vector: List[float], n: int, **kwargs: Any
+    ) -> Iterable[RowType]:
+        select_ann_cql, select_ann_cql_vals = self._get_ann_search_cql(
+            vector, n, **kwargs
+        )
+        result_set = await self.aexecute_cql(
+            select_ann_cql, args=select_ann_cql_vals, op_type=CQLOpType.READ
+        )
+        return (self._normalize_row(result) for result in result_set)
+
+    @staticmethod
+    def _get_rows_with_distance(
+        rows: Iterable[RowType],
         vector: List[float],
-        n: int,
         metric: str,
         metric_threshold: Optional[float] = None,
-        **kwargs: Any,
     ) -> Iterable[RowWithDistanceType]:
-        rows = list(self.ann_search(vector, n, **kwargs))
         if rows == []:
             return []
         else:
@@ -600,6 +717,7 @@ class VectorMixin(BaseTableMixin):
             else:
                 # this to satisfy the type checker
                 _used_thr = 0.0
+
                 # no hits are discarded
                 def _thresholder(mtx: float, thr: float) -> bool:
                     return True
@@ -620,10 +738,32 @@ class VectorMixin(BaseTableMixin):
             )
             return enriched_hits
 
+    def metric_ann_search(
+        self,
+        vector: List[float],
+        n: int,
+        metric: str,
+        metric_threshold: Optional[float] = None,
+        **kwargs: Any,
+    ) -> Iterable[RowWithDistanceType]:
+        rows = list(self.ann_search(vector, n, **kwargs))
+        return self._get_rows_with_distance(rows, vector, metric, metric_threshold)
+
     def metric_ann_search_async(
         self, vector: List[float], n: int, **kwargs: Any
     ) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
+
+    async def ametric_ann_search(
+        self,
+        vector: List[float],
+        n: int,
+        metric: str,
+        metric_threshold: Optional[float] = None,
+        **kwargs: Any,
+    ) -> Iterable[RowWithDistanceType]:
+        rows = list(await self.aann_search(vector, n, **kwargs))
+        return self._get_rows_with_distance(rows, vector, metric, metric_threshold)
 
 
 class ElasticKeyMixin(BaseTableMixin):
@@ -702,7 +842,6 @@ class ElasticKeyMixin(BaseTableMixin):
 
 
 class TypeNormalizerMixin(BaseTableMixin):
-
     clustered: bool = False
     elastic: bool = False
 
