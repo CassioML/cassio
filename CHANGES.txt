@@ -1,7 +1,6 @@
 v 0.1.5
 =======
 Add asyncio's a* methods to the table interface:
-  is_async constructor param (for unblocking DB setup)
   aget, aput, adelete, aclear
   aexecute_cql
   adelete_partition, aget_partition
