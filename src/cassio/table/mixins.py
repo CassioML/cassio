@@ -1,3 +1,5 @@
+import asyncio
+import concurrent.futures
 from operator import itemgetter
 import json
 
@@ -449,7 +451,9 @@ class MetadataMixin(BaseTableMixin):
             tuple(list(these_wc_vals) + list(s_wc_vals)),
         )
 
-    def find_entries(self, n: int, **kwargs: Any) -> Iterable[RowType]:
+    def _get_find_entries_cql(
+        self, n: int, **kwargs: Any
+    ) -> Tuple[str, Tuple[Any, ...]]:
         columns_desc, where_clause, get_cql_vals = self._parse_select_core_params(
             **kwargs
         )
@@ -462,6 +466,10 @@ class MetadataMixin(BaseTableMixin):
             where_clause=where_clause,
             limit_clause=limit_clause,
         )
+        return select_cql, select_vals
+
+    def find_entries(self, n: int, **kwargs: Any) -> Iterable[RowType]:
+        select_cql, select_vals = self._get_find_entries_cql(n, **kwargs)
         result_set = self.execute_cql(
             select_cql, args=select_vals, op_type=CQLOpType.READ
         )
@@ -469,6 +477,28 @@ class MetadataMixin(BaseTableMixin):
 
     def find_entries_async(self, n: int, **kwargs: Any) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
+
+    async def afind_entries(self, n: int, **kwargs: Any) -> Iterable[RowType]:
+        select_cql, select_vals = self._get_find_entries_cql(n, **kwargs)
+        result_set = await self.aexecute_cql(
+            select_cql, args=select_vals, op_type=CQLOpType.READ
+        )
+        return (self._normalize_row(result) for result in result_set)
+
+    @staticmethod
+    def _get_to_delete_and_visited(
+        n: Optional[int],
+        batch_size: int,
+        visited_tuples: Set[Tuple[Any, ...]],
+        del_pkargs: Optional[List[Any]] = None,
+    ) -> Tuple[int, Set[Tuple[Any, ...]]]:
+        if del_pkargs is not None:
+            visited_tuples.update(tuple(del_pkarg) for del_pkarg in del_pkargs)
+        if n is not None:
+            to_delete = min(batch_size, n - len(visited_tuples))
+        else:
+            to_delete = batch_size
+        return to_delete, visited_tuples
 
     def find_and_delete_entries(
         self, n: Optional[int] = None, batch_size: int = 20, **kwargs: Any
@@ -482,12 +512,10 @@ class MetadataMixin(BaseTableMixin):
         # TODO: decouple finding and deleting (streaming) for faster performance
         primary_key_cols = [col for col, _ in self._schema_primary_key()]
         #
-        visited_tuples: Set[Tuple] = set()
         batch_size = 20
-        if n is not None:
-            to_delete = min(batch_size, n - len(visited_tuples))
-        else:
-            to_delete = batch_size
+        to_delete, visited_tuples = self._get_to_delete_and_visited(
+            n, batch_size, set()
+        )
         while to_delete > 0:
             del_pkargs = [
                 [found_row[pkc] for pkc in primary_key_cols]
@@ -506,18 +534,45 @@ class MetadataMixin(BaseTableMixin):
                 break
             for d_future in d_futures:
                 _ = d_future.result()
-            visited_tuples = visited_tuples | {
-                tuple(del_pkarg) for del_pkarg in del_pkargs
-            }
-            if n is not None:
-                to_delete = min(batch_size, n - len(visited_tuples))
-            else:
-                to_delete = batch_size
+            to_delete, visited_tuples = self._get_to_delete_and_visited(
+                n, batch_size, visited_tuples, del_pkargs
+            )
         #
         return len(visited_tuples)
 
     def find_and_delete_entries_async(self, **kwargs: Any) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
+
+    async def afind_and_delete_entries(
+        self, n: Optional[int] = None, batch_size: int = 20, **kwargs: Any
+    ) -> int:
+        primary_key_cols = [col for col, _ in self._schema_primary_key()]
+        #
+        batch_size = 20
+        to_delete, visited_tuples = self._get_to_delete_and_visited(
+            n, batch_size, set()
+        )
+        while to_delete > 0:
+            del_pkargs = [
+                [found_row[pkc] for pkc in primary_key_cols]
+                for found_row in await self.afind_entries(n=to_delete, **kwargs)
+            ]
+            delete_coros = [
+                self.adelete(
+                    **{pkc: pkv for pkc, pkv in zip(primary_key_cols, del_pkarg)}
+                )
+                for del_pkarg in del_pkargs
+                if tuple(del_pkarg) not in visited_tuples
+            ]
+            if not delete_coros:
+                break
+            await asyncio.gather(*delete_coros)
+
+            to_delete, visited_tuples = self._get_to_delete_and_visited(
+                n, batch_size, visited_tuples, del_pkargs
+            )
+        #
+        return len(visited_tuples)
 
 
 class VectorMixin(BaseTableMixin):
