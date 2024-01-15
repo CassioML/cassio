@@ -267,21 +267,31 @@ class MetadataMixin(BaseTableMixin):
             ("metadata_s", "MAP<TEXT,TEXT>"),
         ]
 
+    @staticmethod
+    def _get_create_entries_index_cql(entries_index_column: str) -> str:
+        index_name = f"eidx_{entries_index_column}"
+        index_column = f"{entries_index_column}"
+        create_index_cql = CREATE_ENTRIES_INDEX_CQL_TEMPLATE.format(
+            index_name=index_name,
+            index_column=index_column,
+        )
+        return create_index_cql
+
     def db_setup(self) -> None:
         # Currently: an 'entries' index on the metadata_s column
         super().db_setup()
         #
-        entries_index_columns = ["metadata_s"]
-        for entries_index_column in entries_index_columns:
-            index_name = f"eidx_{entries_index_column}"
-            index_column = f"{entries_index_column}"
-            create_index_cql = CREATE_ENTRIES_INDEX_CQL_TEMPLATE.format(
-                index_name=index_name,
-                index_column=index_column,
-            )
+        for entries_index_column in ["metadata_s"]:
+            create_index_cql = self._get_create_entries_index_cql(entries_index_column)
             self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
+
+    async def adb_setup(self) -> None:
+        # Currently: an 'entries' index on the metadata_s column
+        await super().adb_setup()
         #
-        return
+        for entries_index_column in ["metadata_s"]:
+            create_index_cql = self._get_create_entries_index_cql(entries_index_column)
+            await self.aexecute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
 
     @staticmethod
     def _serialize_md_dict(md_dict: Dict[str, Any]) -> str:
@@ -520,16 +530,27 @@ class VectorMixin(BaseTableMixin):
             ("vector", f"VECTOR<FLOAT,{self.vector_dimension}>")
         ]
 
-    def db_setup(self) -> None:
-        super().db_setup()
-        # index on the vector column:
+    @staticmethod
+    def _get_create_index_cql() -> str:
         index_name = "idx_vector"
         index_column = "vector"
         create_index_cql = CREATE_INDEX_CQL_TEMPLATE.format(
             index_name=index_name,
             index_column=index_column,
         )
+        return create_index_cql
+
+    def db_setup(self) -> None:
+        super().db_setup()
+        # index on the vector column:
+        create_index_cql = self._get_create_index_cql()
         self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
+
+    async def adb_setup(self) -> None:
+        await super().adb_setup()
+        # index on the vector column:
+        create_index_cql = self._get_create_index_cql()
+        await self.aexecute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
 
     def _get_ann_search_cql(
         self, vector: List[float], n: int, **kwargs: Any

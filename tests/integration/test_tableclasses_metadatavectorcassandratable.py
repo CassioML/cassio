@@ -43,6 +43,7 @@ class TestMetadataVectorCassandraTable:
 
         # retrieval
         theta_1 = t.get(row_id="theta_1")
+        assert theta_1 is not None
         assert abs(theta_1["vector"][0] - math.cos(math.pi * 2 / N)) < 3.0e-8
         assert abs(theta_1["vector"][1] - math.sin(math.pi * 2 / N)) < 3.0e-8
 
@@ -117,6 +118,7 @@ class TestMetadataVectorCassandraTable:
             table=table_name,
             vector_dimension=2,
             primary_key_type="TEXT",
+            is_async=True,
         )
 
         for n_theta in range(N):
@@ -135,6 +137,7 @@ class TestMetadataVectorCassandraTable:
 
         # retrieval
         theta_1 = await t.aget(row_id="theta_1")
+        assert theta_1 is not None
         assert abs(theta_1["vector"][0] - math.cos(math.pi * 2 / N)) < 3.0e-8
         assert abs(theta_1["vector"][1] - math.sin(math.pi * 2 / N)) < 3.0e-8
 
