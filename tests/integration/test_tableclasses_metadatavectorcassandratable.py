@@ -3,7 +3,7 @@ Table classes integration test - MetadataVectorCassandraTable
 """
 import math
 import pytest
-from cassandra.cluster import Session
+from cassandra.cluster import Session  # type: ignore
 
 from cassio.table.tables import (
     MetadataVectorCassandraTable,
