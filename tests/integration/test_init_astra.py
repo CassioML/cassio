@@ -117,6 +117,31 @@ class TestInitAstra:
         assert resolve_keyspace() is not None
 
     @pytest.mark.skipif(
+        os.environ.get("ASTRA_DB_DATABASE_ID") is None,
+        reason="requires the database ID to download the secure bundle",
+    )
+    def test_init_download_scb_url_template(self):
+        _reset_cassio_globals()
+        dbid = os.environ["ASTRA_DB_DATABASE_ID"]
+        tok = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
+        kys = os.environ["ASTRA_DB_KEYSPACE"]
+        with pytest.raises(Exception):
+            cassio.init(
+                database_id=dbid,
+                token=tok,
+                keyspace=kys,
+                bundle_url_template="https://kittens/{database_id}/meow",
+            )
+        cassio.init(
+            database_id=dbid,
+            token=tok,
+            keyspace=kys,
+            bundle_url_template="https://api.astra.datastax.com/v2/databases/{database_id}/secureBundleURL",
+        )
+        assert resolve_session() is not None
+        assert resolve_keyspace() is not None
+
+    @pytest.mark.skipif(
         os.environ.get("ASTRA_DB_INIT_STRING") is None,
         reason="requires the init-string available as environment variable",
     )

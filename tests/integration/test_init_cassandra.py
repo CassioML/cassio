@@ -146,15 +146,9 @@ class TestInitCassandra:
                 "ASTRA_DB_DATABASE_ID",
             ]
         )
-        _prev_cp = os.environ.get("CASSANDRA_CONTACT_POINTS")
-        os.environ["CASSANDRA_CONTACT_POINTS"] = ""
         cassio.init(auto=True)
         assert resolve_session() is not None
         assert resolve_keyspace() == os.environ.get("CASSANDRA_KEYSPACE")
         assert resolve_session("s") == "s"
         assert resolve_keyspace("k") == "k"
         _unfreeze_envvars(stolen)
-        if _prev_cp is not None:
-            os.environ["CASSANDRA_CONTACT_POINTS"] = _prev_cp
-        else:
-            del os.environ["CASSANDRA_CONTACT_POINTS"]
