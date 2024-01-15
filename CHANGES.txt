@@ -1,3 +1,13 @@
+v 0.1.5
+=======
+Add asyncio's a* methods to the table interface:
+  is_async constructor param (for unblocking DB setup)
+  aget, aput, adelete, aclear
+  aexecute_cql
+  adelete_partition, aget_partition
+  aann_search, ametric_ann_search
+  afind_entries, afind_and_delete_entries
+
 v 0.1.4
 =======
 Add option to provide the SCB download url template to cassio.init()
