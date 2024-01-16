@@ -45,7 +45,6 @@ class BaseTable:
         ttl_seconds: Optional[int] = None,
         row_id_type: Union[str, List[str]] = ["TEXT"],
         skip_provisioning: bool = False,
-        is_async: bool = False,
     ) -> None:
         self.session = check_resolve_session(session)
         self.keyspace = check_resolve_keyspace(keyspace)
@@ -55,9 +54,9 @@ class BaseTable:
         self.skip_provisioning = skip_provisioning
         self._prepared_statements: Dict[str, PreparedStatement] = {}
         self.db_setup_task: Optional[Task[None]] = None
-        if is_async:
+        try:
             self.db_setup_task = asyncio.create_task(self.adb_setup())
-        else:
+        except RuntimeError:
             self.db_setup()
 
     def _schema_row_id(self) -> List[ColumnSpecType]:

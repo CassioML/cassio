@@ -118,7 +118,6 @@ class TestMetadataVectorCassandraTable:
             table=table_name,
             vector_dimension=2,
             primary_key_type="TEXT",
-            is_async=True,
         )
 
         for n_theta in range(N):

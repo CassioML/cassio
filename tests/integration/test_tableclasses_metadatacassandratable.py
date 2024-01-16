@@ -208,7 +208,6 @@ class TestMetadataCassandraTable:
             table=table_name_fad,
             primary_key_type="TEXT",
             metadata_indexing="all",
-            is_async=True,
         )
         coros = [
             t_fad.aput(
