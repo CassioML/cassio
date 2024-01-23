@@ -55,6 +55,7 @@ class BaseTable:
         self._prepared_statements: Dict[str, PreparedStatement] = {}
         self.db_setup_task: Optional[Task[None]] = None
         try:
+            asyncio.get_running_loop()
             self.db_setup_task = asyncio.create_task(self.adb_setup())
         except RuntimeError:
             self.db_setup()
