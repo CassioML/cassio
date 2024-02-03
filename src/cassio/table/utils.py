@@ -18,5 +18,4 @@ async def call_wrapped_async(
         loop.call_soon_threadsafe(asyncio_future.set_exception, exc)
 
     response_future.add_callbacks(success_handler, error_handler)
-    response_future.result()
     return await asyncio_future
