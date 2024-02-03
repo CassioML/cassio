@@ -161,6 +161,7 @@ class TestClusteredCassandraTable:
             keyspace=db_keyspace,
             table=table_name,
             partition_id="my_part",
+            async_setup=True,
         )
         await t.aput(row_id="reg_row", body_blob="reg_blob")
         gotten1 = await t.aget(row_id="reg_row")

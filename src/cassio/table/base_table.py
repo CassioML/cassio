@@ -1,5 +1,5 @@
 import asyncio
-from asyncio import Task
+from asyncio import InvalidStateError, Task
 from typing import (
     Any,
     cast,
@@ -45,6 +45,7 @@ class BaseTable:
         ttl_seconds: Optional[int] = None,
         row_id_type: Union[str, List[str]] = ["TEXT"],
         skip_provisioning: bool = False,
+        async_setup: bool = False,
     ) -> None:
         self.session = check_resolve_session(session)
         self.keyspace = check_resolve_keyspace(keyspace)
@@ -54,10 +55,9 @@ class BaseTable:
         self.skip_provisioning = skip_provisioning
         self._prepared_statements: Dict[str, PreparedStatement] = {}
         self.db_setup_task: Optional[Task[None]] = None
-        try:
-            asyncio.get_running_loop()
+        if async_setup:
             self.db_setup_task = asyncio.create_task(self.adb_setup())
-        except RuntimeError:
+        else:
             self.db_setup()
 
     def _schema_row_id(self) -> List[ColumnSpecType]:
@@ -161,14 +161,16 @@ class BaseTable:
             return None
 
     def delete(self, **kwargs: Dict[str, Any]) -> None:
+        self._ensure_db_setup()
         self._delete(is_async=False, **kwargs)
         return None
 
     def delete_async(self, **kwargs: Dict[str, Any]) -> ResponseFuture:
+        self._ensure_db_setup()
         return self._delete(is_async=True, **kwargs)
 
     async def adelete(self, **kwargs: Any) -> None:
-        await self._ensure_db_setup()
+        await self._aensure_db_setup()
         await call_wrapped_async(self.delete_async, **kwargs)
 
     def _clear(self, is_async: bool) -> Union[None, ResponseFuture]:
@@ -182,14 +184,16 @@ class BaseTable:
             return None
 
     def clear(self) -> None:
+        self._ensure_db_setup()
         self._clear(is_async=False)
         return None
 
     def clear_async(self) -> ResponseFuture:
+        self._ensure_db_setup()
         return self._clear(is_async=True)
 
     async def aclear(self) -> None:
-        await self._ensure_db_setup()
+        await self._aensure_db_setup()
         await call_wrapped_async(self.clear_async)
 
     def _parse_select_core_params(
@@ -244,6 +248,7 @@ class BaseTable:
             return self._normalize_row(result)
 
     def get(self, **kwargs: Any) -> Optional[RowType]:
+        self._ensure_db_setup()
         select_cql, select_vals = self._get_select_cql(**kwargs)
         # dancing around the result set (to comply with type checking):
         result_set = self.execute_cql(
@@ -255,7 +260,7 @@ class BaseTable:
         raise NotImplementedError("Asynchronous reads are not supported.")
 
     async def aget(self, **kwargs: Any) -> Optional[RowType]:
-        await self._ensure_db_setup()
+        await self._aensure_db_setup()
         select_cql, select_vals = self._get_select_cql(**kwargs)
         # dancing around the result set (to comply with type checking):
         result_set = await self.aexecute_cql(
@@ -300,14 +305,16 @@ class BaseTable:
             return None
 
     def put(self, **kwargs: Any) -> None:
+        self._ensure_db_setup()
         self._put(is_async=False, **kwargs)
         return None
 
     def put_async(self, **kwargs: Any) -> ResponseFuture:
+        self._ensure_db_setup()
         return self._put(is_async=True, **kwargs)
 
     async def aput(self, **kwargs: Any) -> None:
-        await self._ensure_db_setup()
+        await self._aensure_db_setup()
         await call_wrapped_async(self.put_async, **kwargs)
 
     def _get_db_setup_cql(self) -> str:
@@ -343,7 +350,18 @@ class BaseTable:
         create_table_cql = self._get_db_setup_cql()
         await self.aexecute_cql(create_table_cql, op_type=CQLOpType.SCHEMA)
 
-    async def _ensure_db_setup(self) -> None:
+    def _ensure_db_setup(self) -> None:
+        if self.db_setup_task:
+            try:
+                self.db_setup_task.result()
+            except InvalidStateError:
+                raise ValueError(
+                    "Asynchronous setup of the DB not finished. "
+                    "NB: Table sync methods shouldn't be called from the "
+                    "event loop. Consider using their async equivalents."
+                )
+
+    async def _aensure_db_setup(self) -> None:
         if self.db_setup_task:
             await self.db_setup_task
 
