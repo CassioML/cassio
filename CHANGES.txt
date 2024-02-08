@@ -8,6 +8,8 @@ Add asyncio's a* methods to the table interface:
   afind_entries, afind_and_delete_entries
 Add explicit async_setup parameter to table constructors
 CI/CD (with testing on Astra DB)
+bugfix: type of kwargs/pargs in most calls
+bugfix: type of input for [check_]resolve_session
 
 v 0.1.4
 =======
