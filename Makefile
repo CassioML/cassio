@@ -22,15 +22,12 @@ test-unit:
 	pytest tests/unit
 
 test-integration:
-	source .testing.env
 	pytest tests/integration
 
 test-astra-integration:
-	source .testing.env
 	TEST_DB_MODE="ASTRA_DB" pytest tests/integration
 
 test-cassandra-integration:
-	source .testing.env
 	TEST_DB_MODE="LOCAL_CASSANDRA" pytest tests/integration
 
 build:
