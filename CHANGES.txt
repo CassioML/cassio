@@ -6,6 +6,7 @@ Add asyncio's a* methods to the table interface:
   adelete_partition, aget_partition
   aann_search, ametric_ann_search
   afind_entries, afind_and_delete_entries
+Add explicit async_setup parameter to table constructors
 
 v 0.1.4
 =======
