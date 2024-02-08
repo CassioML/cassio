@@ -41,7 +41,7 @@ class VectorTable:
         "will be deprecated in future versions of CassIO."
     )
 
-    def __init__(self, *pargs: Any, **kwargs: Dict[str, Any]):
+    def __init__(self, *pargs: Any, **kwargs: Any):
         #
         warn(self.DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
         #

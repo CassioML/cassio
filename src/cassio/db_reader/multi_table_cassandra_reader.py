@@ -224,7 +224,7 @@ class MultiTableCassandraReader:
         """
         return self(**args_dict)
 
-    def __call__(self, **kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(self, **kwargs: Any) -> Dict[str, Any]:
         """
         Given the union of all the primary key fields from all tables involved,
         run the necessary lookups, extracts the requested columns (or values,
