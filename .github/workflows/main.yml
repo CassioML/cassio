@@ -1,0 +1,46 @@
+name: Test with Astra DB
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    env:
+      ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
+      ASTRA_DB_DATABASE_ID: ${{ secrets.ASTRA_DB_DATABASE_ID }}
+      ASTRA_DB_INIT_STRING: ${{ secrets.ASTRA_DB_INIT_STRING }}
+      ASTRA_DB_KEYSPACE: ${{ secrets.ASTRA_DB_KEYSPACE }}
+      ASTRA_DB_SECURE_BUNDLE_PATH: ${{ secrets.ASTRA_DB_SECURE_BUNDLE_PATH }}
+      TEST_DB_MODE: ${{ secrets.TEST_DB_MODE }}
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.10
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+
+    - name: Get SCB
+      run: |
+        python -c 'import os; from cassio.config.bundle_download import download_astra_bundle_url; download_astra_bundle_url(database_id=os.environ["ASTRA_DB_DATABASE_ID"], token=os.environ["ASTRA_DB_APPLICATION_TOKEN"], out_file_path=os.environ["ASTRA_DB_SECURE_BUNDLE_PATH"])'
+
+    - name: Unit tests
+      run: |
+        pytest tests/unit
+
+    - name: Integration tests
+      run: |
+        pytest tests/integration

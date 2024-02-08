@@ -1,0 +1,49 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  mypy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+
+    - name: Src Ruff
+      run: |
+        cd src/ && ruff .
+
+    - name: Src Black
+      run: |
+        cd src/ && black . --check
+
+    - name: Src Mypy
+      run: |
+        cd src/ && mypy .
+
+    - name: Test Ruff
+      run: |
+        cd tests/ && ruff .
+
+    - name: Test Black
+      run: |
+        cd tests/ && black . --check
+
+    - name: Test Mypy
+      run: |
+        cd tests/ && mypy .
