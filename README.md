@@ -108,9 +108,10 @@ make test-unit
 
 You need a virtualenv with the `requirements-dev.txt` installed.
 
-Create the DB connection settings file, `cp TEMPLATE.testing.env .testing.env`
-and then edit the properties. You need at least one of either Astra DB or a
-Cassandra cluster to use, with vector-search support.
+Ensure the required environment variables are set (see for instance
+the provided `TEMPLATE.testing.env`).
+You need at least one of either Astra DB or a
+Cassandra (5+) cluster to use.
 
 Launch the tests with either of:
 
