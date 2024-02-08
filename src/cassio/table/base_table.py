@@ -138,9 +138,7 @@ class BaseTable:
         #
         return dict_row
 
-    def _delete(
-        self, is_async: bool, **kwargs: Dict[str, Any]
-    ) -> Union[None, ResponseFuture]:
+    def _delete(self, is_async: bool, **kwargs: Any) -> Union[None, ResponseFuture]:
         n_kwargs = self._normalize_kwargs(kwargs)
         (
             rest_kwargs,
@@ -160,12 +158,12 @@ class BaseTable:
             self.execute_cql(delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE)
             return None
 
-    def delete(self, **kwargs: Dict[str, Any]) -> None:
+    def delete(self, **kwargs: Any) -> None:
         self._ensure_db_setup()
         self._delete(is_async=False, **kwargs)
         return None
 
-    def delete_async(self, **kwargs: Dict[str, Any]) -> ResponseFuture:
+    def delete_async(self, **kwargs: Any) -> ResponseFuture:
         self._ensure_db_setup()
         return self._delete(is_async=True, **kwargs)
 
@@ -197,7 +195,7 @@ class BaseTable:
         await call_wrapped_async(self.clear_async)
 
     def _parse_select_core_params(
-        self, **kwargs: Dict[str, Any]
+        self, **kwargs: Any
     ) -> Tuple[str, str, Tuple[Any, ...]]:
         n_kwargs = self._normalize_kwargs(kwargs)
         # TODO: work on a columns: Optional[List[str]] = None
@@ -256,7 +254,7 @@ class BaseTable:
         )
         return self._normalize_result_set(result_set)
 
-    def get_async(self, **kwargs: Dict[str, Any]) -> ResponseFuture:
+    def get_async(self, **kwargs: Any) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
 
     async def aget(self, **kwargs: Any) -> Optional[RowType]:
@@ -268,9 +266,7 @@ class BaseTable:
         )
         return self._normalize_result_set(result_set)
 
-    def _put(
-        self, is_async: bool, **kwargs: Dict[str, Any]
-    ) -> Union[None, ResponseFuture]:
+    def _put(self, is_async: bool, **kwargs: Any) -> Union[None, ResponseFuture]:
         n_kwargs = self._normalize_kwargs(kwargs)
         primary_key = self._schema_primary_key()
         assert set(col for col, _ in primary_key) - set(n_kwargs.keys()) == set()

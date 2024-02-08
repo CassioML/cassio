@@ -5,7 +5,7 @@ by some 'session id'. Overwrites are not supported by design.
 
 import uuid
 from warnings import warn
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Iterable, Optional
 
 from cassandra.cluster import Session  # type: ignore
 
@@ -30,9 +30,7 @@ class StoredBlobHistory:
         "will be deprecated in future versions of CassIO."
     )
 
-    def __init__(
-        self, session: Session, keyspace: str, table_name: str, **kwargs: Dict[str, Any]
-    ):
+    def __init__(self, session: Session, keyspace: str, table_name: str, **kwargs: Any):
         #
         warn(self.DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
         # specifications are added such as the type of the row_id
