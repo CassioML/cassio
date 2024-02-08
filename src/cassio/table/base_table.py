@@ -390,7 +390,7 @@ class BaseTable:
         _preparable_cql = final_cql.replace("%s", "?")
         # handle the cache of prepared statements
         if _preparable_cql not in self._prepared_statements:
-            logger.debug(f"Preparing statement \"{_preparable_cql}\"")
+            logger.debug(f'Preparing statement "{_preparable_cql}"')
             self._prepared_statements[_preparable_cql] = self.session.prepare(
                 _preparable_cql
             )
@@ -406,16 +406,16 @@ class BaseTable:
         #
         if op_type == CQLOpType.SCHEMA and self.skip_provisioning:
             # these operations are not executed for this instance:
-            logger.debug(f"Not executing statement \"{final_cql}\"")
+            logger.debug(f'Not executing statement "{final_cql}"')
             return []
         if op_type == CQLOpType.SCHEMA:
             # schema operations are not to be 'prepared'
             statement = SimpleStatement(final_cql)
-            logger.debug(f"Executing statement \"{final_cql}\" as simple (unprepared)")
+            logger.debug(f'Executing statement "{final_cql}" as simple (unprepared)')
         else:
             statement = self._obtain_prepared_statement(final_cql)
-            logger.debug(f"Executing statement \"{final_cql}\" as prepared")
-        logger.trace(f"Statement \"{final_cql}\" has args: \"{str(args)}\"")
+            logger.debug(f'Executing statement "{final_cql}" as prepared')
+        logger.trace(f'Statement "{final_cql}" has args: "{str(args)}"')  # type: ignore
         return cast(Iterable[RowType], self.session.execute(statement, args))
 
     def execute_cql_async(
@@ -429,8 +429,8 @@ class BaseTable:
         if op_type == CQLOpType.SCHEMA:
             raise RuntimeError("Schema operations cannot be asynchronous")
         statement = self._obtain_prepared_statement(final_cql)
-        logger.debug(f"Executing_async statement \"{final_cql}\" as prepared")
-        logger.trace(f"Statement \"{final_cql}\" has args: \"{str(args)}\"")
+        logger.debug(f'Executing_async statement "{final_cql}" as prepared')
+        logger.trace(f'Statement "{final_cql}" has args: "{str(args)}"')  # type: ignore
         return self.session.execute_async(statement, args)
 
     async def aexecute_cql(
@@ -443,16 +443,16 @@ class BaseTable:
         #
         if op_type == CQLOpType.SCHEMA and self.skip_provisioning:
             # these operations are not executed for this instance:
-            logger.debug(f"Not aexecuting statement \"{final_cql}\"")
+            logger.debug(f'Not aexecuting statement "{final_cql}"')
             return []
         if op_type == CQLOpType.SCHEMA:
             # schema operations are not to be 'prepared'
             statement = SimpleStatement(final_cql)
-            logger.debug(f"aExecuting statement \"{final_cql}\" as simple (unprepared)")
+            logger.debug(f'aExecuting statement "{final_cql}" as simple (unprepared)')
         else:
             statement = self._obtain_prepared_statement(final_cql)
-            logger.debug(f"aExecuting statement \"{final_cql}\" as prepared")
-        logger.trace(f"Statement \"{final_cql}\" has args: \"{str(args)}\"")
+            logger.debug(f'aExecuting statement "{final_cql}" as prepared')
+        logger.trace(f'Statement "{final_cql}" has args: "{str(args)}"')  # type: ignore
         return cast(
             Iterable[RowType],
             await call_wrapped_async(self.session.execute_async, statement, args),
