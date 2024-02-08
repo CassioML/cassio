@@ -305,7 +305,7 @@ def init(
             shutil.rmtree(temp_dir)
 
 
-def resolve_session(arg_session: Optional[str] = None) -> Optional[Session]:
+def resolve_session(arg_session: Optional[Session] = None) -> Optional[Session]:
     """Utility to fall back to the global defaults when null args are passed."""
     if arg_session is not None:
         return arg_session
@@ -313,7 +313,7 @@ def resolve_session(arg_session: Optional[str] = None) -> Optional[Session]:
         return default_session
 
 
-def check_resolve_session(arg_session: Optional[str] = None) -> Session:
+def check_resolve_session(arg_session: Optional[Session] = None) -> Session:
     s = resolve_session(arg_session)
     if s is None:
         raise ValueError("DB session not set.")
