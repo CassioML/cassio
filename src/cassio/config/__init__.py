@@ -337,7 +337,7 @@ def check_resolve_keyspace(arg_keyspace: Optional[str] = None) -> str:
         return s
 
 
-def _first_valid(*pargs: Optional[Any]) -> Union[Any, None]:
+def _first_valid(*pargs: Any) -> Union[Any, None]:
     for entry in pargs:
         if entry is not None:
             return entry

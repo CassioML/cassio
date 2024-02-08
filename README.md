@@ -65,11 +65,11 @@ for wider testing. Then, with a slower cadence (such as, when releasing),
 We are still at `0.*`. Occasional breaking changes are to be expected,
 but please think carefully. Later, a stronger versioning model will be adopted.
 
-### Style
+### Style and typing
 
-Style is enforced through `black` and linting with `ruff`. We also take
-type-checking seriously. The code should run through `make format` without
-issues.
+Style is enforced through `black`, linting with `ruff`,
+and typechecking with `mypy`.
+The code should run through `make format` without issues.
 
 ### Python version coverage
 
