@@ -2,6 +2,7 @@
 Facilities to manage the download of a secure-connect-bundle from an Astra DB
 token.
 """
+import logging
 import requests  # type: ignore
 from typing import Optional
 
@@ -9,6 +10,9 @@ from typing import Optional
 DEFAULT_GET_BUNDLE_URL_TEMPLATE = (
     "https://api.astra.datastax.com/v2/databases/{database_id}/secureBundleURL"
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_astra_bundle_url(
@@ -23,10 +27,11 @@ def get_astra_bundle_url(
     if not bundle_url_template:
         bundle_url_template = DEFAULT_GET_BUNDLE_URL_TEMPLATE
     url = bundle_url_template.format(database_id=database_id)
-
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
+    logger.debug(f"Obtaining SCB URL from: {url}")
     response = requests.post(url, headers=headers)
+    logger.debug(f"SCB URL response: {response.text}")
 
     response_json = response.json()
     # Print the response
@@ -67,6 +72,7 @@ def download_astra_bundle_url(
     bundle_url = get_astra_bundle_url(
         database_id=database_id, token=token, bundle_url_template=bundle_url_template
     )
+    logger.debug(f"Downloading SCB from: {bundle_url}")
     bundle_data = requests.get(bundle_url)
     with open(out_file_path, "wb") as f:
         f.write(bundle_data.content)
