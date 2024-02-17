@@ -45,21 +45,6 @@ poetry install -E all --with dev --with test_integration  # or similar, this is 
 [Inspired from this](https://github.com/orgs/python-poetry/discussions/1135).
 You also need a recent Poetry for this to work.
 
-### Git flow
-
-_Note: this is a rough guide, use your common sense and consider exceptions._
-
-`main` is where versioned releases occur (the corresponding commits are git-tagged
-as `v0.0.7` and similar, parallel to the PyPI releases).
-
-Please do not push/PR more than trivial fixes directly to `main`.
-
-Features should generally be done on specific branches and merged into `dev`
-for wider testing. Then, with a slower cadence (such as, when releasing),
-`dev` would be merged to `main`.
-
-![Git flow](images/git-flow.png)
-
 #### Versioning
 
 We are still at `0.*`. Occasional breaking changes are to be expected,
