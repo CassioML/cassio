@@ -67,10 +67,12 @@ catch versions-specific issues
 - Bump version in setup.py
 - Add to `CHANGES.txt`
 - Commit the very code that will be built:
+- `git tag v<x.y.z>; git push origin v<x.y.z>`
 
 ```
+rm dist/cassio*
 make build
-twine upload dist/*  # (login to PyPI ...)
+twine upload dist/cassio*  # (login to PyPI ...)
 ```
 
 ### Testing

@@ -7,9 +7,11 @@ Add asyncio's a* methods to the table interface:
   aann_search, ametric_ann_search
   afind_entries, afind_and_delete_entries
 Add explicit async_setup parameter to table constructors
-CI/CD (with testing on Astra DB)
 bugfix: type of kwargs/pargs in most calls
 bugfix: type of input for [check_]resolve_session
+repo housekeeping:
+  CI/CD (with testing on Astra DB)
+  removed branch 'dev' from git flow
 
 v 0.1.4
 =======

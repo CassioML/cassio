@@ -5,7 +5,7 @@ here = pathlib.Path(__file__).parent.resolve()
 
 setup(
     name="cassio",
-    version="0.1.4",
+    version="0.1.5",
     author="Stefano Lottini",
     author_email="stefano.lottini@datastax.com",
     package_dir={"": "src"},
