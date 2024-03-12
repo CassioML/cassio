@@ -35,7 +35,7 @@ jobs:
 
     - name: Get SCB
       run: |
-        python -c 'import os; from cassio.config.bundle_download import download_astra_bundle_url; download_astra_bundle_url(database_id=os.environ["ASTRA_DB_DATABASE_ID"], token=os.environ["ASTRA_DB_APPLICATION_TOKEN"], out_file_path=os.environ["ASTRA_DB_SECURE_BUNDLE_PATH"])'
+        poetry run python -c 'import os; from cassio.config.bundle_download import download_astra_bundle_url; download_astra_bundle_url(database_id=os.environ["ASTRA_DB_DATABASE_ID"], token=os.environ["ASTRA_DB_APPLICATION_TOKEN"], out_file_path=os.environ["ASTRA_DB_SECURE_BUNDLE_PATH"])'
 
     - name: Unit tests
       run: |
