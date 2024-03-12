@@ -203,6 +203,7 @@ class MultiTableCassandraReader:
             table_name: self.session.prepare(cql_statement)
             for table_name, cql_statement in query_cql_map.items()
         }
+
         # reduction across all tables to all primary-key values needed
         # (this merger function makes the type checker happy over a lambda)
         def _set_merger(s1: Iterable[str], s2: Iterable[str]) -> Set[str]:

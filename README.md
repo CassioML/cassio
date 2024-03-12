@@ -19,13 +19,19 @@ such as LangChain, please visit [cassio.org](https://cassio.org).
 
 ### Setup
 
-To develop `cassio`, use the `requirements-dev.txt`.
+To develop `cassio`, we use poetry
 
-To use the dev version in an integration (e.g. your branch of LangChain),
-`pip install -e .` in this `cassio` repo from within the virtual environment
-you are using to develop your integration.
+```shell
+pip install poetry
+```
 
-#### Poetry
+Use poetry to install dependencies
+
+```shell
+poetry install
+```
+
+#### Use cassio current code in other Poetry base projects
 
 If the integration is Poetry-based (e.g. LangChain itself), you should get this
 in your `pyproject.toml`:
@@ -64,7 +70,7 @@ catch versions-specific issues
 
 ### Publishing
 
-- Bump version in setup.py
+- Bump version in pyproject.toml
 - Add to `CHANGES.txt`
 - Commit the very code that will be built:
 - `git tag v<x.y.z>; git push origin v<x.y.z>`
@@ -72,7 +78,7 @@ catch versions-specific issues
 ```
 rm dist/cassio*
 make build
-twine upload dist/cassio*  # (login to PyPI ...)
+poetry publish  # (login to PyPI ...)
 ```
 
 ### Testing
@@ -85,15 +91,11 @@ there's `make test-all`.
 
 #### Unit testing
 
-You need a virtualenv with the `requirements-dev.txt` installed.
-
 ```
 make test-unit
 ```
 
 #### Integration with the DB
-
-You need a virtualenv with the `requirements-dev.txt` installed.
 
 Ensure the required environment variables are set (see for instance
 the provided `TEMPLATE.testing.env`).
