@@ -4,6 +4,7 @@ import numpy as np
 
 VectorType = List[float]
 
+
 # distance definitions. These all work batched in the first argument.
 def distance_dot_product(
     embedding_vectors: List[VectorType], reference_embedding_vector: VectorType

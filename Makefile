@@ -7,32 +7,32 @@ all: help
 format: format-tests format-src
 
 format-tests:
-	cd tests/ && ruff .
-	cd tests/ && black . --check
-	cd tests/ && mypy .
+	poetry run ruff tests
+	poetry run black tests --check
+	poetry run mypy tests
 
 format-src:
-	cd src && ruff .
-	cd src && black . --check
-	cd src && mypy .
+	poetry run ruff src
+	poetry run black src --check
+	poetry run mypy src
 
 test-all: test-unit test-integration
 
 test-unit:
-	pytest tests/unit
+	poetry run pytest tests/unit
 
 test-integration:
-	pytest tests/integration
+	poetry run pytest tests/integration
 
 test-astra-integration:
-	TEST_DB_MODE="ASTRA_DB" pytest tests/integration
+	TEST_DB_MODE="ASTRA_DB" poetry run pytest tests/integration
 
 test-cassandra-integration:
-	TEST_DB_MODE="LOCAL_CASSANDRA" pytest tests/integration
+	TEST_DB_MODE="LOCAL_CASSANDRA" poetry run pytest tests/integration
 
 build:
-	- rm dist/*
-	python setup.py sdist bdist_wheel
+	rm dist/*
+	poetry build
 
 help:
 	@echo "======================================================================"

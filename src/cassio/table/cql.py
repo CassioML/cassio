@@ -34,6 +34,7 @@ CQLStatementType = Union[str, SimpleStatement, PreparedStatement]
 StatementWithArgs = Tuple[CQLStatementType, Tuple[Any, ...]]
 StatementStrWithArgs = Tuple[str, Tuple[Any, ...]]
 
+
 # Mock DB session
 class MockDBSession:
     def __init__(self, verbose: bool = False):
