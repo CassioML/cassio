@@ -110,6 +110,6 @@ make test-astra-integration
 make test-cassandra-integration
 ```
 
-The latter two above specify `TEST_DB_MODE` as either `LOCAL_CASSANDRA` or
+The latter two above specify `TEST_DB_MODE` as either `LOCAL_CASSANDRA`, `TESTCONTAINERS_CASSANDRA` or
 `ASTRA_DB`. _Ideally you should test with both, since some tests are
 skipped in either case._

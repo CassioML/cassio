@@ -24,7 +24,8 @@ CASSANDRA_KEYSPACE = os.environ.get("CASSANDRA_KEYSPACE")
 
 
 @pytest.mark.skipif(
-    os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA") != "LOCAL_CASSANDRA",
+    os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA")
+    not in ["LOCAL_CASSANDRA", "TESTCONTAINERS_CASSANDRA"],
     reason="requires a test Cassandra",
 )
 class TestInitCassandra:
@@ -33,7 +34,7 @@ class TestInitCassandra:
     Requires a running (local) Cassandra cluster.
     """
 
-    def test_init_session(self) -> None:
+    def test_init_session(self, cassandra_port: int) -> None:
         #
         _reset_cassio_globals()
         assert resolve_session() is None
@@ -51,9 +52,9 @@ class TestInitCassandra:
         else:
             auth = None
         if _cps:
-            cluster = Cluster(_cps, auth_provider=auth)
+            cluster = Cluster(_cps, port=cassandra_port, auth_provider=auth)
         else:
-            cluster = Cluster(auth_provider=auth)
+            cluster = Cluster(port=cassandra_port, auth_provider=auth)
         session = cluster.connect()
         #
         cassio.init(session=session)
@@ -69,7 +70,7 @@ class TestInitCassandra:
         assert resolve_session("s") == "s"
         assert resolve_keyspace("k") == "k"
 
-    def test_init_empty_cps(self) -> None:
+    def test_init_empty_cps(self, cassandra_port: int) -> None:
         stolen = _freeze_envvars(["CASSANDRA_CONTACT_POINTS"])
         _reset_cassio_globals()
         assert resolve_session() is None
@@ -80,6 +81,7 @@ class TestInitCassandra:
             contact_points=CASSANDRA_CONTACT_POINTS or "",
             username=CASSANDRA_USERNAME,
             password=CASSANDRA_PASSWORD,
+            cluster_kwargs={"port": cassandra_port},
         )
         assert resolve_session() is not None
         assert resolve_keyspace() is None
@@ -87,7 +89,7 @@ class TestInitCassandra:
         assert resolve_keyspace("k") == "k"
         _unfreeze_envvars(stolen)
 
-    def test_init_cps(self) -> None:
+    def test_init_cps(self, cassandra_port: int) -> None:
         _reset_cassio_globals()
         assert resolve_session() is None
         assert resolve_keyspace() is None
@@ -97,13 +99,14 @@ class TestInitCassandra:
             contact_points=CASSANDRA_CONTACT_POINTS or "127.0.0.1",
             username=CASSANDRA_USERNAME,
             password=CASSANDRA_PASSWORD,
+            cluster_kwargs={"port": cassandra_port},
         )
         assert resolve_session() is not None
         assert resolve_keyspace() is None
         assert resolve_session("s") == "s"
         assert resolve_keyspace("k") == "k"
 
-    def test_init_cleaning_cps(self) -> None:
+    def test_init_cleaning_cps(self, cassandra_port: int) -> None:
         _reset_cassio_globals()
         assert resolve_session() is None
         assert resolve_keyspace() is None
@@ -113,13 +116,14 @@ class TestInitCassandra:
             contact_points=(CASSANDRA_CONTACT_POINTS or "127.0.0.1") + ",,,,   , ",
             username=CASSANDRA_USERNAME,
             password=CASSANDRA_PASSWORD,
+            cluster_kwargs={"port": cassandra_port},
         )
         assert resolve_session() is not None
         assert resolve_keyspace() is None
         assert resolve_session("s") == "s"
         assert resolve_keyspace("k") == "k"
 
-    def test_init_with_keyspace(self) -> None:
+    def test_init_with_keyspace(self, cassandra_port: int) -> None:
         _reset_cassio_globals()
         assert resolve_session() is None
         assert resolve_keyspace() is None
@@ -130,13 +134,14 @@ class TestInitCassandra:
             username=CASSANDRA_USERNAME,
             password=CASSANDRA_PASSWORD,
             keyspace=CASSANDRA_KEYSPACE,
+            cluster_kwargs={"port": cassandra_port},
         )
         assert resolve_session() is not None
         assert resolve_keyspace() == CASSANDRA_KEYSPACE
         assert resolve_session("s") == "s"
         assert resolve_keyspace("k") == "k"
 
-    def test_init_auto(self) -> None:
+    def test_init_auto(self, cassandra_port: int) -> None:
         _reset_cassio_globals()
         stolen = _freeze_envvars(
             [
@@ -147,7 +152,7 @@ class TestInitCassandra:
                 "ASTRA_DB_DATABASE_ID",
             ]
         )
-        cassio.init(auto=True)
+        cassio.init(auto=True, cluster_kwargs={"port": cassandra_port})
         assert resolve_session() is not None
         assert resolve_keyspace() == os.environ.get("CASSANDRA_KEYSPACE")
         assert resolve_session("s") == "s"

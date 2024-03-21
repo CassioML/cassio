@@ -2,6 +2,8 @@
 Table classes integration test - ClusteredMetadataVectorCassandraTable
 """
 import math
+import os
+
 import pytest
 
 from cassandra import InvalidRequest
@@ -17,6 +19,10 @@ N = 16
 
 @pytest.mark.usefixtures("db_session", "db_keyspace")
 class TestClusteredMetadataVectorCassandraTable:
+    @pytest.mark.skipif(
+        os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA") == "TESTCONTAINERS_CASSANDRA",
+        reason="fails in Cassandra 5-beta1. To be reactivated once Cassandra is fixed.",
+    )
     def test_crud(self, db_session: Session, db_keyspace: str) -> None:
         table_name = "c_m_v_ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")

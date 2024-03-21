@@ -135,7 +135,6 @@ def init(
                 contact_points,
                 username,
                 password,
-                cluster_kwargs,
             )
         ):
             raise ValueError("When auto=True, no arguments can be passed.")
