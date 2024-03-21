@@ -242,11 +242,3 @@ class TestClusteredCassandraTable:
         assert len(list(await t_desc.aget_partition(n=10))) == 3
         #
         await t_desc.aclear()
-
-
-if __name__ == "__main__":
-    from ..conftest import createDBSessionSingleton, getDBKeyspace
-
-    s = createDBSessionSingleton()
-    k = getDBKeyspace()
-    TestClusteredCassandraTable().test_crud(s, k)

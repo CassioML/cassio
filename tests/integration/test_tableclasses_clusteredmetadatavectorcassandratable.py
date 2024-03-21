@@ -184,13 +184,3 @@ class TestClusteredMetadataVectorCassandraTable:
             _ = t_xpart.get(row_id="not_enough_info")
 
         t.clear()
-
-
-if __name__ == "__main__":
-    # TEST_DB_MODE=LOCAL_CASSANDRA python -m pdb -m \
-    #   tests.integration.test_tableclasses_clusteredmetadatavectorcassandratable
-    from ..conftest import createDBSessionSingleton, getDBKeyspace
-
-    s = createDBSessionSingleton()
-    k = getDBKeyspace()
-    TestClusteredMetadataVectorCassandraTable().test_crud(s, k)

@@ -200,13 +200,3 @@ class TestMetadataVectorCassandraTable:
         assert [r["row_id"] for r in ann_results_mt_l2] == ["theta_1", "theta_15"]
         assert ann_results_mt_l2[0]["distance"] < ann_results_mt_l2[1]["distance"]
         await t.aclear()
-
-
-if __name__ == "__main__":
-    # TEST_DB_MODE=LOCAL_CASSANDRA python -m pdb -m  \
-    #   tests.integration.test_tableclasses_metadatavectorcassandratable
-    from ..conftest import createDBSessionSingleton, getDBKeyspace
-
-    s = createDBSessionSingleton()
-    k = getDBKeyspace()
-    TestMetadataVectorCassandraTable().test_crud(s, k)

@@ -48,13 +48,3 @@ class TestVectorCassandraTable:
         assert {r["row_id"] for r in ann_results[2:4]} == {"theta_2", "theta_7"}
 
         t.clear()
-
-
-if __name__ == "__main__":
-    # TEST_DB_MODE=LOCAL_CASSANDRA python -m pdb -m  \
-    #   tests.integration.test_tableclasses_vectorcassandratable
-    from ..conftest import createDBSessionSingleton, getDBKeyspace
-
-    s = createDBSessionSingleton()
-    k = getDBKeyspace()
-    TestVectorCassandraTable().test_crud(s, k)
