@@ -2,9 +2,12 @@
 Table classes integration test - VectorCassandraTable
 """
 import math
+import os
+
 import pytest
 from cassandra.cluster import Session
 
+from cassio.table.cql import STANDARD_ANALYZER
 from cassio.table.tables import (
     VectorCassandraTable,
 )
@@ -48,5 +51,39 @@ class TestVectorCassandraTable:
         ann_results = list(t.ann_search(ref_vector, n=4))
         assert {r["row_id"] for r in ann_results[:2]} == {"theta_1", "theta_0"}
         assert {r["row_id"] for r in ann_results[2:4]} == {"theta_2", "theta_7"}
+
+        t.clear()
+
+    @pytest.mark.skipif(
+        os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA") != "ASTRA_DB",
+        reason="requires a test Astra DB instance",
+    )
+    def test_index_analyzers(self, db_session: Session, db_keyspace: str) -> None:
+        table_name = "v_ct_analyzers"
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
+        #
+        t = VectorCassandraTable(
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name,
+            vector_dimension=2,
+            primary_key_type="TEXT",
+            body_index_options=[STANDARD_ANALYZER],
+        )
+
+        for n_theta in range(N):
+            theta = n_theta * math.pi * 2 / N
+            t.put(
+                row_id=f"theta_{n_theta}",
+                body_blob=f"theta_{n_theta} = {theta:.4f}",
+                vector=[math.cos(theta), math.sin(theta)],
+            )
+
+        # a vector halfway between 0 and 1 inserted above
+        query_theta = 1 * math.pi * 2 / (2 * N)
+        ref_vector = [math.cos(query_theta), math.sin(query_theta)]
+
+        ann_results = list(t.ann_search(ref_vector, n=4, content="theta_2"))
+        assert {r["row_id"] for r in ann_results} == {"theta_2"}
 
         t.clear()

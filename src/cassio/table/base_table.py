@@ -1,4 +1,5 @@
 import asyncio
+import json
 from asyncio import InvalidStateError, Task
 import logging
 from typing import (
@@ -31,6 +32,7 @@ from cassio.table.cql import (
     DELETE_CQL_TEMPLATE,
     SELECT_CQL_TEMPLATE,
     INSERT_ROW_CQL_TEMPLATE,
+    CREATE_INDEX_ANALYZER_CQL_TEMPLATE,
 )
 from cassio.table.utils import call_wrapped_async
 
@@ -62,6 +64,7 @@ class BaseTable:
         row_id_type: Union[str, List[str]] = ["TEXT"],
         skip_provisioning: bool = False,
         async_setup: bool = False,
+        body_index_options: Optional[List[Tuple[str, Any]]] = None,
     ) -> None:
         self.session = check_resolve_session(session)
         self.keyspace = check_resolve_keyspace(keyspace)
@@ -70,6 +73,7 @@ class BaseTable:
         self.row_id_type = normalize_type_desc(row_id_type)
         self.skip_provisioning = skip_provisioning
         self._prepared_statements: Dict[str, PreparedStatement] = {}
+        self._body_index_options = body_index_options
         self.db_setup_task: Optional[Task[None]] = None
         if async_setup:
             self.db_setup_task = asyncio.create_task(self.adb_setup())
@@ -229,8 +233,16 @@ class BaseTable:
             where_clause_blocks,
             select_cql_vals,
         ) = self._extract_where_clause_blocks(n_kwargs)
+
+        if "content" in rest_kwargs:
+            where_clause_blocks.append(f"body_blob : '{rest_kwargs.pop('content')}'")
+
         assert rest_kwargs == {}
-        where_clause = "WHERE " + " AND ".join(where_clause_blocks)
+
+        if not where_clause_blocks:
+            where_clause = ""
+        else:
+            where_clause = "WHERE " + " AND ".join(where_clause_blocks)
         return columns_desc, where_clause, select_cql_vals
 
     def _get_select_cql(self, **kwargs: Any) -> Tuple[str, Tuple[Any, ...]]:
@@ -354,13 +366,50 @@ class BaseTable:
         )
         return create_table_cql
 
+    def _get_create_analyzer_index_cql(
+        self, index_options: List[Tuple[str, Any]]
+    ) -> str:
+        index_name = "idx_body"
+        index_column = "body_blob"
+        body_index_options = []
+        for option in index_options:
+            key, value = option
+            if isinstance(value, dict):
+                body_index_options.append(f"'{key}': '{json.dumps(value)}'")
+            elif isinstance(value, str):
+                body_index_options.append(f"'{key}': '{value}'")
+            elif isinstance(value, bool):
+                if value:
+                    body_index_options.append(f"'{key}': true")
+                else:
+                    body_index_options.append(f"'{key}': false")
+            else:
+                raise ValueError("Unsupported body_index_option format")
+
+        create_index_cql = CREATE_INDEX_ANALYZER_CQL_TEMPLATE.format(
+            index_name=index_name,
+            index_column=index_column,
+            body_index_options=", ".join(body_index_options),
+        )
+        return create_index_cql
+
     def db_setup(self) -> None:
         create_table_cql = self._get_db_setup_cql()
         self.execute_cql(create_table_cql, op_type=CQLOpType.SCHEMA)
+        if self._body_index_options:
+            self.execute_cql(
+                self._get_create_analyzer_index_cql(self._body_index_options),
+                op_type=CQLOpType.SCHEMA,
+            )
 
     async def adb_setup(self) -> None:
         create_table_cql = self._get_db_setup_cql()
         await self.aexecute_cql(create_table_cql, op_type=CQLOpType.SCHEMA)
+        if self._body_index_options:
+            await self.aexecute_cql(
+                self._get_create_analyzer_index_cql(self._body_index_options),
+                op_type=CQLOpType.SCHEMA,
+            )
 
     def _ensure_db_setup(self) -> None:
         if self.db_setup_task:
