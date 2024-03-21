@@ -21,9 +21,18 @@ import cassio
 
 
 @pytest.fixture(scope="session", autouse=True)
-def cassandra_port(db_keyspace):
+def cassandra_port(db_keyspace: str) -> Iterator[int]:
     if os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA") == "TESTCONTAINERS_CASSANDRA":
-        cassandra = DockerContainer("cassandra:5").with_exposed_ports(9042)
+        cassandra = DockerContainer("cassandra:5")
+        cassandra.with_exposed_ports(9042)
+        cassandra.with_env(
+            "JVM_OPTS",
+            "-Dcassandra.skip_wait_for_gossip_to_settle=0 -Dcassandra.initial_token=0",
+        )
+        cassandra.with_env("HEAP_NEWSIZE", "128M")
+        cassandra.with_env("MAX_HEAP_SIZE", "1024M")
+        cassandra.with_env("CASSANDRA_ENDPOINT_SNITCH", "GossipingPropertyFileSnitch")
+        cassandra.with_env("CASSANDRA_DC", "datacenter1")
         cassandra.start()
         wait_for_logs(cassandra, "Startup complete")
         cassandra.get_wrapped_container().exec_run(
@@ -38,8 +47,9 @@ def cassandra_port(db_keyspace):
     else:
         yield 9042
 
+
 @pytest.fixture(scope="session")
-def db_session(cassandra_port) -> Session:
+def db_session(cassandra_port: int) -> Session:
     mode = os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA")
     # the proper DB session is created as required
     if mode == "ASTRA_DB":
