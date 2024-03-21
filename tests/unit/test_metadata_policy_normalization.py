@@ -10,7 +10,7 @@ from cassio.table.mixins import MetadataMixin
 
 
 class TestNormalizeMetadataPolicy:
-    def test_normalize_metadata_policy(self):
+    def test_normalize_metadata_policy(self) -> None:
         #
         mdp1 = MetadataMixin._normalize_metadata_indexing_policy("all")
         assert mdp1 == (MetadataIndexingMode.DEFAULT_TO_SEARCHABLE, set())

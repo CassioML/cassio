@@ -3,7 +3,7 @@ Facilities to manage the download of a secure-connect-bundle from an Astra DB
 token.
 """
 import logging
-import requests  # type: ignore
+import requests
 from typing import Optional
 
 
@@ -52,7 +52,7 @@ def get_astra_bundle_url(
                     "Generic error when fetching the URL to the secure-bundle."
                 )
         else:
-            return response_json["downloadURL"]
+            return str(response_json["downloadURL"])
     else:
         raise ValueError(
             "Cannot get the secure-bundle URL. "

@@ -4,10 +4,10 @@ init method, Astra side
 import os
 import pytest
 
-from cassandra.cluster import Cluster  # type: ignore
-from cassandra.auth import PlainTextAuthProvider  # type: ignore
+from cassandra.cluster import Cluster
+from cassandra.auth import PlainTextAuthProvider
 
-import cassio  # type: ignore
+import cassio
 from cassio.config import resolve_session, resolve_keyspace
 
 from tests.conftest import (
@@ -33,7 +33,7 @@ class TestInitCassandra:
     Requires a running (local) Cassandra cluster.
     """
 
-    def test_init_session(self):
+    def test_init_session(self) -> None:
         #
         _reset_cassio_globals()
         assert resolve_session() is None
@@ -69,7 +69,7 @@ class TestInitCassandra:
         assert resolve_session("s") == "s"
         assert resolve_keyspace("k") == "k"
 
-    def test_init_empty_cps(self):
+    def test_init_empty_cps(self) -> None:
         stolen = _freeze_envvars(["CASSANDRA_CONTACT_POINTS"])
         _reset_cassio_globals()
         assert resolve_session() is None
@@ -87,7 +87,7 @@ class TestInitCassandra:
         assert resolve_keyspace("k") == "k"
         _unfreeze_envvars(stolen)
 
-    def test_init_cps(self):
+    def test_init_cps(self) -> None:
         _reset_cassio_globals()
         assert resolve_session() is None
         assert resolve_keyspace() is None
@@ -103,7 +103,7 @@ class TestInitCassandra:
         assert resolve_session("s") == "s"
         assert resolve_keyspace("k") == "k"
 
-    def test_init_cleaning_cps(self):
+    def test_init_cleaning_cps(self) -> None:
         _reset_cassio_globals()
         assert resolve_session() is None
         assert resolve_keyspace() is None
@@ -119,7 +119,7 @@ class TestInitCassandra:
         assert resolve_session("s") == "s"
         assert resolve_keyspace("k") == "k"
 
-    def test_init_with_keyspace(self):
+    def test_init_with_keyspace(self) -> None:
         _reset_cassio_globals()
         assert resolve_session() is None
         assert resolve_keyspace() is None
@@ -136,7 +136,7 @@ class TestInitCassandra:
         assert resolve_session("s") == "s"
         assert resolve_keyspace("k") == "k"
 
-    def test_init_auto(self):
+    def test_init_auto(self) -> None:
         _reset_cassio_globals()
         stolen = _freeze_envvars(
             [

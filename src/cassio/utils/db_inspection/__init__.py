@@ -4,7 +4,7 @@ Inspection of a keyspace and its tables through metadata in the Session object.
 
 from typing import Iterable, Tuple
 
-from cassandra.cluster import Session  # type: ignore
+from cassandra.cluster import Session
 
 ColumnType = Tuple[str, str]
 

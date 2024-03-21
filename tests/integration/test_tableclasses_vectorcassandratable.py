@@ -3,6 +3,7 @@ Table classes integration test - VectorCassandraTable
 """
 import math
 import pytest
+from cassandra.cluster import Session
 
 from cassio.table.tables import (
     VectorCassandraTable,
@@ -14,7 +15,7 @@ N = 8
 
 @pytest.mark.usefixtures("db_session", "db_keyspace")
 class TestVectorCassandraTable:
-    def test_crud(self, db_session, db_keyspace):
+    def test_crud(self, db_session: Session, db_keyspace: str) -> None:
         table_name = "v_ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #
@@ -36,6 +37,7 @@ class TestVectorCassandraTable:
 
         # retrieval
         theta_1 = t.get(row_id="theta_1")
+        assert theta_1 is not None
         assert abs(theta_1["vector"][0] - math.cos(math.pi * 2 / N)) < 3.0e-8
         assert abs(theta_1["vector"][1] - math.sin(math.pi * 2 / N)) < 3.0e-8
 

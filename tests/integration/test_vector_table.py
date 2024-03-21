@@ -4,6 +4,7 @@ Vector search tests
 
 import time
 import pytest
+from cassandra.cluster import Session
 
 from cassio.vector import VectorTable
 
@@ -14,7 +15,7 @@ class TestVectorTable:
     DB-backed tests for VectorTable
     """
 
-    def test_put_and_get(self, db_session, db_keyspace):
+    def test_put_and_get(self, db_session: Session, db_keyspace: str) -> None:
         vtable_name1 = "vector_test_table"
         v_emb_dim_1 = 3
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name1};")
@@ -39,7 +40,7 @@ class TestVectorTable:
             "embedding_vector": [1, 2, 3],
         }
 
-    def test_put_and_search(self, db_session, db_keyspace):
+    def test_put_and_search(self, db_session: Session, db_keyspace: str) -> None:
         vtable_name_2 = "vector_test_table"
         v_emb_dim_2 = 3
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name_2};")
@@ -84,7 +85,7 @@ class TestVectorTable:
         assert len(matches) == 1
         assert matches[0]["document_id"] == "doc_id3"
 
-    def test_put_and_search_async(self, db_session, db_keyspace):
+    def test_put_and_search_async(self, db_session: Session, db_keyspace: str) -> None:
         vtable_name_2a = "vector_test_table"
         v_emb_dim_2a = 3
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name_2a};")
@@ -133,7 +134,7 @@ class TestVectorTable:
         assert len(matches) == 1
         assert matches[0]["document_id"] == "doc_id3"
 
-    def test_put_intpk_and_get(self, db_session, db_keyspace):
+    def test_put_intpk_and_get(self, db_session: Session, db_keyspace: str) -> None:
         vtable_name_3 = "vector_test_table"
         v_emb_dim_3 = 6
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name_3};")
@@ -152,13 +153,14 @@ class TestVectorTable:
             None,
         )
         match = v_table.get(9999)
+        assert match is not None
         assert match["document"] == "document_int"
         assert match["metadata"] == {"a": "value_1"}
 
         match_no = v_table.get(123)
         assert match_no is None
 
-    def test_null_json(self, db_session, db_keyspace):
+    def test_null_json(self, db_session: Session, db_keyspace: str) -> None:
         vtable_name4 = "vector_test_table"
         v_emb_dim_4 = 3
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name4};")
@@ -183,7 +185,7 @@ class TestVectorTable:
             "embedding_vector": [1, 2, 3],
         }
 
-    def test_nullsearch_results(self, db_session, db_keyspace):
+    def test_nullsearch_results(self, db_session: Session, db_keyspace: str) -> None:
         vtable_name5 = "vector_test_table"
         v_emb_dim_5 = 5
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name5};")
@@ -201,7 +203,7 @@ class TestVectorTable:
             _ = v_table.search([0, 0, 0, 0, 0], 10, "cos", 1.01)
         v_table.clear()
 
-    def test_ttl(self, db_session, db_keyspace):
+    def test_ttl(self, db_session: Session, db_keyspace: str) -> None:
         vtable_name6 = "vector_test_table"
         v_emb_dim_6 = 2
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{vtable_name6};")

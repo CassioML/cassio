@@ -14,7 +14,7 @@ from typing import (
     Union,
 )
 
-from cassandra.cluster import ResponseFuture  # type: ignore
+from cassandra.cluster import ResponseFuture
 
 from cassio.table.utils import call_wrapped_async
 from cassio.utils.vector.distance_metrics import distance_metrics
