@@ -2,8 +2,10 @@
 Test for the extractor (single rows from several values, picking columns
 and performing client-side joins hiding the table schema away).
 """
+from typing import Tuple
 
 import pytest
+from cassandra.cluster import Session
 
 from cassio.db_reader import MultiTableCassandraReader
 
@@ -14,7 +16,9 @@ class TestMultiTableCassandraReader:
     Tests for the extractor.
     """
 
-    def test_extractor(self, db_session, db_keyspace, extractor_tables):
+    def test_extractor(
+        self, db_session: Session, db_keyspace: str, extractor_tables: Tuple[str, str]
+    ) -> None:
         p_table, c_table = extractor_tables
         f_mapper = {
             "r_age": (p_table, "age"),
@@ -56,7 +60,9 @@ class TestMultiTableCassandraReader:
             "r_city",
         }
 
-    def test_admit_nulls(self, db_session, db_keyspace, extractor_tables):
+    def test_admit_nulls(
+        self, db_session: Session, db_keyspace: str, extractor_tables: Tuple[str, str]
+    ) -> None:
         p_table, c_table = extractor_tables
         f_mapper = {
             "r_age_t": (p_table, "age", True),

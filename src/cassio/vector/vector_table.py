@@ -8,7 +8,7 @@ Note: This is to be replaced by direct usage of the table-class-hierarchy classe
 from warnings import warn
 from typing import List, Dict, Any, Optional
 
-from cassandra.cluster import ResponseFuture  # type: ignore
+from cassandra.cluster import ResponseFuture
 
 from cassio.table.table_types import RowType
 from cassio.table.tables import (
@@ -91,7 +91,7 @@ class VectorTable:
         document: str,
         embedding_vector: List[float],
         document_id: Any,
-        metadata: Dict[str, Any] = {},
+        metadata: Optional[Dict[str, Any]] = None,
         ttl_seconds: Optional[int] = None,
         **kwargs: Any,
     ) -> None:
@@ -109,8 +109,8 @@ class VectorTable:
         document: str,
         embedding_vector: List[float],
         document_id: Any,
-        metadata: Dict[str, Any],
-        ttl_seconds: int,
+        metadata: Optional[Dict[str, Any]] = None,
+        ttl_seconds: Optional[int] = None,
         **kwargs: Any,
     ) -> ResponseFuture:
         return self.table.put_async(

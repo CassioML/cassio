@@ -20,11 +20,11 @@ USED_CONFIG_KEYS_AND_DEFAULTS = {
 }
 
 
-def encode_str(sng):
+def encode_str(sng: str) -> str:
     return base64.b64encode(sng.encode()).decode()
 
 
-def decode_str(b64):
+def decode_str(b64: str) -> str:
     return base64.b64decode(b64).decode()
 
 
@@ -57,7 +57,7 @@ def infer_keyspace_from_bundle(bundle_path: Optional[str]) -> Optional[str]:
             open_config = bundle_zip.open("config.json")
             ascii_lines = [line.decode() for line in open_config.readlines()]
             config = json.loads("".join(ascii_lines))
-            return config.get("keyspace")
+            return str(config["keyspace"]) if "keyspace" in config else None
         except Exception:
             return None
     else:
@@ -147,7 +147,7 @@ def init_string_to_bundle_path_and_options(
         raise ValueError(f"Init string has unsupported or unknown version {version}.")
 
 
-def create_init_string_utility():
+def create_init_string_utility() -> None:
     # Utility command-line: converts the full bundle path (argument)
     # to an "init string" and prints it as an export line
     import sys

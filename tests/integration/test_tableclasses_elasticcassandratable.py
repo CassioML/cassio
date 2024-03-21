@@ -3,6 +3,7 @@ Table classes integration test - ElasticCassandraTable
 """
 
 import pytest
+from cassandra.cluster import Session
 
 from cassio.table.tables import (
     ElasticCassandraTable,
@@ -11,7 +12,7 @@ from cassio.table.tables import (
 
 @pytest.mark.usefixtures("db_session", "db_keyspace")
 class TestElasticCassandraTable:
-    def test_crud(self, db_session, db_keyspace):
+    def test_crud(self, db_session: Session, db_keyspace: str) -> None:
         table_name = "e_ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #

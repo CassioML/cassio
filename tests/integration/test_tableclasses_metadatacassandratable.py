@@ -4,7 +4,7 @@ Table classes integration test - MetadataCassandraTable
 import asyncio
 
 import pytest
-from cassandra.cluster import Session  # type: ignore
+from cassandra.cluster import Session
 
 from cassio.table.tables import (
     MetadataCassandraTable,
@@ -14,7 +14,7 @@ from cassio.table.utils import call_wrapped_async
 
 @pytest.mark.usefixtures("db_session", "db_keyspace")
 class TestMetadataCassandraTable:
-    def test_crud(self, db_session, db_keyspace):
+    def test_crud(self, db_session: Session, db_keyspace: str) -> None:
         table_name = "m_ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #
@@ -75,7 +75,7 @@ class TestMetadataCassandraTable:
         #
         t.clear()
 
-    def test_md_routing(self, db_session, db_keyspace):
+    def test_md_routing(self, db_session: Session, db_keyspace: str) -> None:
         test_md = {"mds": "string", "mdn": 255, "mdb": True}
         test_md_string = {"mds": "string", "mdn": "255.0", "mdb": "true"}
         #
@@ -107,6 +107,7 @@ class TestMetadataCassandraTable:
             # querying on non-indexed metadata fields:
             t_none.find_entries(metadata={"mds": "string"}, n=1)
         gotten_none = t_none.get(row_id="row1")
+        assert gotten_none is not None
         assert gotten_none["metadata"] == test_md_string
         t_none.clear()
         #
@@ -159,7 +160,9 @@ class TestMetadataCassandraTable:
         assert gotten_deny["metadata"] == test_md_allowdeny_string
         t_deny.clear()
 
-    def test_find_and_delete_entries(self, db_session, db_keyspace):
+    def test_find_and_delete_entries(
+        self, db_session: Session, db_keyspace: str
+    ) -> None:
         table_name_fad = "m_ct"
         N_ROWS = 128
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_fad};")

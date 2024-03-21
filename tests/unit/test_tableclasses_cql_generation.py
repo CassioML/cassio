@@ -1,7 +1,7 @@
 """
 CQL for mixin-based table classes tests
 """
-
+from cassio.table.cql import MockDBSession
 from cassio.table.tables import (
     VectorCassandraTable,
     ClusteredElasticMetadataVectorCassandraTable,
@@ -9,7 +9,7 @@ from cassio.table.tables import (
 
 
 class TestTableClassesCQLGeneration:
-    def test_vector_cassandra_table(self, mock_db_session):
+    def test_vector_cassandra_table(self, mock_db_session: MockDBSession) -> None:
         vt = VectorCassandraTable(
             session=mock_db_session,
             keyspace="k",
@@ -87,7 +87,9 @@ class TestTableClassesCQLGeneration:
             ]
         )
 
-    def test_clustered_elastic_metadata_vector_cassandra_table(self, mock_db_session):
+    def test_clustered_elastic_metadata_vector_cassandra_table(
+        self, mock_db_session: MockDBSession
+    ) -> None:
         cemvt = ClusteredElasticMetadataVectorCassandraTable(
             session=mock_db_session,
             keyspace="k",

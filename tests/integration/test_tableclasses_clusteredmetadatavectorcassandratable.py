@@ -4,7 +4,8 @@ Table classes integration test - ClusteredMetadataVectorCassandraTable
 import math
 import pytest
 
-from cassandra import InvalidRequest  # type: ignore
+from cassandra import InvalidRequest
+from cassandra.cluster import Session
 
 from cassio.table.tables import (
     ClusteredMetadataVectorCassandraTable,
@@ -16,7 +17,7 @@ N = 16
 
 @pytest.mark.usefixtures("db_session", "db_keyspace")
 class TestClusteredMetadataVectorCassandraTable:
-    def test_crud(self, db_session, db_keyspace):
+    def test_crud(self, db_session: Session, db_keyspace: str) -> None:
         table_name = "c_m_v_ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #
@@ -61,6 +62,7 @@ class TestClusteredMetadataVectorCassandraTable:
 
         # retrieval
         theta_1 = t.get(row_id="theta_1")
+        assert theta_1 is not None
         assert abs(theta_1["vector"][0] - math.cos(math.pi * 2 / N)) < 3.0e-8
         assert abs(theta_1["vector"][1] - math.sin(math.pi * 2 / N)) < 3.0e-8
         assert theta_1["partition_id"] == 0
@@ -95,6 +97,7 @@ class TestClusteredMetadataVectorCassandraTable:
 
         # retrieval on 999
         ztheta_1 = t.get(row_id="Z_theta_1", partition_id=999)
+        assert ztheta_1 is not None
         assert abs(ztheta_1["vector"][0] - math.cos(math.pi * 2 / N)) < 3.0e-8
         assert abs(ztheta_1["vector"][1] - math.sin(math.pi * 2 / N)) < 3.0e-8
         assert ztheta_1["partition_id"] == 999

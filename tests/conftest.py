@@ -3,12 +3,12 @@ fixtures for testing
 """
 
 import os
-from typing import Dict, List
+from typing import Dict, List, Iterator, Tuple
 
 import pytest
 
-from cassandra.cluster import Cluster  # type: ignore
-from cassandra.auth import PlainTextAuthProvider  # type: ignore
+from cassandra.cluster import Cluster, Session
+from cassandra.auth import PlainTextAuthProvider
 
 from cassio.table.cql import MockDBSession
 
@@ -19,7 +19,7 @@ import cassio
 
 
 @pytest.fixture(scope="session")
-def db_session():
+def db_session() -> Session:
     mode = os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA")
     # the proper DB session is created as required
     if mode == "ASTRA_DB":
@@ -62,27 +62,27 @@ def db_session():
 
 
 @pytest.fixture(scope="session")
-def db_keyspace():
+def db_keyspace() -> str:
     mode = os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA")
     if mode == "ASTRA_DB":
-        ASTRA_DB_KEYSPACE = os.environ["ASTRA_DB_KEYSPACE"]
-        return ASTRA_DB_KEYSPACE
+        astra_db_keyspace = os.environ["ASTRA_DB_KEYSPACE"]
+        return astra_db_keyspace
     elif mode == "LOCAL_CASSANDRA":
-        CASSANDRA_KEYSPACE = os.getenv("CASSANDRA_KEYSPACE", "default_keyspace")
-        return CASSANDRA_KEYSPACE
+        cassandra_keyspace = os.getenv("CASSANDRA_KEYSPACE", "default_keyspace")
+        return cassandra_keyspace
     else:
         raise ValueError("invalid TEST_DB_MODE")
 
 
 @pytest.fixture(scope="function")
-def mock_db_session():
+def mock_db_session() -> MockDBSession:
     return MockDBSession()
 
 
 # Utilities
 
 
-def _reset_cassio_globals():
+def _reset_cassio_globals() -> None:
     cassio.config.default_session = None
     cassio.config.default_keyspace = None
 
@@ -104,7 +104,9 @@ C_TABLE_NAME = "nicknames_x"
 
 
 @pytest.fixture(scope="class")
-def extractor_tables(db_session, db_keyspace):
+def extractor_tables(
+    db_session: Session, db_keyspace: str
+) -> Iterator[Tuple[str, str]]:
     db_session.execute(
         f"CREATE TABLE IF NOT EXISTS {db_keyspace}.{P_TABLE_NAME} (city text, name text, age int, PRIMARY KEY (city, name)) WITH CLUSTERING ORDER BY (name ASC);"  # noqa: E501
     )

@@ -3,7 +3,7 @@ Table classes integration test - ClusteredCassandraTable
 """
 
 import pytest
-from cassandra.cluster import Session  # type: ignore
+from cassandra.cluster import Session
 
 from cassio.table.tables import (
     ClusteredCassandraTable,
@@ -13,7 +13,7 @@ from cassio.table.utils import call_wrapped_async
 
 @pytest.mark.usefixtures("db_session", "db_keyspace")
 class TestClusteredCassandraTable:
-    def test_crud(self, db_session, db_keyspace):
+    def test_crud(self, db_session: Session, db_keyspace: str) -> None:
         table_name = "c_ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #
@@ -56,7 +56,7 @@ class TestClusteredCassandraTable:
         assert t.get(row_id="nr2", partition_id="another_p") is not None
         t.clear()
 
-    def test_partition_ordering(self, db_session, db_keyspace):
+    def test_partition_ordering(self, db_session: Session, db_keyspace: str) -> None:
         table_name_asc = "c_ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_asc};")
         t_asc = ClusteredCassandraTable(
@@ -93,7 +93,7 @@ class TestClusteredCassandraTable:
         #
         t_desc.clear()
 
-    def test_crud_async(self, db_session, db_keyspace):
+    def test_crud_async(self, db_session: Session, db_keyspace: str) -> None:
         table_name = "c_ct"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #

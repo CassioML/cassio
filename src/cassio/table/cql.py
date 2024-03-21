@@ -1,7 +1,7 @@
 from typing import Any, List, Tuple, Union
 from enum import Enum
 
-from cassandra.query import SimpleStatement, PreparedStatement  # type: ignore
+from cassandra.query import SimpleStatement, PreparedStatement
 
 
 class CQLOpType(Enum):
@@ -42,7 +42,7 @@ class MockDBSession:
         self.statements: List[StatementWithArgs] = []
 
     @staticmethod
-    def getStatementBody(statement: CQLStatementType) -> str:
+    def get_statement_body(statement: CQLStatementType) -> str:
         if isinstance(statement, str):
             _statement = statement
         elif isinstance(statement, SimpleStatement):
@@ -54,8 +54,8 @@ class MockDBSession:
         return _statement
 
     @staticmethod
-    def normalizeCQLStatement(statement: CQLStatementType) -> str:
-        _statement = MockDBSession.getStatementBody(statement)
+    def normalize_cql_statement(statement: CQLStatementType) -> str:
+        _statement = MockDBSession.get_statement_body(statement)
         _s = (
             _statement.replace(";", " ")
             .replace("%s", " %s ")
@@ -79,7 +79,7 @@ class MockDBSession:
     ) -> List[Any]:
         if self.verbose:
             #
-            st_body = self.getStatementBody(statement)
+            st_body = self.get_statement_body(statement)
             if isinstance(statement, str):
                 st_type = "STR"
                 placeholder_count = st_body.count("%s")
@@ -111,7 +111,7 @@ class MockDBSession:
     def last(self, n: int) -> List[StatementStrWithArgs]:
         return [
             (
-                self.normalizeCQLStatement(stmt),
+                self.normalize_cql_statement(stmt),
                 data,
             )
             for stmt, data in self.last_raw(n)
@@ -125,7 +125,7 @@ class MockDBSession:
         assert len(last_executed) == len(expected_statements)
         for s_exe, s_expe in zip(last_executed, expected_statements):
             assert s_exe[1] == s_expe[1], f"EXE#{str(s_exe[1])}# != EXPE#{s_expe[1]}#"
-            exe_cql = self.normalizeCQLStatement(s_exe[0])
-            expe_cql = self.normalizeCQLStatement(s_expe[0])
+            exe_cql = self.normalize_cql_statement(s_exe[0])
+            expe_cql = self.normalize_cql_statement(s_expe[0])
             assert exe_cql == expe_cql, f"EXE#{exe_cql}# != EXPE#{expe_cql}#"
         return None

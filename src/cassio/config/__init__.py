@@ -3,15 +3,14 @@ import shutil
 import os
 from typing import Any, Dict, List, Optional, Union
 
-from cassandra.cluster import Cluster, Session  # type: ignore
-from cassandra.auth import PlainTextAuthProvider  # type: ignore
+from cassandra.cluster import Cluster, Session
+from cassandra.auth import PlainTextAuthProvider
 
 from cassio.config.bundle_management import (
     init_string_to_bundle_path_and_options,
     infer_keyspace_from_bundle,
 )
 from cassio.config.bundle_download import download_astra_bundle_url
-
 
 ASTRA_CLOUD_AUTH_USERNAME = "token"
 DOWNLOADED_BUNDLE_FILE_NAME = "secure-connect-bundle_devopsapi.zip"

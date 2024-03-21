@@ -1,7 +1,7 @@
 import asyncio
 from typing import Callable, Any
 
-from cassandra.cluster import ResponseFuture  # type: ignore
+from cassandra.cluster import ResponseFuture
 
 
 async def call_wrapped_async(

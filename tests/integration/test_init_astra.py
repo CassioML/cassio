@@ -6,11 +6,11 @@ import tempfile
 import shutil
 import os
 
-from cassandra.cluster import Cluster  # type: ignore
-from cassandra.auth import PlainTextAuthProvider  # type: ignore
-from cassandra.cluster import NoHostAvailable  # type: ignore
+from cassandra.cluster import Cluster
+from cassandra.auth import PlainTextAuthProvider
+from cassandra.cluster import NoHostAvailable
 
-import cassio  # type: ignore
+import cassio
 from cassio.config import resolve_session, resolve_keyspace
 from cassio.config.bundle_management import (
     bundle_path_to_init_string,
@@ -36,7 +36,7 @@ class TestInitAstra:
     Requires a "ASTRA_DB_INIT_STRING" environment variable with the init string to run.
     """
 
-    def test_bundle_to_valid_init_string(self):
+    def test_bundle_to_valid_init_string(self) -> None:
         """
         Make a "genuine" bundle into an init string,
         then back to a bundle in a temp dir,
@@ -66,7 +66,7 @@ class TestInitAstra:
         finally:
             shutil.rmtree(temp_dir)
 
-    def test_init_noop(self):
+    def test_init_noop(self) -> None:
         _reset_cassio_globals()
         assert resolve_session() is None
         assert resolve_keyspace() is None
@@ -78,7 +78,7 @@ class TestInitAstra:
         assert resolve_session("s") == "s"
         assert resolve_keyspace("k") == "k"
 
-    def test_init_session(self):
+    def test_init_session(self) -> None:
         _reset_cassio_globals()
         cassio.init(session="s")
         assert resolve_session() == "s"
@@ -87,7 +87,7 @@ class TestInitAstra:
         assert resolve_session(None) == "s"
         assert resolve_keyspace("k") == "k"
 
-    def test_init_scb(self):
+    def test_init_scb(self) -> None:
         _reset_cassio_globals()
         scb = os.environ["ASTRA_DB_SECURE_BUNDLE_PATH"]
         tok = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
@@ -95,7 +95,7 @@ class TestInitAstra:
         assert resolve_keyspace() is not None  # through inspecting the scb
         assert resolve_session() is not None
 
-    def test_init_scb_keyspace(self):
+    def test_init_scb_keyspace(self) -> None:
         _reset_cassio_globals()
         scb = os.environ["ASTRA_DB_SECURE_BUNDLE_PATH"]
         tok = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
@@ -108,7 +108,7 @@ class TestInitAstra:
         os.environ.get("ASTRA_DB_DATABASE_ID") is None,
         reason="requires the database ID to download the secure bundle",
     )
-    def test_init_download_scb(self):
+    def test_init_download_scb(self) -> None:
         _reset_cassio_globals()
         dbid = os.environ["ASTRA_DB_DATABASE_ID"]
         tok = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
@@ -121,7 +121,7 @@ class TestInitAstra:
         os.environ.get("ASTRA_DB_DATABASE_ID") is None,
         reason="requires the database ID to download the secure bundle",
     )
-    def test_init_download_scb_url_template(self):
+    def test_init_download_scb_url_template(self) -> None:
         _reset_cassio_globals()
         dbid = os.environ["ASTRA_DB_DATABASE_ID"]
         tok = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
@@ -146,7 +146,7 @@ class TestInitAstra:
         os.environ.get("ASTRA_DB_INIT_STRING") is None,
         reason="requires the init-string available as environment variable",
     )
-    def test_init_init_string(self):
+    def test_init_init_string(self) -> None:
         _reset_cassio_globals()
         inst = os.environ["ASTRA_DB_INIT_STRING"]
         cassio.init(init_string=inst)
@@ -157,7 +157,7 @@ class TestInitAstra:
         os.environ.get("ASTRA_DB_INIT_STRING") is None,
         reason="requires the init-string available as environment variable",
     )
-    def test_init_init_string_overwrite_ks(self):
+    def test_init_init_string_overwrite_ks(self) -> None:
         _reset_cassio_globals()
         inst = os.environ["ASTRA_DB_INIT_STRING"]
         cassio.init(init_string=inst, keyspace="my_keyspace")
@@ -168,13 +168,13 @@ class TestInitAstra:
         os.environ.get("ASTRA_DB_INIT_STRING") is None,
         reason="requires the init-string available as environment variable",
     )
-    def test_init_init_string_overwrite_tk(self):
+    def test_init_init_string_overwrite_tk(self) -> None:
         _reset_cassio_globals()
         inst = os.environ["ASTRA_DB_INIT_STRING"]
         with pytest.raises(NoHostAvailable):
             cassio.init(init_string=inst, token="AstraCS:wrong")
 
-    def test_init_auto(self):
+    def test_init_auto(self) -> None:
         _reset_cassio_globals()
         stolen = _freeze_envvars(
             [

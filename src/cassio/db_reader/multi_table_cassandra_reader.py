@@ -19,8 +19,8 @@ from typing import (
     Union,
 )
 
-from cassandra.query import PreparedStatement  # type: ignore
-from cassandra.concurrent import execute_concurrent, ExecutionResult  # type: ignore
+from cassandra.query import PreparedStatement
+from cassandra.concurrent import execute_concurrent, ExecutionResult
 
 from cassio.utils.db_inspection import table_partitionkey
 from cassio.config import check_resolve_session, check_resolve_keyspace
