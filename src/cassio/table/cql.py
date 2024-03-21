@@ -22,11 +22,28 @@ SELECT_CQL_TEMPLATE = (
 
 INSERT_ROW_CQL_TEMPLATE = """INSERT INTO {{table_fqname}} ({columns_desc}) VALUES ({value_placeholders}) {ttl_spec} ;"""  # noqa: E501
 
-CREATE_INDEX_CQL_TEMPLATE = """CREATE CUSTOM INDEX IF NOT EXISTS {index_name}_{{table_name}} ON {{table_fqname}} ({index_column}) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';"""  # noqa: E501
+CREATE_INDEX_CQL_PREFIX = "CREATE CUSTOM INDEX IF NOT EXISTS {index_name}_{{table_name}} ON {{table_fqname}} "  # noqa: E501
 
-CREATE_KEYS_INDEX_CQL_TEMPLATE = """CREATE CUSTOM INDEX IF NOT EXISTS {index_name}_{{table_name}} ON {{table_fqname}} (KEYS({index_column})) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';"""  # noqa: E501
+CREATE_INDEX_CQL_TEMPLATE = (
+    CREATE_INDEX_CQL_PREFIX
+    + "({index_column}) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';"
+)
 
-CREATE_ENTRIES_INDEX_CQL_TEMPLATE = """CREATE CUSTOM INDEX IF NOT EXISTS {index_name}_{{table_name}} ON {{table_fqname}} (ENTRIES({index_column})) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';"""  # noqa: E501
+CREATE_INDEX_ANALYZER_CQL_TEMPLATE = (
+    CREATE_INDEX_CQL_PREFIX
+    + "({index_column}) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex' WITH OPTIONS = {{{{{body_index_options}}}}};"  # noqa: E501
+)
+
+CREATE_KEYS_INDEX_CQL_TEMPLATE = (
+    CREATE_INDEX_CQL_PREFIX
+    + "(KEYS({index_column})) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';"  # noqa: E501
+)
+
+CREATE_ENTRIES_INDEX_CQL_TEMPLATE = (
+    CREATE_INDEX_CQL_PREFIX
+    + "(ENTRIES({index_column})) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';"  # noqa: E501
+    ""
+)
 
 SELECT_ANN_CQL_TEMPLATE = """SELECT {columns_desc} FROM {{table_fqname}} {where_clause} ORDER BY {vector_column} ANN OF %s {limit_clause};"""  # noqa: E501
 
@@ -129,3 +146,9 @@ class MockDBSession:
             expe_cql = self.normalize_cql_statement(s_expe[0])
             assert exe_cql == expe_cql, f"EXE#{exe_cql}# != EXPE#{expe_cql}#"
         return None
+
+
+STANDARD_ANALYZER = ("index_analyzer", "STANDARD")
+LOWER_CASE_ANALYZER = ("case_sensitive", False)
+NORMALIZE_ANALYZER = ("normalize", True)
+ASCII_ANALYZER = ("ascii", True)

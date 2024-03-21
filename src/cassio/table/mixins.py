@@ -632,8 +632,12 @@ class VectorMixin(BaseTableMixin):
             where_clause_blocks,
             where_cql_vals,
         ) = self._extract_where_clause_blocks(n_kwargs)
+
+        if "content" in rest_kwargs:
+            where_clause_blocks.append(f"body_blob : '{rest_kwargs.pop('content')}'")
+
         assert rest_kwargs == {}
-        if where_clause_blocks == []:
+        if not where_clause_blocks:
             where_clause = ""
         else:
             where_clause = "WHERE " + " AND ".join(where_clause_blocks)
