@@ -15,59 +15,54 @@ from cassio.table.cql import MockDBSession
 import cassio
 
 
-# DB session (as per settings detected in env vars)
-dbSession = None
+# Fixtures
 
 
-def createDBSessionSingleton():
-    global dbSession
-    if dbSession is None:
-        mode = os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA")
-        # the proper DB session is created as required
-        if mode == "ASTRA_DB":
-            ASTRA_DB_SECURE_BUNDLE_PATH = os.environ["ASTRA_DB_SECURE_BUNDLE_PATH"]
-            ASTRA_DB_CLIENT_ID = "token"
-            ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
-            cluster = Cluster(
-                cloud={
-                    "secure_connect_bundle": ASTRA_DB_SECURE_BUNDLE_PATH,
-                },
-                auth_provider=PlainTextAuthProvider(
-                    ASTRA_DB_CLIENT_ID,
-                    ASTRA_DB_APPLICATION_TOKEN,
-                ),
+@pytest.fixture(scope="session")
+def db_session():
+    mode = os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA")
+    # the proper DB session is created as required
+    if mode == "ASTRA_DB":
+        ASTRA_DB_SECURE_BUNDLE_PATH = os.environ["ASTRA_DB_SECURE_BUNDLE_PATH"]
+        ASTRA_DB_CLIENT_ID = "token"
+        ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
+        cluster = Cluster(
+            cloud={
+                "secure_connect_bundle": ASTRA_DB_SECURE_BUNDLE_PATH,
+            },
+            auth_provider=PlainTextAuthProvider(
+                ASTRA_DB_CLIENT_ID,
+                ASTRA_DB_APPLICATION_TOKEN,
+            ),
+        )
+        return cluster.connect()
+    elif mode == "LOCAL_CASSANDRA":
+        CASSANDRA_USERNAME = os.environ.get("CASSANDRA_USERNAME")
+        CASSANDRA_PASSWORD = os.environ.get("CASSANDRA_PASSWORD")
+        if CASSANDRA_USERNAME and CASSANDRA_PASSWORD:
+            auth_provider = PlainTextAuthProvider(
+                CASSANDRA_USERNAME,
+                CASSANDRA_PASSWORD,
             )
-            dbSession = cluster.connect()
-        elif mode == "LOCAL_CASSANDRA":
-            CASSANDRA_USERNAME = os.environ.get("CASSANDRA_USERNAME")
-            CASSANDRA_PASSWORD = os.environ.get("CASSANDRA_PASSWORD")
-            if CASSANDRA_USERNAME and CASSANDRA_PASSWORD:
-                auth_provider = PlainTextAuthProvider(
-                    CASSANDRA_USERNAME,
-                    CASSANDRA_PASSWORD,
-                )
-            else:
-                auth_provider = None
-            CASSANDRA_CONTACT_POINTS = os.environ.get("CASSANDRA_CONTACT_POINTS")
-            if CASSANDRA_CONTACT_POINTS:
-                contact_points = [
-                    cp.strip() for cp in CASSANDRA_CONTACT_POINTS.split(",")
-                ]
-            else:
-                contact_points = None
-            #
-            cluster = Cluster(
-                contact_points,
-                auth_provider=auth_provider,
-            )
-            localSession = cluster.connect()
-            return localSession
         else:
-            raise NotImplementedError
-    return dbSession
+            auth_provider = None
+        CASSANDRA_CONTACT_POINTS = os.environ.get("CASSANDRA_CONTACT_POINTS")
+        if CASSANDRA_CONTACT_POINTS:
+            contact_points = [cp.strip() for cp in CASSANDRA_CONTACT_POINTS.split(",")]
+        else:
+            contact_points = None
+        #
+        cluster = Cluster(
+            contact_points,
+            auth_provider=auth_provider,
+        )
+        return cluster.connect()
+    else:
+        raise ValueError("invalid TEST_DB_MODE")
 
 
-def getDBKeyspace():
+@pytest.fixture(scope="session")
+def db_keyspace():
     mode = os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA")
     if mode == "ASTRA_DB":
         ASTRA_DB_KEYSPACE = os.environ["ASTRA_DB_KEYSPACE"]
@@ -75,19 +70,8 @@ def getDBKeyspace():
     elif mode == "LOCAL_CASSANDRA":
         CASSANDRA_KEYSPACE = os.getenv("CASSANDRA_KEYSPACE", "default_keyspace")
         return CASSANDRA_KEYSPACE
-
-
-# Fixtures
-
-
-@pytest.fixture(scope="session")
-def db_session():
-    return createDBSessionSingleton()
-
-
-@pytest.fixture(scope="session")
-def db_keyspace():
-    return getDBKeyspace()
+    else:
+        raise ValueError("invalid TEST_DB_MODE")
 
 
 @pytest.fixture(scope="function")

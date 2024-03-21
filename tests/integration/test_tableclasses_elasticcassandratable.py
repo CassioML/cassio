@@ -26,13 +26,3 @@ class TestElasticCassandraTable:
         gotten1 = t.get(k1=1, k2="one")
         assert gotten1 == {"k1": 1, "k2": "one", "body_blob": "bb_1"}
         t.clear()
-
-
-if __name__ == "__main__":
-    # TEST_DB_MODE=LOCAL_CASSANDRA python -m pdb -m  \
-    #   tests.integration.test_tableclasses_elasticcassandratable
-    from ..conftest import createDBSessionSingleton, getDBKeyspace
-
-    s = createDBSessionSingleton()
-    k = getDBKeyspace()
-    TestElasticCassandraTable().test_crud(s, k)

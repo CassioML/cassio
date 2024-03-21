@@ -235,14 +235,3 @@ class TestMetadataCassandraTable:
         )
         assert num_deleted == N_ROWS
         assert num_found_items == 0
-
-
-if __name__ == "__main__":
-    # TEST_DB_MODE=LOCAL_CASSANDRA python -m pdb -m  \
-    #   tests.integration.test_tableclasses_MetadataCassandraTable
-    from ..conftest import createDBSessionSingleton, getDBKeyspace
-
-    s = createDBSessionSingleton()
-    k = getDBKeyspace()
-    TestMetadataCassandraTable().test_crud(s, k)
-    TestMetadataCassandraTable().test_md_routing(s, k)

@@ -33,13 +33,3 @@ class TestPlainCassandraTable:
         t.clear()
         gotten1n = t.get(row_id="empty_row")
         assert gotten1n is None
-
-
-if __name__ == "__main__":
-    # TEST_DB_MODE=LOCAL_CASSANDRA python -m pdb -m  \
-    #   tests.integration.test_tableclasses_plaincassandratable
-    from ..conftest import createDBSessionSingleton, getDBKeyspace
-
-    s = createDBSessionSingleton()
-    k = getDBKeyspace()
-    TestPlainCassandraTable().test_crud(s, k)

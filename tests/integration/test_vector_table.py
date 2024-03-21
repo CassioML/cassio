@@ -221,12 +221,3 @@ class TestVectorTable:
         assert len(v_table.search([0.5, 0.5], 3, "cos", 0.01)) == 1
         time.sleep(3.0)
         assert len(v_table.search([0.5, 0.5], 3, "cos", 0.01)) == 0
-
-
-if __name__ == "__main__":
-    from ..conftest import createDBSessionSingleton, getDBKeyspace
-
-    s = createDBSessionSingleton()
-    k = getDBKeyspace()
-
-    TestVectorTable().test_null_json(s, k)
