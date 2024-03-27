@@ -18,7 +18,7 @@ from typing import (
 
 from cassandra.cluster import ResponseFuture
 
-from cassio.table.utils import call_wrapped_async
+from cassio.table.utils import call_wrapped_async, get_options_clause
 from cassio.utils.vector.distance_metrics import distance_metrics
 
 from cassio.table.cql import (
@@ -216,11 +216,13 @@ class MetadataMixin(BaseTableMixin):
         self,
         *pargs: Any,
         metadata_indexing: Union[Tuple[str, Iterable[str]], str] = "all",
+        metadata_index_options: Optional[dict] = None,
         **kwargs: Any,
     ) -> None:
         self.metadata_indexing_policy = self._normalize_metadata_indexing_policy(
             metadata_indexing
         )
+        self.metadata_index_options = metadata_index_options
         super().__init__(*pargs, **kwargs)
 
     @staticmethod
@@ -270,13 +272,14 @@ class MetadataMixin(BaseTableMixin):
             ("metadata_s", "MAP<TEXT,TEXT>"),
         ]
 
-    @staticmethod
-    def _get_create_entries_index_cql(entries_index_column: str) -> str:
+    def _get_create_entries_index_cql(self, entries_index_column: str) -> str:
         index_name = f"eidx_{entries_index_column}"
         index_column = f"{entries_index_column}"
+        options_clause = get_options_clause(self.metadata_index_options)
         create_index_cql = CREATE_ENTRIES_INDEX_CQL_TEMPLATE.format(
             index_name=index_name,
             index_column=index_column,
+            options_clause=options_clause,
         )
         return create_index_cql
 
@@ -591,6 +594,7 @@ class VectorMixin(BaseTableMixin):
                 "with async_setup set to False"
             )
         self.vector_dimension = vector_dimension
+        self.vector_index_options = vector_index_options
         super().__init__(*pargs, **kwargs)
 
     def _schema_da(self) -> List[ColumnSpecType]:
@@ -610,6 +614,7 @@ class VectorMixin(BaseTableMixin):
         create_index_cql = CREATE_INDEX_CQL_TEMPLATE.format(
             index_name=index_name,
             index_column=index_column,
+            options_clause=get_options_clause(self.vector_index_options),
         )
         return create_index_cql
 

@@ -15,6 +15,7 @@ class TestTableClassesCQLGeneration:
             keyspace="k",
             table="tn",
             vector_dimension=765,
+            vector_index_options={"similarity_function": "DOT_PRODUCT"},
             primary_key_type="UUID",
         )
         mock_db_session.assert_last_equal(
@@ -24,7 +25,7 @@ class TestTableClassesCQLGeneration:
                     tuple(),
                 ),
                 (
-                    "CREATE CUSTOM INDEX IF NOT EXISTS idx_vector_tn ON k.tn (vector) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",  # noqa: E501
+                    "CREATE CUSTOM INDEX IF NOT EXISTS idx_vector_tn ON k.tn (vector) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex' WITH OPTIONS = { 'similarity_function': 'dot_product' };",  # noqa: E501
                     tuple(),
                 ),
             ]
@@ -99,6 +100,7 @@ class TestTableClassesCQLGeneration:
             primary_key_type=["PUUID", "AT", "BT"],
             ttl_seconds=123,
             partition_id="PRE-PART-ID",
+            metadata_index_options={"c": "d", "e": "f"},
         )
         mock_db_session.assert_last_equal(
             [
@@ -111,7 +113,7 @@ class TestTableClassesCQLGeneration:
                     tuple(),
                 ),
                 (
-                    "CREATE CUSTOM INDEX IF NOT EXISTS eidx_metadata_s_tn ON k.tn (ENTRIES(metadata_s)) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",  # noqa: E501
+                    "CREATE CUSTOM INDEX IF NOT EXISTS eidx_metadata_s_tn ON k.tn (ENTRIES(metadata_s)) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex' WITH OPTIONS = { 'c': 'd', 'e': 'f' };",  # noqa: E501
                     tuple(),
                 ),
             ]
