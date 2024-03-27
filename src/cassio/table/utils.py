@@ -1,5 +1,5 @@
 import asyncio
-from typing import Callable, Any
+from typing import Any, Callable, Optional
 
 from cassandra.cluster import ResponseFuture
 
@@ -19,3 +19,13 @@ async def call_wrapped_async(
 
     response_future.add_callbacks(success_handler, error_handler)
     return await asyncio_future
+
+
+def get_options_clause(options: Optional[dict] = None) -> str:
+    if options is not None:
+        options_text = ", ".join([f"'{k}': '{v}'" for k, v in options.items()])
+
+        # this is double escaped because the cql will go through
+        # another format method before being executed
+        return f"WITH OPTIONS = {{{{ {options_text} }}}}"
+    return ""
