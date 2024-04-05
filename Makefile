@@ -30,6 +30,9 @@ test-astra-integration:
 test-cassandra-integration:
 	TEST_DB_MODE="LOCAL_CASSANDRA" poetry run pytest tests/integration
 
+test-testcontainerscassandra-integration:
+	TEST_DB_MODE="TESTCONTAINERS_CASSANDRA" poetry run pytest tests/integration
+
 build:
 	rm dist/*
 	poetry build
@@ -46,5 +49,6 @@ help:
 	@echo "  test-integration                 ... only integration tests"
 	@echo "    test-astra-integration             ... explicitly on Astra"
 	@echo "    test-cassandra-integration         ... explicitly on Cassandra"
+	@echo "        test-testcontainerscassandra-integration ... with testcontainers"
 	@echo "build                            create new 'dist/*', ready for PyPI"
 	@echo "======================================================================"

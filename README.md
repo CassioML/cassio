@@ -106,10 +106,14 @@ Launch the tests with either of:
 
 ```
 make test-integration
+
 make test-astra-integration
 make test-cassandra-integration
+make test-testcontainerscassandra-integration
 ```
 
-The latter two above specify `TEST_DB_MODE` as either `LOCAL_CASSANDRA`, `TESTCONTAINERS_CASSANDRA` or
-`ASTRA_DB`. _Ideally you should test with both, since some tests are
+The last three above specify `TEST_DB_MODE` as either `LOCAL_CASSANDRA`, `TESTCONTAINERS_CASSANDRA` or
+`ASTRA_DB`. Refer to `TEMPLATE.testing.env` for required environment variables in the specific cases.
+
+_Note: Ideally you should test with both Astra DB and one Cassandra, since some tests are
 skipped in either case._
