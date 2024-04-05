@@ -116,11 +116,6 @@ class TestClusteredMetadataVectorCassandraTable:
         ztheta_1n2 = t.get(row_id="theta_1", metadata={"odd": True}, partition_id=999)
         assert ztheta_1n2 is None
 
-        # ANN on 999
-        # a vector halfway between 0 and 1 inserted above
-        zquery_theta = 1 * math.pi * 2 / (2 * N)
-        zref_vector = [math.cos(zquery_theta), math.sin(zquery_theta)]
-
         # cross-partition ANN search test
         t_xpart = ClusteredMetadataVectorCassandraTable(
             session=db_session,
@@ -196,7 +191,7 @@ class TestClusteredMetadataVectorCassandraTable:
                 },
             )
 
-        # ANN on 999
+        # ANN on partition 999
         # a vector halfway between 0 and 1 inserted above
         zquery_theta = 1 * math.pi * 2 / (2 * N)
         zref_vector = [math.cos(zquery_theta), math.sin(zquery_theta)]
