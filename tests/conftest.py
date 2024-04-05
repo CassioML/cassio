@@ -9,6 +9,8 @@ import pytest
 
 from cassandra.cluster import Cluster, Session
 from cassandra.auth import PlainTextAuthProvider
+from testcontainers.core.container import DockerContainer
+from testcontainers.core.waiting_utils import wait_for_logs
 
 from cassio.table.cql import MockDBSession
 
@@ -18,8 +20,36 @@ import cassio
 # Fixtures
 
 
+@pytest.fixture(scope="session", autouse=True)
+def cassandra_port(db_keyspace: str) -> Iterator[int]:
+    if os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA") == "TESTCONTAINERS_CASSANDRA":
+        cassandra = DockerContainer("cassandra:5")
+        cassandra.with_exposed_ports(9042)
+        cassandra.with_env(
+            "JVM_OPTS",
+            "-Dcassandra.skip_wait_for_gossip_to_settle=0 -Dcassandra.initial_token=0",
+        )
+        cassandra.with_env("HEAP_NEWSIZE", "128M")
+        cassandra.with_env("MAX_HEAP_SIZE", "1024M")
+        cassandra.with_env("CASSANDRA_ENDPOINT_SNITCH", "GossipingPropertyFileSnitch")
+        cassandra.with_env("CASSANDRA_DC", "datacenter1")
+        cassandra.start()
+        wait_for_logs(cassandra, "Startup complete")
+        cassandra.get_wrapped_container().exec_run(
+            (
+                f"""cqlsh -e "CREATE KEYSPACE {db_keyspace} WITH replication = """
+                '''{'class': 'SimpleStrategy', 'replication_factor': '1'};"'''
+            )
+        )
+        os.environ["CASSANDRA_CONTACT_POINTS"] = "127.0.0.1"
+        yield cassandra.get_exposed_port(9042)
+        cassandra.stop()
+    else:
+        yield 9042
+
+
 @pytest.fixture(scope="session")
-def db_session() -> Session:
+def db_session(cassandra_port: int) -> Session:
     mode = os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA")
     # the proper DB session is created as required
     if mode == "ASTRA_DB":
@@ -36,7 +66,7 @@ def db_session() -> Session:
             ),
         )
         return cluster.connect()
-    elif mode == "LOCAL_CASSANDRA":
+    elif mode in ["LOCAL_CASSANDRA", "TESTCONTAINERS_CASSANDRA"]:
         CASSANDRA_USERNAME = os.environ.get("CASSANDRA_USERNAME")
         CASSANDRA_PASSWORD = os.environ.get("CASSANDRA_PASSWORD")
         if CASSANDRA_USERNAME and CASSANDRA_PASSWORD:
@@ -54,6 +84,7 @@ def db_session() -> Session:
         #
         cluster = Cluster(
             contact_points,
+            port=cassandra_port,
             auth_provider=auth_provider,
         )
         return cluster.connect()
@@ -67,7 +98,7 @@ def db_keyspace() -> str:
     if mode == "ASTRA_DB":
         astra_db_keyspace = os.environ["ASTRA_DB_KEYSPACE"]
         return astra_db_keyspace
-    elif mode == "LOCAL_CASSANDRA":
+    elif mode in ["LOCAL_CASSANDRA", "TESTCONTAINERS_CASSANDRA"]:
         cassandra_keyspace = os.getenv("CASSANDRA_KEYSPACE", "default_keyspace")
         return cassandra_keyspace
     else:
