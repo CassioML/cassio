@@ -10,8 +10,6 @@ on:
 
 jobs:
   test-cassandra:
-    env:
-      TEST_DB_MODE: TESTCONTAINERS_CASSANDRA
     runs-on: ubuntu-latest
 
     steps:
@@ -30,4 +28,4 @@ jobs:
 
     - name: Integration tests
       run: |
-        poetry run pytest tests/integration
+        make test-testcontainerscassandra-integration

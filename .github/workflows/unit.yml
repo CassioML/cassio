@@ -10,8 +10,6 @@ on:
 
 jobs:
   unit-test:
-    env:
-      TEST_DB_MODE: LOCAL_CASSANDRA
     runs-on: ubuntu-latest
 
     steps:
@@ -28,6 +26,6 @@ jobs:
         python -m pip install poetry
         poetry install
 
-    - name: Integration tests
+    - name: Unit tests
       run: |
-        poetry run pytest tests/unit
+        make test-unit

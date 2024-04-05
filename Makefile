@@ -19,19 +19,19 @@ format-src:
 test-all: test-unit test-integration
 
 test-unit:
-	poetry run pytest tests/unit
+	poetry run pytest tests/unit -vv
 
 test-integration:
-	poetry run pytest tests/integration
+	poetry run pytest tests/integration -vv
 
 test-astra-integration:
-	TEST_DB_MODE="ASTRA_DB" poetry run pytest tests/integration
+	TEST_DB_MODE="ASTRA_DB" poetry run pytest tests/integration -vv
 
 test-cassandra-integration:
-	TEST_DB_MODE="LOCAL_CASSANDRA" poetry run pytest tests/integration
+	TEST_DB_MODE="LOCAL_CASSANDRA" poetry run pytest tests/integration -vv
 
 test-testcontainerscassandra-integration:
-	TEST_DB_MODE="TESTCONTAINERS_CASSANDRA" poetry run pytest tests/integration
+	TEST_DB_MODE="TESTCONTAINERS_CASSANDRA" poetry run pytest tests/integration -vv
 
 build:
 	rm dist/*

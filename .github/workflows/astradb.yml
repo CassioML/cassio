@@ -16,7 +16,6 @@ jobs:
       ASTRA_DB_INIT_STRING: ${{ secrets.ASTRA_DB_INIT_STRING }}
       ASTRA_DB_KEYSPACE: ${{ secrets.ASTRA_DB_KEYSPACE }}
       ASTRA_DB_SECURE_BUNDLE_PATH: ${{ secrets.ASTRA_DB_SECURE_BUNDLE_PATH }}
-      TEST_DB_MODE: ASTRA_DB
     runs-on: ubuntu-latest
 
     steps:
@@ -39,4 +38,4 @@ jobs:
 
     - name: Integration tests
       run: |
-        poetry run pytest tests/integration
+        make test-astra-integration
