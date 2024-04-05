@@ -13,7 +13,7 @@ packages = [
 ]
 keywords = ["cassandra", "ai", "llm", "genai", "astradb"]
 homepage = "https://cassio.org"
-repository = "https://github.com/hemidactylus/cassio"
+repository = "https://github.com/CassioML/cassio"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -43,6 +43,9 @@ pytest-asyncio = "~0.23.2"
 pytest = "~7.4.3"
 types-requests = "^2.31.0.20240311"
 testcontainers = "~3.7.1"
+
+[tool.poetry.scripts]
+cassio-create-init-string = "cassio.config.bundle_management:create_init_string_utility"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
