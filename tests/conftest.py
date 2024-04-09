@@ -3,7 +3,8 @@ fixtures for testing
 """
 
 import os
-from typing import Dict, List, Iterator, Tuple
+from tempfile import TemporaryDirectory
+from typing import Dict, List, Iterator, Optional, Tuple
 
 import pytest
 
@@ -12,9 +13,14 @@ from cassandra.auth import PlainTextAuthProvider
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
+from cassio.config import download_astra_bundle_url  # type: ignore[attr-defined]
 from cassio.table.cql import MockDBSession
 
 import cassio
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 # Fixtures
@@ -49,13 +55,28 @@ def cassandra_port(db_keyspace: str) -> Iterator[int]:
 
 
 @pytest.fixture(scope="session")
-def db_session(cassandra_port: int) -> Session:
+def db_session(cassandra_port: int) -> Iterator[Session]:
+    secure_bundle_dir: Optional[TemporaryDirectory[str]] = None
     mode = os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA")
     # the proper DB session is created as required
     if mode == "ASTRA_DB":
-        ASTRA_DB_SECURE_BUNDLE_PATH = os.environ["ASTRA_DB_SECURE_BUNDLE_PATH"]
-        ASTRA_DB_CLIENT_ID = "token"
         ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
+        if "ASTRA_DB_SECURE_BUNDLE_PATH" in os.environ:
+            ASTRA_DB_SECURE_BUNDLE_PATH = os.environ["ASTRA_DB_SECURE_BUNDLE_PATH"]
+        elif "ASTRA_DB_DATABASE_ID" in os.environ:
+            secure_bundle_dir = TemporaryDirectory()
+            ASTRA_DB_DATABASE_ID = os.environ["ASTRA_DB_DATABASE_ID"]
+            ASTRA_DB_SECURE_BUNDLE_PATH = os.path.join(
+                secure_bundle_dir.name, "secure-connect-bundle_devopsapi.zip"
+            )
+            download_astra_bundle_url(
+                ASTRA_DB_DATABASE_ID,
+                ASTRA_DB_APPLICATION_TOKEN,
+                ASTRA_DB_SECURE_BUNDLE_PATH,
+            )
+        else:
+            raise ValueError("Missing secure bundle path")
+        ASTRA_DB_CLIENT_ID = "token"
         cluster = Cluster(
             cloud={
                 "secure_connect_bundle": ASTRA_DB_SECURE_BUNDLE_PATH,
@@ -65,7 +86,7 @@ def db_session(cassandra_port: int) -> Session:
                 ASTRA_DB_APPLICATION_TOKEN,
             ),
         )
-        return cluster.connect()
+        yield cluster.connect()
     elif mode in ["LOCAL_CASSANDRA", "TESTCONTAINERS_CASSANDRA"]:
         CASSANDRA_USERNAME = os.environ.get("CASSANDRA_USERNAME")
         CASSANDRA_PASSWORD = os.environ.get("CASSANDRA_PASSWORD")
@@ -87,9 +108,12 @@ def db_session(cassandra_port: int) -> Session:
             port=cassandra_port,
             auth_provider=auth_provider,
         )
-        return cluster.connect()
+        yield cluster.connect()
     else:
         raise ValueError("invalid TEST_DB_MODE")
+
+    if secure_bundle_dir:
+        secure_bundle_dir.cleanup()
 
 
 @pytest.fixture(scope="session")

@@ -625,21 +625,30 @@ class VectorMixin(BaseTableMixin):
             raise ValueError("Cannot use identically-zero vectors in cos/ANN search.")
         #
         vector_column = "vector"
-        vector_cql_vals = [vector]
+        vector_cql_vals = (vector,)
         #
         (
             rest_kwargs,
             where_clause_blocks,
             where_cql_vals,
         ) = self._extract_where_clause_blocks(n_kwargs)
+
+        (
+            rest_kwargs,
+            analyzer_clause_blocks,
+            analyzer_cql_vals,
+        ) = self._extract_index_analyzers(rest_kwargs)
+
         assert rest_kwargs == {}
-        if where_clause_blocks == []:
+
+        all_where_clauses = where_clause_blocks + analyzer_clause_blocks
+        if not all_where_clauses:
             where_clause = ""
         else:
-            where_clause = "WHERE " + " AND ".join(where_clause_blocks)
+            where_clause = "WHERE " + " AND ".join(all_where_clauses)
         #
         limit_clause = "LIMIT %s"
-        limit_cql_vals = [n]
+        limit_cql_vals = (n,)
         #
         select_ann_cql = SELECT_ANN_CQL_TEMPLATE.format(
             columns_desc=columns_desc,
@@ -648,9 +657,10 @@ class VectorMixin(BaseTableMixin):
             limit_clause=limit_clause,
         )
         #
-        select_ann_cql_vals = tuple(
-            list(where_cql_vals) + vector_cql_vals + limit_cql_vals
+        select_ann_cql_vals = (
+            where_cql_vals + analyzer_cql_vals + vector_cql_vals + limit_cql_vals
         )
+
         return select_ann_cql, select_ann_cql_vals
 
     def ann_search(
