@@ -260,13 +260,13 @@ class TestMetadataCassandraTable:
         md_string = {"a": "1.0", "b": "Bee", "c": "true"}
         md_string2 = {"a": "2.0"}
         t.put(row_id="full_row", metadata=md, body_blob="body blob")
-        gotten = t.get(content="blob", metadata=md_string)
+        gotten = t.get(body_search="blob", metadata=md_string)
         assert gotten == {
             "row_id": "full_row",
             "body_blob": "body blob",
             "metadata": md_string,
         }
-        gotten2 = t.get(content="bar", metadata=md_string)
+        gotten2 = t.get(body_search="bar", metadata=md_string)
         assert gotten2 is None
-        gotten3 = t.get(content="blob", metadata=md_string2)
+        gotten3 = t.get(body_search="blob", metadata=md_string2)
         assert gotten3 is None

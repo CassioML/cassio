@@ -38,7 +38,7 @@ class TestPlainCassandraTable:
         assert gotten1n is None
 
         with pytest.raises(ValueError):
-            t.get(content="body")
+            t.get(body_search="body")
 
     @pytest.mark.skipif(
         os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA") != "ASTRA_DB",
@@ -56,9 +56,9 @@ class TestPlainCassandraTable:
             body_index_options=[STANDARD_ANALYZER],
         )
         t.put(row_id="full_row", body_blob="body blob foo")
-        gotten = t.get(content="blob")
+        gotten = t.get(body_search="blob")
         assert gotten == {"row_id": "full_row", "body_blob": "body blob foo"}
-        gotten2 = t.get(content=["blob", "foo"])
+        gotten2 = t.get(body_search=["blob", "foo"])
         assert gotten2 == {"row_id": "full_row", "body_blob": "body blob foo"}
-        gotten3 = t.get(content=["blob", "bar"])
+        gotten3 = t.get(body_search=["blob", "bar"])
         assert gotten3 is None

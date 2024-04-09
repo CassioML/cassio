@@ -53,7 +53,7 @@ class TestVectorCassandraTable:
         assert {r["row_id"] for r in ann_results[2:4]} == {"theta_2", "theta_7"}
 
         with pytest.raises(ValueError):
-            t.get(content="theta")
+            t.get(body_search="theta")
 
         t.clear()
 
@@ -86,13 +86,17 @@ class TestVectorCassandraTable:
         query_theta = 1 * math.pi * 2 / (2 * N)
         ref_vector = [math.cos(query_theta), math.sin(query_theta)]
 
-        ann_results = list(t.ann_search(ref_vector, n=4, content="theta_2"))
+        ann_results = list(t.ann_search(ref_vector, n=4, body_search="theta_2"))
         assert {r["row_id"] for r in ann_results} == {"theta_2"}
 
-        ann_results = list(t.ann_search(ref_vector, n=4, content=["theta_2", "blob"]))
+        ann_results = list(
+            t.ann_search(ref_vector, n=4, body_search=["theta_2", "blob"])
+        )
         assert {r["row_id"] for r in ann_results} == {"theta_2"}
 
-        ann_results = list(t.ann_search(ref_vector, n=4, content=["theta_2", "foo"]))
+        ann_results = list(
+            t.ann_search(ref_vector, n=4, body_search=["theta_2", "foo"])
+        )
         assert ann_results == []
 
         t.clear()

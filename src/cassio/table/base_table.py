@@ -228,13 +228,13 @@ class BaseTable:
         rest_args = args_dict.copy()
         where_clause_blocks: List[str] = []
         where_clause_vals: List[Any] = []
-        if "content" in args_dict:
+        if "body_search" in args_dict:
             if not self._has_index_analyzers():
                 raise ValueError(
                     "Cannot do body search because no index analyzer "
                     "was configured on the table"
                 )
-            body_search_texts = rest_args.pop("content")
+            body_search_texts = rest_args.pop("body_search")
             if not isinstance(body_search_texts, list):
                 body_search_texts = [body_search_texts]
             for text in body_search_texts:
