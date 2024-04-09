@@ -214,6 +214,34 @@ class BaseTable:
         await self._aensure_db_setup()
         await call_wrapped_async(self.clear_async)
 
+    def _has_index_analyzers(self) -> bool:
+        if not self._body_index_options:
+            return False
+        for option in self._body_index_options:
+            if option[0] == "index_analyzer":
+                return True
+        return False
+
+    def _extract_index_analyzers(
+        self, args_dict: Any
+    ) -> Tuple[Any, List[str], Tuple[Any, ...]]:
+        rest_args = args_dict.copy()
+        where_clause_blocks: List[str] = []
+        where_clause_vals: List[Any] = []
+        if "content" in args_dict:
+            if not self._has_index_analyzers():
+                raise ValueError(
+                    "Cannot do body search because no index analyzer "
+                    "was configured on the table"
+                )
+            body_search_texts = rest_args.pop("content")
+            if not isinstance(body_search_texts, list):
+                body_search_texts = [body_search_texts]
+            for text in body_search_texts:
+                where_clause_blocks.append("body_blob : %s")
+                where_clause_vals.append(text)
+        return rest_args, where_clause_blocks, tuple(where_clause_vals)
+
     def _parse_select_core_params(
         self, **kwargs: Any
     ) -> Tuple[str, str, Tuple[Any, ...]]:
@@ -234,21 +262,20 @@ class BaseTable:
             select_cql_vals,
         ) = self._extract_where_clause_blocks(n_kwargs)
 
-        if "content" in rest_kwargs:
-            body_search_texts = rest_kwargs.pop("content")
-            if not isinstance(body_search_texts, list):
-                body_search_texts = [body_search_texts]
-            for text in body_search_texts:
-                where_clause_blocks.append("body_blob : %s")
-                select_cql_vals += (text,)
+        (
+            rest_kwargs,
+            analyzer_clause_blocks,
+            analyzer_cql_vals,
+        ) = self._extract_index_analyzers(rest_kwargs)
 
         assert rest_kwargs == {}
 
-        if not where_clause_blocks:
+        all_where_clauses = where_clause_blocks + analyzer_clause_blocks
+        if not all_where_clauses:
             where_clause = ""
         else:
-            where_clause = "WHERE " + " AND ".join(where_clause_blocks)
-        return columns_desc, where_clause, select_cql_vals
+            where_clause = "WHERE " + " AND ".join(all_where_clauses)
+        return columns_desc, where_clause, select_cql_vals + analyzer_cql_vals
 
     def _get_select_cql(self, **kwargs: Any) -> Tuple[str, Tuple[Any, ...]]:
         columns_desc, where_clause, get_cql_vals = self._parse_select_core_params(

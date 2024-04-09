@@ -52,6 +52,9 @@ class TestVectorCassandraTable:
         assert {r["row_id"] for r in ann_results[:2]} == {"theta_1", "theta_0"}
         assert {r["row_id"] for r in ann_results[2:4]} == {"theta_2", "theta_7"}
 
+        with pytest.raises(ValueError):
+            t.get(content="theta")
+
         t.clear()
 
     @pytest.mark.skipif(

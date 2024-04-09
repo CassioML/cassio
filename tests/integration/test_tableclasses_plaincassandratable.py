@@ -37,6 +37,9 @@ class TestPlainCassandraTable:
         gotten1n = t.get(row_id="empty_row")
         assert gotten1n is None
 
+        with pytest.raises(ValueError):
+            t.get(content="body")
+
     @pytest.mark.skipif(
         os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA") != "ASTRA_DB",
         reason="requires a test Astra DB instance",
