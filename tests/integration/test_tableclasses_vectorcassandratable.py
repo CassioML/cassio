@@ -75,7 +75,7 @@ class TestVectorCassandraTable:
             theta = n_theta * math.pi * 2 / N
             t.put(
                 row_id=f"theta_{n_theta}",
-                body_blob=f"theta_{n_theta} = {theta:.4f}",
+                body_blob=f"body blob theta_{n_theta} = {theta:.4f}",
                 vector=[math.cos(theta), math.sin(theta)],
             )
 
@@ -85,5 +85,11 @@ class TestVectorCassandraTable:
 
         ann_results = list(t.ann_search(ref_vector, n=4, content="theta_2"))
         assert {r["row_id"] for r in ann_results} == {"theta_2"}
+
+        ann_results = list(t.ann_search(ref_vector, n=4, content=["theta_2", "blob"]))
+        assert {r["row_id"] for r in ann_results} == {"theta_2"}
+
+        ann_results = list(t.ann_search(ref_vector, n=4, content=["theta_2", "foo"]))
+        assert ann_results == []
 
         t.clear()

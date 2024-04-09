@@ -52,8 +52,10 @@ class TestPlainCassandraTable:
             primary_key_type="TEXT",
             body_index_options=[STANDARD_ANALYZER],
         )
-        t.put(row_id="full_row", body_blob="body blob")
+        t.put(row_id="full_row", body_blob="body blob foo")
         gotten = t.get(content="blob")
-        assert gotten == {"row_id": "full_row", "body_blob": "body blob"}
-        gotten2 = t.get(content="foo")
-        assert gotten2 is None
+        assert gotten == {"row_id": "full_row", "body_blob": "body blob foo"}
+        gotten2 = t.get(content=["blob", "foo"])
+        assert gotten2 == {"row_id": "full_row", "body_blob": "body blob foo"}
+        gotten3 = t.get(content=["blob", "bar"])
+        assert gotten3 is None
