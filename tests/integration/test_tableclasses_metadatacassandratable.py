@@ -2,10 +2,12 @@
 Table classes integration test - MetadataCassandraTable
 """
 import asyncio
+import os
 
 import pytest
 from cassandra.cluster import Session
 
+from cassio.table.cql import STANDARD_ANALYZER
 from cassio.table.tables import (
     MetadataCassandraTable,
 )
@@ -238,3 +240,33 @@ class TestMetadataCassandraTable:
         )
         assert num_deleted == N_ROWS
         assert num_found_items == 0
+
+    @pytest.mark.skipif(
+        os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA") != "ASTRA_DB",
+        reason="requires a test Astra DB instance",
+    )
+    def test_index_analyzers(self, db_session: Session, db_keyspace: str) -> None:
+        table_name = "m_ct_analyzers"
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
+        #
+        t = MetadataCassandraTable(
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name,
+            primary_key_type="TEXT",
+            body_index_options=[STANDARD_ANALYZER],
+        )
+        md = {"a": 1, "b": "Bee", "c": True}
+        md_string = {"a": "1.0", "b": "Bee", "c": "true"}
+        md_string2 = {"a": "2.0"}
+        t.put(row_id="full_row", metadata=md, body_blob="body blob")
+        gotten = t.get(content="blob", metadata=md_string)
+        assert gotten == {
+            "row_id": "full_row",
+            "body_blob": "body blob",
+            "metadata": md_string,
+        }
+        gotten2 = t.get(content="bar", metadata=md_string)
+        assert gotten2 is None
+        gotten3 = t.get(content="blob", metadata=md_string2)
+        assert gotten3 is None
