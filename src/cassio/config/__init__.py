@@ -287,7 +287,7 @@ def init(
                     cluster = Cluster(
                         cloud={"secure_connect_bundle": chosen_bundle,
                                **(cloud_kwargs if cloud_kwargs is not None else {})
-                        },
+                               },
                         auth_provider=PlainTextAuthProvider(
                             ASTRA_CLOUD_AUTH_USERNAME,
                             chosen_token,
