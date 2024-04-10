@@ -33,6 +33,7 @@ def init(
     cluster_kwargs: Optional[Dict[str, Any]] = None,
     tempfile_basedir: Optional[str] = None,
     bundle_url_template: Optional[str] = None,
+    cloud_kwargs: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
     Globally set the default Cassandra connection (/keyspace) for CassIO.
@@ -91,6 +92,7 @@ def init(
             secure bundle. The "databaseId" variable is resolved with the actual value.
             Default (for Astra DB):
                 "https://api.astra.datastax.com/v2/databases/{database_id}/secureBundleURL"
+        `cloud_kwargs` (optional dict), additional arguments to `Cluster(cloud={...})`.
 
     ASTRA DB:
     The Astra-related parameters are arranged in a chain of fallbacks.
@@ -283,7 +285,9 @@ def init(
                 if chosen_bundle:
                     keyspace_from_bundle = infer_keyspace_from_bundle(chosen_bundle)
                     cluster = Cluster(
-                        cloud={"secure_connect_bundle": chosen_bundle},
+                        cloud={"secure_connect_bundle": chosen_bundle,
+                               **(cloud_kwargs if cloud_kwargs is not None else {})
+                        },
                         auth_provider=PlainTextAuthProvider(
                             ASTRA_CLOUD_AUTH_USERNAME,
                             chosen_token,
