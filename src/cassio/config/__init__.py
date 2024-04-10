@@ -285,9 +285,10 @@ def init(
                 if chosen_bundle:
                     keyspace_from_bundle = infer_keyspace_from_bundle(chosen_bundle)
                     cluster = Cluster(
-                        cloud={"secure_connect_bundle": chosen_bundle,
-                               **(cloud_kwargs if cloud_kwargs is not None else {})
-                               },
+                        cloud={
+                            "secure_connect_bundle": chosen_bundle,
+                            **(cloud_kwargs if cloud_kwargs is not None else {}),
+                        },
                         auth_provider=PlainTextAuthProvider(
                             ASTRA_CLOUD_AUTH_USERNAME,
                             chosen_token,
