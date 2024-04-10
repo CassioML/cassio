@@ -92,7 +92,8 @@ def init(
             secure bundle. The "databaseId" variable is resolved with the actual value.
             Default (for Astra DB):
                 "https://api.astra.datastax.com/v2/databases/{database_id}/secureBundleURL"
-        `cloud_kwargs` (optional dict), additional arguments to `Cluster(cloud={...})`.
+        `cloud_kwargs` (optional dict), additional arguments to `Cluster(cloud={...})`
+            (i.e. additional key-value pairs within the passed `cloud` dict).
 
     ASTRA DB:
     The Astra-related parameters are arranged in a chain of fallbacks.
@@ -137,9 +138,16 @@ def init(
                 contact_points,
                 username,
                 password,
+                # cluster_kwargs is allowed
+                # tempfile_basedir is allowed
+                bundle_url_template,
+                cloud_kwargs,
             )
         ):
-            raise ValueError("When auto=True, no arguments can be passed.")
+            raise ValueError(
+                "When auto=True, no arguments can be passed other than "
+                "tempfile_basedir and cluster_kwargs."
+            )
         # setting some arguments from environment variables
         if "CASSANDRA_CONTACT_POINTS" in os.environ:
             contact_points = os.environ["CASSANDRA_CONTACT_POINTS"]
@@ -241,13 +249,13 @@ def init(
                 if chosen_contact_points is None:
                     cluster = Cluster(
                         auth_provider=chosen_auth_provider,
-                        **(cluster_kwargs if cluster_kwargs is not None else {})
+                        **(cluster_kwargs if cluster_kwargs is not None else {}),
                     )
                 else:
                     cluster = Cluster(
                         contact_points=chosen_contact_points,
                         auth_provider=chosen_auth_provider,
-                        **(cluster_kwargs if cluster_kwargs is not None else {})
+                        **(cluster_kwargs if cluster_kwargs is not None else {}),
                     )
                 default_session = cluster.connect()
             elif is_astra_db:
@@ -285,14 +293,15 @@ def init(
                 if chosen_bundle:
                     keyspace_from_bundle = infer_keyspace_from_bundle(chosen_bundle)
                     cluster = Cluster(
-                        cloud={"secure_connect_bundle": chosen_bundle,
-                               **(cloud_kwargs if cloud_kwargs is not None else {})
-                               },
+                        cloud={
+                            "secure_connect_bundle": chosen_bundle,
+                            **(cloud_kwargs if cloud_kwargs is not None else {}),
+                        },
                         auth_provider=PlainTextAuthProvider(
                             ASTRA_CLOUD_AUTH_USERNAME,
                             chosen_token,
                         ),
-                        **(cluster_kwargs if cluster_kwargs is not None else {})
+                        **(cluster_kwargs if cluster_kwargs is not None else {}),
                     )
                     default_session = cluster.connect()
                 else:
