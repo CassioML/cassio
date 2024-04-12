@@ -97,11 +97,21 @@ class BaseTable:
             ("body_blob", "TEXT"),
         ]
 
+    async def _aschema_da(self) -> List[ColumnSpecType]:
+        return self._schema_da()
+
     def _schema(self) -> Dict[str, List[ColumnSpecType]]:
         return {
             "pk": self._schema_pk(),
             "cc": self._schema_cc(),
             "da": self._schema_da(),
+        }
+
+    async def _aschema(self) -> Dict[str, List[ColumnSpecType]]:
+        return {
+            "pk": self._schema_pk(),
+            "cc": self._schema_cc(),
+            "da": await self._aschema_da(),
         }
 
     def _schema_primary_key(self) -> List[ColumnSpecType]:
@@ -373,19 +383,18 @@ class BaseTable:
         await self._aensure_db_setup()
         await call_wrapped_async(self.put_async, **kwargs)
 
-    def _get_db_setup_cql(self) -> str:
-        _schema = self._schema()
+    def _get_db_setup_cql(self, schema: Dict[str, List[ColumnSpecType]]) -> str:
         column_specs = [
             f"{col_spec[0]} {col_spec[1]}"
             for _schema_grp in ["pk", "cc", "da"]
-            for col_spec in _schema[_schema_grp]
+            for col_spec in schema[_schema_grp]
         ]
-        pk_spec = ", ".join(col for col, _ in _schema["pk"])
-        cc_spec = ", ".join(col for col, _ in _schema["cc"])
-        primkey_spec = f"( ( {pk_spec} ) {',' if _schema['cc'] else ''} {cc_spec} )"
-        if _schema["cc"]:
+        pk_spec = ", ".join(col for col, _ in schema["pk"])
+        cc_spec = ", ".join(col for col, _ in schema["cc"])
+        primkey_spec = f"( ( {pk_spec} ) {',' if schema['cc'] else ''} {cc_spec} )"
+        if schema["cc"]:
             clu_core = ", ".join(
-                f"{col} {self.ordering_in_partition}" for col, _ in _schema["cc"]
+                f"{col} {self.ordering_in_partition}" for col, _ in schema["cc"]
             )
             clustering_spec = f"WITH CLUSTERING ORDER BY ({clu_core})"
         else:
@@ -426,7 +435,7 @@ class BaseTable:
         return create_index_cql
 
     def db_setup(self) -> None:
-        create_table_cql = self._get_db_setup_cql()
+        create_table_cql = self._get_db_setup_cql(self._schema())
         self.execute_cql(create_table_cql, op_type=CQLOpType.SCHEMA)
         if self._body_index_options:
             self.execute_cql(
@@ -435,7 +444,8 @@ class BaseTable:
             )
 
     async def adb_setup(self) -> None:
-        create_table_cql = self._get_db_setup_cql()
+        schema = await self._aschema()
+        create_table_cql = self._get_db_setup_cql(schema)
         await self.aexecute_cql(create_table_cql, op_type=CQLOpType.SCHEMA)
         if self._body_index_options:
             await self.aexecute_cql(
