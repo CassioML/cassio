@@ -32,7 +32,8 @@ class TestClusteredMetadataVectorCassandraTable:
             keyspace=db_keyspace,
             table=table_name,
             vector_dimension=2,
-            vector_index_options={"similarity_function": "DOT_PRODUCT"},
+            vector_similarity_function="DOT_PRODUCT",
+            vector_source_model="bert",
             primary_key_type=["INT", "TEXT"],
             partition_id=0,
         )

@@ -18,14 +18,13 @@ from typing import (
 
 from cassandra.cluster import ResponseFuture
 
-from cassio.table.utils import call_wrapped_async, get_options_clause
+from cassio.table.utils import call_wrapped_async
 from cassio.utils.vector.distance_metrics import distance_metrics
 
 from cassio.table.cql import (
     CQLOpType,
     DELETE_CQL_TEMPLATE,
     SELECT_CQL_TEMPLATE,
-    CREATE_INDEX_CQL_TEMPLATE,
     # CREATE_KEYS_INDEX_CQL_TEMPLATE,
     CREATE_ENTRIES_INDEX_CQL_TEMPLATE,
     SELECT_ANN_CQL_TEMPLATE,
@@ -216,13 +215,11 @@ class MetadataMixin(BaseTableMixin):
         self,
         *pargs: Any,
         metadata_indexing: Union[Tuple[str, Iterable[str]], str] = "all",
-        metadata_index_options: Optional[dict] = None,
         **kwargs: Any,
     ) -> None:
         self.metadata_indexing_policy = self._normalize_metadata_indexing_policy(
             metadata_indexing
         )
-        self.metadata_index_options = metadata_index_options
         super().__init__(*pargs, **kwargs)
 
     @staticmethod
@@ -272,14 +269,14 @@ class MetadataMixin(BaseTableMixin):
             ("metadata_s", "MAP<TEXT,TEXT>"),
         ]
 
-    def _get_create_entries_index_cql(self, entries_index_column: str) -> str:
+    @staticmethod
+    def _get_create_entries_index_cql(entries_index_column: str) -> str:
         index_name = f"eidx_{entries_index_column}"
         index_column = f"{entries_index_column}"
-        options_clause = get_options_clause(self.metadata_index_options)
+
         create_index_cql = CREATE_ENTRIES_INDEX_CQL_TEMPLATE.format(
             index_name=index_name,
             index_column=index_column,
-            options_clause=options_clause,
         )
         return create_index_cql
 
@@ -584,6 +581,8 @@ class VectorMixin(BaseTableMixin):
         self,
         *pargs: Any,
         vector_dimension: Union[int, Awaitable[int]],
+        vector_similarity_function: Optional[str],
+        vector_source_model: Optional[str],
         **kwargs: Any,
     ) -> None:
         if inspect.isawaitable(vector_dimension) and not kwargs.get(
@@ -594,7 +593,13 @@ class VectorMixin(BaseTableMixin):
                 "with async_setup set to False"
             )
         self.vector_dimension = vector_dimension
-        self.vector_index_options = vector_index_options
+        self.vector_index_options = []
+        if vector_similarity_function is not None:
+            self.vector_index_options.append(
+                ("similarity_function", vector_similarity_function)
+            )
+        if vector_source_model is not None:
+            self.vector_index_options.append(("source_model", vector_source_model))
         super().__init__(*pargs, **kwargs)
 
     def _schema_da(self) -> List[ColumnSpecType]:
@@ -608,26 +613,27 @@ class VectorMixin(BaseTableMixin):
         return self._schema_da()
 
     @staticmethod
-    def _get_create_index_cql() -> str:
+    def _get_create_vector_index_cql(
+        vector_index_options: List[Tuple[str, Any]]
+    ) -> str:
         index_name = "idx_vector"
         index_column = "vector"
-        create_index_cql = CREATE_INDEX_CQL_TEMPLATE.format(
+        return BaseTable._get_create_index_cql(
             index_name=index_name,
             index_column=index_column,
-            options_clause=get_options_clause(self.vector_index_options),
+            index_options=vector_index_options,
         )
-        return create_index_cql
 
     def db_setup(self) -> None:
         super().db_setup()
         # index on the vector column:
-        create_index_cql = self._get_create_index_cql()
+        create_index_cql = self._get_create_vector_index_cql(self.vector_index_options)
         self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
 
     async def adb_setup(self) -> None:
         await super().adb_setup()
         # index on the vector column:
-        create_index_cql = self._get_create_index_cql()
+        create_index_cql = self._get_create_vector_index_cql(self.vector_index_options)
         await self.aexecute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
 
     def _get_ann_search_cql(
