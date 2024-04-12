@@ -25,7 +25,6 @@ from cassio.table.cql import (
     CQLOpType,
     DELETE_CQL_TEMPLATE,
     SELECT_CQL_TEMPLATE,
-    CREATE_INDEX_CQL_TEMPLATE,
     # CREATE_KEYS_INDEX_CQL_TEMPLATE,
     CREATE_ENTRIES_INDEX_CQL_TEMPLATE,
     SELECT_ANN_CQL_TEMPLATE,
@@ -581,6 +580,8 @@ class VectorMixin(BaseTableMixin):
         self,
         *pargs: Any,
         vector_dimension: Union[int, Awaitable[int]],
+        vector_similarity_function: Optional[str] = None,
+        vector_source_model: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         if inspect.isawaitable(vector_dimension) and not kwargs.get(
@@ -591,6 +592,13 @@ class VectorMixin(BaseTableMixin):
                 "with async_setup set to False"
             )
         self.vector_dimension = vector_dimension
+        self.vector_index_options = []
+        if vector_similarity_function is not None:
+            self.vector_index_options.append(
+                ("similarity_function", vector_similarity_function)
+            )
+        if vector_source_model is not None:
+            self.vector_index_options.append(("source_model", vector_source_model))
         super().__init__(*pargs, **kwargs)
 
     def _schema_da(self) -> List[ColumnSpecType]:
@@ -604,25 +612,27 @@ class VectorMixin(BaseTableMixin):
         return self._schema_da()
 
     @staticmethod
-    def _get_create_index_cql() -> str:
+    def _get_create_vector_index_cql(
+        vector_index_options: List[Tuple[str, Any]]
+    ) -> str:
         index_name = "idx_vector"
         index_column = "vector"
-        create_index_cql = CREATE_INDEX_CQL_TEMPLATE.format(
+        return BaseTable._get_create_index_cql(
             index_name=index_name,
             index_column=index_column,
+            index_options=vector_index_options,
         )
-        return create_index_cql
 
     def db_setup(self) -> None:
         super().db_setup()
         # index on the vector column:
-        create_index_cql = self._get_create_index_cql()
+        create_index_cql = self._get_create_vector_index_cql(self.vector_index_options)
         self.execute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
 
     async def adb_setup(self) -> None:
         await super().adb_setup()
         # index on the vector column:
-        create_index_cql = self._get_create_index_cql()
+        create_index_cql = self._get_create_vector_index_cql(self.vector_index_options)
         await self.aexecute_cql(create_index_cql, op_type=CQLOpType.SCHEMA)
 
     def _get_ann_search_cql(

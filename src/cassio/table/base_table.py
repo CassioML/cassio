@@ -32,7 +32,7 @@ from cassio.table.cql import (
     DELETE_CQL_TEMPLATE,
     SELECT_CQL_TEMPLATE,
     INSERT_ROW_CQL_TEMPLATE,
-    CREATE_INDEX_ANALYZER_CQL_TEMPLATE,
+    CREATE_INDEX_CQL_TEMPLATE,
 )
 from cassio.table.utils import call_wrapped_async
 
@@ -407,32 +407,50 @@ class BaseTable:
         )
         return create_table_cql
 
-    def _get_create_analyzer_index_cql(
-        self, index_options: List[Tuple[str, Any]]
+    @staticmethod
+    def _get_create_index_cql(
+        index_name: str, index_column: str, index_options: List[Tuple[str, Any]]
     ) -> str:
-        index_name = "idx_body"
-        index_column = "body_blob"
-        body_index_options = []
-        for option in index_options:
-            key, value = option
-            if isinstance(value, dict):
-                body_index_options.append(f"'{key}': '{json.dumps(value)}'")
-            elif isinstance(value, str):
-                body_index_options.append(f"'{key}': '{value}'")
-            elif isinstance(value, bool):
-                if value:
-                    body_index_options.append(f"'{key}': true")
+        options_clause = ""
+        if len(index_options) > 0:
+            formatted_options = []
+            for option in index_options:
+                key, value = option
+                if isinstance(value, dict):
+                    formatted_options.append(f"'{key}': '{json.dumps(value)}'")
+                elif isinstance(value, str):
+                    formatted_options.append(f"'{key}': '{value}'")
+                elif isinstance(value, bool):
+                    if value:
+                        formatted_options.append(f"'{key}': true")
+                    else:
+                        formatted_options.append(f"'{key}': false")
                 else:
-                    body_index_options.append(f"'{key}': false")
-            else:
-                raise ValueError("Unsupported body_index_option format")
+                    raise ValueError("Unsupported index_option format")
 
-        create_index_cql = CREATE_INDEX_ANALYZER_CQL_TEMPLATE.format(
+            formatted_options.sort()
+
+            options_text = ", ".join(formatted_options)
+
+            # this is double escaped because the cql will go through
+            # another format method before being executed
+            options_clause = f"WITH OPTIONS = {{{{ {options_text} }}}}"
+
+        return CREATE_INDEX_CQL_TEMPLATE.format(
             index_name=index_name,
             index_column=index_column,
-            body_index_options=", ".join(body_index_options),
+            options_clause=options_clause,
         )
-        return create_index_cql
+
+    @staticmethod
+    def _get_create_analyzer_index_cql(index_options: List[Tuple[str, Any]]) -> str:
+        index_name = "idx_body"
+        index_column = "body_blob"
+        return BaseTable._get_create_index_cql(
+            index_name=index_name,
+            index_column=index_column,
+            index_options=index_options,
+        )
 
     def db_setup(self) -> None:
         create_table_cql = self._get_db_setup_cql(self._schema())

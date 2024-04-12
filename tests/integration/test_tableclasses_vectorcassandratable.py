@@ -16,7 +16,7 @@ from cassio.table.tables import (
 N = 8
 
 
-def crud(db_session: Session, db_keyspace: str) -> None:
+def test_crud(db_session: Session, db_keyspace: str) -> None:
     table_name = "v_ct"
     db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
     #
@@ -60,7 +60,7 @@ def crud(db_session: Session, db_keyspace: str) -> None:
     os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA") != "ASTRA_DB",
     reason="requires a test Astra DB instance",
 )
-def index_analyzers(db_session: Session, db_keyspace: str) -> None:
+def test_index_analyzers(db_session: Session, db_keyspace: str) -> None:
     table_name = "v_ct_analyzers"
     db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
     #
@@ -119,3 +119,42 @@ async def test_async_vector_dimension(db_session: Session, db_keyspace: str) -> 
         vector=[0.1, 0.2],
     )
     await t.aclear()
+
+
+def test_similarity_option(db_session: Session, db_keyspace: str) -> None:
+    table_name = "v_ct_sim"
+    db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
+    #
+    t = VectorCassandraTable(
+        session=db_session,
+        keyspace=db_keyspace,
+        table=table_name,
+        vector_dimension=2,
+        primary_key_type="TEXT",
+        vector_similarity_function="EUCLIDEAN",
+    )
+
+    query_vector = [1.0, 1.0]
+    # insert a vector close to `query_vector` in the euclidean sens
+    # and another in the cosine sense:
+    t.put(row_id="euc", body_blob="euclideanly close", vector=[-1.0, 1.0])
+    t.put(row_id="cos", body_blob="cosinely close", vector=[10.0, 11.0])
+
+    # right query pattern by implication from the vector index
+    best_match0 = list(t.ann_search(query_vector, n=2))
+    assert len(best_match0) == 2
+    assert best_match0[0]["row_id"] == "euc"
+
+    # right query pattern by explicit specification
+    best_match_e = list(t.metric_ann_search(query_vector, n=2, metric="l2"))
+    assert len(best_match_e) == 2
+    assert best_match_e[0]["row_id"] == "euc"
+    # (1,1) is 2 away from (-1, 1):
+    assert best_match_e[0]["distance"] > 1.999 and best_match_e[0]["distance"] < 2.001
+
+    # "wrong" query pattern (more precisely, ask for a metric != the table one)
+    best_match_c = list(t.metric_ann_search(query_vector, n=2, metric="cos"))
+    assert len(best_match_c) == 2
+    assert best_match_c[0]["row_id"] == "cos"
+
+    t.clear()

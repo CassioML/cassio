@@ -32,6 +32,7 @@ class TestClusteredMetadataVectorCassandraTable:
             keyspace=db_keyspace,
             table=table_name,
             vector_dimension=2,
+            vector_similarity_function="DOT_PRODUCT",
             primary_key_type=["INT", "TEXT"],
             partition_id=0,
         )
@@ -143,6 +144,25 @@ class TestClusteredMetadataVectorCassandraTable:
             _ = t_xpart.get(row_id="not_enough_info")
 
         t.clear()
+
+    @pytest.mark.skipif(
+        os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA") != "ASTRA_DB",
+        reason="requires a test Astra DB instance",
+    )
+    def test_vector_source_model_parameter(
+        self, db_session: Session, db_keyspace: str
+    ) -> None:
+        table_name = "c_m_v_ct_sm"
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
+        #
+        ClusteredMetadataVectorCassandraTable(
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name,
+            vector_dimension=2,
+            vector_similarity_function="DOT_PRODUCT",
+            vector_source_model="bert",
+        )
 
     @pytest.mark.skipif(
         TEST_DB_MODE in {"LOCAL_CASSANDRA", "TESTCONTAINERS_CASSANDRA"},

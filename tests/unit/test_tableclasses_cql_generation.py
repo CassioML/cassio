@@ -15,6 +15,8 @@ class TestTableClassesCQLGeneration:
             keyspace="k",
             table="tn",
             vector_dimension=765,
+            vector_similarity_function="DOT_PRODUCT",
+            vector_source_model="bert",
             primary_key_type="UUID",
         )
         mock_db_session.assert_last_equal(
@@ -24,7 +26,7 @@ class TestTableClassesCQLGeneration:
                     tuple(),
                 ),
                 (
-                    "CREATE CUSTOM INDEX IF NOT EXISTS idx_vector_tn ON k.tn (vector) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",  # noqa: E501
+                    "CREATE CUSTOM INDEX IF NOT EXISTS idx_vector_tn ON k.tn (vector) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex' WITH OPTIONS = { 'similarity_function': 'dot_product', 'source_model': 'bert' };",  # noqa: E501
                     tuple(),
                 ),
             ]
