@@ -273,7 +273,6 @@ class MetadataMixin(BaseTableMixin):
     def _get_create_entries_index_cql(entries_index_column: str) -> str:
         index_name = f"eidx_{entries_index_column}"
         index_column = f"{entries_index_column}"
-
         create_index_cql = CREATE_ENTRIES_INDEX_CQL_TEMPLATE.format(
             index_name=index_name,
             index_column=index_column,
@@ -581,8 +580,8 @@ class VectorMixin(BaseTableMixin):
         self,
         *pargs: Any,
         vector_dimension: Union[int, Awaitable[int]],
-        vector_similarity_function: Optional[str],
-        vector_source_model: Optional[str],
+        vector_similarity_function: Optional[str] = None,
+        vector_source_model: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         if inspect.isawaitable(vector_dimension) and not kwargs.get(

@@ -26,7 +26,7 @@ class TestTableClassesCQLGeneration:
                     tuple(),
                 ),
                 (
-                    "CREATE CUSTOM INDEX IF NOT EXISTS idx_vector_tn ON k.tn (vector) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex' WITH OPTIONS = { 'similarity_function': 'dot_product' };",  # noqa: E501
+                    "CREATE CUSTOM INDEX IF NOT EXISTS idx_vector_tn ON k.tn (vector) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex' WITH OPTIONS = { 'similarity_function': 'dot_product', 'source_model': 'bert' };",  # noqa: E501
                     tuple(),
                 ),
             ]

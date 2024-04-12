@@ -26,7 +26,7 @@ CREATE_INDEX_CQL_PREFIX = "CREATE CUSTOM INDEX IF NOT EXISTS {index_name}_{{tabl
 
 CREATE_INDEX_CQL_TEMPLATE = (
     CREATE_INDEX_CQL_PREFIX
-    + "({index_column}) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex' {options_clause};"
+    + "({index_column}) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex' {options_clause};"  # noqa: E501
 )
 
 CREATE_KEYS_INDEX_CQL_TEMPLATE = (
