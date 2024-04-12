@@ -1,9 +1,11 @@
 import asyncio
+import inspect
 from operator import itemgetter
 import json
 
 from typing import (
     Any,
+    Awaitable,
     cast,
     Dict,
     List,
@@ -575,7 +577,19 @@ class MetadataMixin(BaseTableMixin):
 
 
 class VectorMixin(BaseTableMixin):
-    def __init__(self, *pargs: Any, vector_dimension: int, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *pargs: Any,
+        vector_dimension: Union[int, Awaitable[int]],
+        **kwargs: Any,
+    ) -> None:
+        if inspect.isawaitable(vector_dimension) and not kwargs.get(
+            "async_setup", False
+        ):
+            raise ValueError(
+                "Cannot use an awaitable embedding_dimension "
+                "with async_setup set to False"
+            )
         self.vector_dimension = vector_dimension
         super().__init__(*pargs, **kwargs)
 
@@ -583,6 +597,11 @@ class VectorMixin(BaseTableMixin):
         return super()._schema_da() + [
             ("vector", f"VECTOR<FLOAT,{self.vector_dimension}>")
         ]
+
+    async def _aschema_da(self) -> List[ColumnSpecType]:
+        if inspect.isawaitable(self.vector_dimension):
+            self.vector_dimension = await self.vector_dimension
+        return self._schema_da()
 
     @staticmethod
     def _get_create_index_cql() -> str:
