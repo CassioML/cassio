@@ -3,7 +3,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from cassandra.cluster import ResponseFuture
 
 from cassio.table.cql import DELETE_CQL_TEMPLATE, SELECT_CQL_TEMPLATE, CQLOpType
-from cassio.table.mixins import BaseTableMixin
+from .base_table import BaseTableMixin
 from cassio.table.table_types import ColumnSpecType, RowType, normalize_type_desc
 from cassio.table.utils import call_wrapped_async
 

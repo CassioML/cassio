@@ -1,6 +1,6 @@
 from typing import Any
 
-from cassio.table.mixins import BaseTableMixin
+from .base_table import BaseTableMixin
 from cassio.table.table_types import rearrange_pk_type
 
 

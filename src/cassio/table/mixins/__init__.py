@@ -4,12 +4,3 @@ from cassio.table.mixins.elastic_key import ElasticKeyMixin  # noqa: F401
 from cassio.table.mixins.metadata import MetadataMixin  # noqa: F401
 from cassio.table.mixins.type_normalizer import TypeNormalizerMixin  # noqa: F401
 from cassio.table.mixins.vector import VectorMixin  # noqa: F401
-
-__all__ = (
-    BaseTableMixin,
-    ClusteredMixin,
-    ElasticKeyMixin,
-    MetadataMixin,
-    TypeNormalizerMixin,
-    VectorMixin,
-)

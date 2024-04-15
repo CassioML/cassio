@@ -6,7 +6,7 @@ from cassio.table.table_types import (
     MetadataIndexingMode,
 )
 
-from cassio.table.mixins import MetadataMixin
+from cassio.table.mixins.metadata import MetadataMixin
 
 
 class TestNormalizeMetadataPolicy:

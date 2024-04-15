@@ -1,7 +1,7 @@
 import json
 from typing import Any, Dict, List, cast
 
-from cassio.table.mixins import BaseTableMixin
+from .base_table import BaseTableMixin
 from cassio.table.table_types import ColumnSpecType
 
 

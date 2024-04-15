@@ -9,7 +9,7 @@ from cassio.table.cql import (
     SELECT_CQL_TEMPLATE,
     CQLOpType,
 )
-from cassio.table.mixins import BaseTableMixin
+from .base_table import BaseTableMixin
 from cassio.table.table_types import (
     ColumnSpecType,
     MetadataIndexingMode,
