@@ -81,10 +81,15 @@ class BaseTable:
             self.db_setup()
 
     def _schema_row_id(self) -> List[ColumnSpecType]:
-        assert len(self.row_id_type) == 1
-        return [
-            ("row_id", self.row_id_type[0]),
-        ]
+        if len(self.row_id_type) == 1:
+            return [
+                ("row_id", self.row_id_type[0]),
+            ]
+        else:
+            return [
+                (f"row_id_{row_i}", row_typ)
+                for row_i, row_typ in enumerate(self.row_id_type)
+            ]
 
     def _schema_pk(self) -> List[ColumnSpecType]:
         return self._schema_row_id()

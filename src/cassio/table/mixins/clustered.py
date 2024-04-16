@@ -23,10 +23,15 @@ class ClusteredMixin(BaseTableMixin):
         super().__init__(*pargs, **kwargs)
 
     def _schema_pk(self) -> List[ColumnSpecType]:
-        assert len(self.partition_id_type) == 1
-        return [
-            ("partition_id", self.partition_id_type[0]),
-        ]
+        if len(self.partition_id_type) == 1:
+            return [
+                ("partition_id", self.partition_id_type[0]),
+            ]
+        else:
+            return [
+                (f"partition_id_{pk_i}", pk_typ)
+                for pk_i, pk_typ in enumerate(self.partition_id_type)
+            ]
 
     def _schema_cc(self) -> List[ColumnSpecType]:
         return self._schema_row_id()

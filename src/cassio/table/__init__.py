@@ -16,3 +16,23 @@ from cassio.table.tables import (
     ClusteredElasticMetadataVectorCassandraTable,  # noqa: F401
 )
 from cassio.table.tables import ElasticMetadataVectorCassandraTable  # noqa: F401
+
+
+__all__ = [
+    "PlainCassandraTable",
+    "ClusteredCassandraTable",
+    "ClusteredMetadataCassandraTable",
+    "MetadataCassandraTable",
+    "VectorCassandraTable",
+    "ClusteredVectorCassandraTable",
+    "ClusteredMetadataVectorCassandraTable",
+    "MetadataVectorCassandraTable",
+    "ElasticCassandraTable",
+    "ClusteredElasticCassandraTable",
+    "ClusteredElasticMetadataCassandraTable",
+    "ElasticMetadataCassandraTable",
+    "ElasticVectorCassandraTable",
+    "ClusteredElasticVectorCassandraTable",
+    "ClusteredElasticMetadataVectorCassandraTable",
+    "ElasticMetadataVectorCassandraTable   ",
+]

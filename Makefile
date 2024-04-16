@@ -4,7 +4,7 @@ SHELL := /bin/bash
 
 all: help
 
-format: format-tests format-src
+format: format-src format-tests
 
 format-tests:
 	poetry run ruff tests
