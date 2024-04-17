@@ -1,8 +1,9 @@
 import json
 from typing import Any, Dict, List, cast
 
-from .base_table import BaseTableMixin
 from cassio.table.table_types import ColumnSpecType
+
+from .base_table import BaseTableMixin
 
 
 class ElasticKeyMixin(BaseTableMixin):

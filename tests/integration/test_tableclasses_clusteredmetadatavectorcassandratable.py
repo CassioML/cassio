@@ -5,14 +5,10 @@ import math
 import os
 
 import pytest
-
 from cassandra import InvalidRequest
 from cassandra.cluster import Session
 
-from cassio.table.tables import (
-    ClusteredMetadataVectorCassandraTable,
-)
-
+from cassio.table.tables import ClusteredMetadataVectorCassandraTable
 
 N = 16
 

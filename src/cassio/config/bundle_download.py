@@ -3,9 +3,9 @@ Facilities to manage the download of a secure-connect-bundle from an Astra DB
 token.
 """
 import logging
-import requests
 from typing import Optional
 
+import requests
 
 DEFAULT_GET_BUNDLE_URL_TEMPLATE = (
     "https://api.astra.datastax.com/v2/databases/{database_id}/secureBundleURL"

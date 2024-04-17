@@ -1,27 +1,21 @@
 """
 Bundle conversion tests
 """
-import pytest
-import tempfile
-import shutil
 import os
+import shutil
+import tempfile
 
-from cassandra.cluster import Cluster
+import pytest
 from cassandra.auth import PlainTextAuthProvider
-from cassandra.cluster import NoHostAvailable
+from cassandra.cluster import Cluster, NoHostAvailable
 
 import cassio
-from cassio.config import resolve_session, resolve_keyspace
+from cassio.config import resolve_keyspace, resolve_session
 from cassio.config.bundle_management import (
     bundle_path_to_init_string,
     init_string_to_bundle_path_and_options,
 )
-
-from tests.conftest import (
-    _freeze_envvars,
-    _reset_cassio_globals,
-    _unfreeze_envvars,
-)
+from tests.conftest import _freeze_envvars, _reset_cassio_globals, _unfreeze_envvars
 
 
 @pytest.mark.skipif(

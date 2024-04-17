@@ -5,15 +5,13 @@ Compatibility layer for legacy VectorTable (used by LangChain integration
 Note: This is to be replaced by direct usage of the table-class-hierarchy classes.
 """
 
+from typing import Any, Dict, List, Optional
 from warnings import warn
-from typing import List, Dict, Any, Optional
 
 from cassandra.cluster import ResponseFuture
 
 from cassio.table.table_types import RowType
-from cassio.table.tables import (
-    MetadataVectorCassandraTable,
-)
+from cassio.table.tables import MetadataVectorCassandraTable
 
 new_columns_to_legacy = {
     "row_id": "document_id",

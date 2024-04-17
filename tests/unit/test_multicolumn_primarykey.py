@@ -3,8 +3,8 @@ Correct renormalization of multicolumn primary key into schema
 (by which we mean multiple partition- and/or multiple clustering-key)
 """
 
-from cassio.table.cql import MockDBSession
 from cassio.table import ClusteredCassandraTable
+from cassio.table.cql import MockDBSession
 
 
 class TestMulticolumnPrimaryKey:

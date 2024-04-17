@@ -1,20 +1,27 @@
 SHELL := /bin/bash
 
-.PHONY: all format format-tests format-src test-all test-unit test-integration test-astra-integration test-cassandra-integration build help
+.PHONY: all format format-fix format-tests format-src test-all test-unit test-integration test-astra-integration test-cassandra-integration build help
 
 all: help
+
+FMT_FLAGS ?= --check
 
 format: format-src format-tests
 
 format-tests:
 	poetry run ruff tests
-	poetry run black tests --check
+	poetry run isort tests $(FMT_FLAGS)
+	poetry run black tests $(FMT_FLAGS)
 	poetry run mypy tests
 
 format-src:
 	poetry run ruff src
-	poetry run black src --check
+	poetry run isort src $(FMT_FLAGS)
+	poetry run black src $(FMT_FLAGS)
 	poetry run mypy src
+
+format-fix: FMT_FLAGS=
+format-fix: format-src format-tests
 
 test-all: test-unit test-integration
 

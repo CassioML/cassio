@@ -9,7 +9,6 @@ from operator import itemgetter
 from typing import (
     Any,
     Callable,
-    cast,
     Dict,
     Iterable,
     Optional,
@@ -17,16 +16,16 @@ from typing import (
     Tuple,
     TypeVar,
     Union,
+    cast,
 )
 
+from cassandra.concurrent import ExecutionResult, execute_concurrent
 from cassandra.query import PreparedStatement
-from cassandra.concurrent import execute_concurrent, ExecutionResult
 
-from cassio.utils.db_inspection import table_partitionkey
-from cassio.config import check_resolve_session, check_resolve_keyspace
+from cassio.config import check_resolve_keyspace, check_resolve_session
 from cassio.table.cql import SELECT_CQL_TEMPLATE
 from cassio.table.table_types import SessionType
-
+from cassio.utils.db_inspection import table_partitionkey
 
 C = TypeVar("C")
 ColumnOrFunctionType = Union[str, Callable[[Dict[str, Any]], C]]

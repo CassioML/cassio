@@ -1,7 +1,8 @@
 from typing import Any
 
-from .base_table import BaseTableMixin
 from cassio.table.table_types import rearrange_pk_type
+
+from .base_table import BaseTableMixin
 
 
 class TypeNormalizerMixin(BaseTableMixin):

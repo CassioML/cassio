@@ -2,15 +2,13 @@
 Facilities to manage the conversion between secure-connect-bundle (plus
 additional info) and the "init string".
 """
-import os
-from typing import Any, Dict, Optional, Tuple
-import tempfile
-import shutil
-import json
 import base64
-
+import json
+import os
+import shutil
+import tempfile
+from typing import Any, Dict, Optional, Tuple
 from zipfile import ZipFile
-
 
 CONFIG_FILE_NAME = "config.json"
 USED_CONFIG_KEYS_AND_DEFAULTS = {

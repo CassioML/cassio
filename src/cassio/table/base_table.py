@@ -1,38 +1,27 @@
 import asyncio
 import json
-from asyncio import InvalidStateError, Task
 import logging
-from typing import (
-    Any,
-    cast,
-    Dict,
-    List,
-    Iterable,
-    Optional,
-    Set,
-    Tuple,
-    Union,
+from asyncio import InvalidStateError, Task
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
+
+from cassandra.cluster import ResponseFuture, ResultSet
+from cassandra.query import PreparedStatement, SimpleStatement
+
+from cassio.config import check_resolve_keyspace, check_resolve_session
+from cassio.table.cql import (
+    CREATE_INDEX_CQL_TEMPLATE,
+    CREATE_TABLE_CQL_TEMPLATE,
+    DELETE_CQL_TEMPLATE,
+    INSERT_ROW_CQL_TEMPLATE,
+    SELECT_CQL_TEMPLATE,
+    TRUNCATE_TABLE_CQL_TEMPLATE,
+    CQLOpType,
 )
-
-from cassandra.query import SimpleStatement, PreparedStatement
-from cassandra.cluster import ResultSet
-from cassandra.cluster import ResponseFuture
-
-from cassio.config import check_resolve_session, check_resolve_keyspace
 from cassio.table.table_types import (
     ColumnSpecType,
     RowType,
     SessionType,
     normalize_type_desc,
-)
-from cassio.table.cql import (
-    CQLOpType,
-    CREATE_TABLE_CQL_TEMPLATE,
-    TRUNCATE_TABLE_CQL_TEMPLATE,
-    DELETE_CQL_TEMPLATE,
-    SELECT_CQL_TEMPLATE,
-    INSERT_ROW_CQL_TEMPLATE,
-    CREATE_INDEX_CQL_TEMPLATE,
 )
 from cassio.table.utils import call_wrapped_async
 
@@ -160,9 +149,15 @@ class BaseTable:
         where_clause_blocks = [f"{col} = %s" for col in passed_columns]
         where_clause_vals = tuple([args_dict[col] for col in passed_columns])
 
-        print(f"base_table._extract_where_clause_blocks() passed_columns: {passed_columns}")
-        print(f"base_table._extract_where_clause_blocks() where_clause_blocks: {where_clause_blocks}")
-        print(f"base_table._extract_where_clause_blocks() where_clause_vals: {where_clause_vals}")
+        print(
+            f"base_table._extract_where_clause_blocks() passed_columns: {passed_columns}"
+        )
+        print(
+            f"base_table._extract_where_clause_blocks() where_clause_blocks: {where_clause_blocks}"
+        )
+        print(
+            f"base_table._extract_where_clause_blocks() where_clause_vals: {where_clause_vals}"
+        )
         return (
             residual_args,
             where_clause_blocks,

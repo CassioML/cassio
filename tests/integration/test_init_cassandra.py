@@ -2,20 +2,14 @@
 init method, Astra side
 """
 import os
-import pytest
 
-from cassandra.cluster import Cluster
+import pytest
 from cassandra.auth import PlainTextAuthProvider
+from cassandra.cluster import Cluster
 
 import cassio
-from cassio.config import resolve_session, resolve_keyspace
-
-from tests.conftest import (
-    _freeze_envvars,
-    _reset_cassio_globals,
-    _unfreeze_envvars,
-)
-
+from cassio.config import resolve_keyspace, resolve_session
+from tests.conftest import _freeze_envvars, _reset_cassio_globals, _unfreeze_envvars
 
 CASSANDRA_USERNAME = os.environ.get("CASSANDRA_USERNAME")
 CASSANDRA_PASSWORD = os.environ.get("CASSANDRA_PASSWORD")
