@@ -17,6 +17,7 @@ from cassio.table.cql import (
     TRUNCATE_TABLE_CQL_TEMPLATE,
     CQLOpType,
 )
+from cassio.table.range_operator import RangeOperator
 from cassio.table.table_types import (
     ColumnSpecType,
     RowType,
@@ -24,7 +25,6 @@ from cassio.table.table_types import (
     normalize_type_desc,
 )
 from cassio.table.utils import call_wrapped_async
-from cassio.table.range_operator import RangeOperator
 
 
 class CustomLogger(logging.Logger):

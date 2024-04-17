@@ -2,12 +2,12 @@
 CQL for mixin-based table classes tests
 """
 from cassio.table.cql import MockDBSession
+from cassio.table.range_operator import RangeOperator
 from cassio.table.tables import (
     ClusteredElasticMetadataVectorCassandraTable,
     ClusteredMetadataVectorCassandraTable,
     VectorCassandraTable,
 )
-from cassio.table.range_operator import RangeOperator
 
 # from cassio.table.table_types import Not, SelectColumn
 
@@ -143,12 +143,15 @@ class TestTableClassesCQLGeneration:
         )
 
         # colbert retrieval step 2
-        vt_multi_cc.get(partition_id="PARTITIONID", row_id=(1,RangeOperator(RangeOperator.Operator.GT, -1)))
+        vt_multi_cc.get(
+            partition_id="PARTITIONID",
+            row_id=(1, RangeOperator(RangeOperator.Operator.GT, -1)),
+        )
         mock_db_session.assert_last_equal(
             [
                 (
                     "SELECT * FROM k.tn WHERE partition_id = ? AND row_id_0 = ? AND row_id_1 > ?;",  # noqa: E501
-                     ("PARTITIONID", 1, -1),
+                    ("PARTITIONID", 1, -1),
                 ),
             ]
         )
