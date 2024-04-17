@@ -33,5 +33,5 @@ __all__ = [
     "ElasticVectorCassandraTable",
     "ClusteredElasticVectorCassandraTable",
     "ClusteredElasticMetadataVectorCassandraTable",
-    "ElasticMetadataVectorCassandraTable   ",
+    "ElasticMetadataVectorCassandraTable",
 ]

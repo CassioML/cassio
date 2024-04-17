@@ -24,6 +24,7 @@ from cassio.table.table_types import (
     normalize_type_desc,
 )
 from cassio.table.utils import call_wrapped_async
+from cassio.table.range_operator import RangeOperator
 
 
 class CustomLogger(logging.Logger):
@@ -146,8 +147,17 @@ class BaseTable:
             [col for col, _ in _allowed_colspecs if col in args_dict]
         )
         residual_args = {k: v for k, v in args_dict.items() if k not in passed_columns}
-        where_clause_blocks = [f"{col} = %s" for col in passed_columns]
-        where_clause_vals = tuple([args_dict[col] for col in passed_columns])
+
+        where_clause_blocks = []
+        where_clause_vals = []
+        for col in passed_columns:
+            value = args_dict[col]
+            if isinstance(value, RangeOperator):
+                where_clause_blocks.append(f"{col} {value.operator()} %s")
+                where_clause_vals.append(value.value())
+            else:
+                where_clause_blocks.append(f"{col} = %s")
+                where_clause_vals.append(value)
 
         print(
             f"base_table._extract_where_clause_blocks() passed_columns: {passed_columns}"
@@ -161,7 +171,7 @@ class BaseTable:
         return (
             residual_args,
             where_clause_blocks,
-            where_clause_vals,
+            tuple(where_clause_vals),
         )
 
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:

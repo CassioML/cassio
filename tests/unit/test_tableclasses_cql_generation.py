@@ -7,6 +7,7 @@ from cassio.table.tables import (
     ClusteredMetadataVectorCassandraTable,
     VectorCassandraTable,
 )
+from cassio.table.range_operator import RangeOperator
 
 # from cassio.table.table_types import Not, SelectColumn
 
@@ -141,13 +142,24 @@ class TestTableClassesCQLGeneration:
             ]
         )
 
+        # colbert retrieval step 2
+        vt_multi_cc.get(partition_id="PARTITIONID", row_id=(1,RangeOperator(RangeOperator.Operator.GT, -1)))
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    "SELECT * FROM k.tn WHERE partition_id = ? AND row_id_0 = ? AND row_id_1 > ?;",  # noqa: E501
+                     ("PARTITIONID", 1, -1),
+                ),
+            ]
+        )
+
         # # colbert retrieval step 2
         # vt_multi_cc.get(partition_id="PARTITIONID", row_id=(1,Not(-1)), columns=[SelectColumn.PARTITION_ID, SelectColumn.ROW_ID, SelectColumn.VECTOR])
         # mock_db_session.assert_last_equal(
         #     [
         #         (
-        #             "SELECT partition_id, row_id_0, row_id_1, vector FROM k.tn WHERE row_id_0 = ? AND row_id_1 != ? AND partition_id = ? ;",  # noqa: E501
-        #              (1, -1, "PARTITIONID"),
+        #             "SELECT partition_id, row_id_0, row_id_1, vector FROM k.tn WHERE partition_id = ? AND row_id_0 = ? AND row_id_1 = ?;",  # noqa: E501
+        #              ("PARTITIONID", 1, -1),
         #         ),
         #     ]
         # )
@@ -157,8 +169,8 @@ class TestTableClassesCQLGeneration:
         # mock_db_session.assert_last_equal(
         #     [
         #         (
-        #             "SELECT body_blob, attributes_blob, metadata_s FROM k.tn WHERE row_id_0 = ? AND row_id_1 = ? AND partition_id = ? ;",  # noqa: E501
-        #              (1, -1, "PARTITIONID"),
+        #             "SELECT body_blob, attributes_blob, metadata_s FROM k.tn WHERE partition_id = ? AND row_id_0 = ? AND row_id_1 = ?;",  # noqa: E501
+        #              ("PARTITIONID", 1, -1),
         #         ),
         #     ]
         # )
