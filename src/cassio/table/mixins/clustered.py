@@ -69,7 +69,6 @@ class ClusteredMixin(BaseTableMixin):
 
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
         # if partition id provided in call, takes precedence over instance value
-        print(f"clustered._normalize_kwargs() args_dict: {args_dict}")
         arg_pid = args_dict.get("partition_id")
         instance_pid = self.partition_id
         _partition_id = instance_pid if arg_pid is None else arg_pid

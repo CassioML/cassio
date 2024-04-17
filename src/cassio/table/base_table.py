@@ -141,7 +141,6 @@ class BaseTable:
     ) -> Tuple[Any, List[str], Tuple[Any, ...]]:
         # Removes some of the passed kwargs and returns the remaining,
         # plus the pieces for a WHERE
-        print(f"base_table._extract_where_clause_blocks() args_dict: {args_dict}")
         _allowed_colspecs = self._schema_collist()
         passed_columns = sorted(
             [col for col, _ in _allowed_colspecs if col in args_dict]
@@ -159,15 +158,6 @@ class BaseTable:
                 where_clause_blocks.append(f"{col} = %s")
                 where_clause_vals.append(value)
 
-        print(
-            f"base_table._extract_where_clause_blocks() passed_columns: {passed_columns}"
-        )
-        print(
-            f"base_table._extract_where_clause_blocks() where_clause_blocks: {where_clause_blocks}"
-        )
-        print(
-            f"base_table._extract_where_clause_blocks() where_clause_vals: {where_clause_vals}"
-        )
         return (
             residual_args,
             where_clause_blocks,
@@ -192,11 +182,6 @@ class BaseTable:
             where_clause_blocks,
             delete_cql_vals,
         ) = self._extract_where_clause_blocks(n_kwargs)
-
-        print(f"base_table._delete() rest_kwargs: {rest_kwargs}")
-        print(f"base_table._delete() where_clause_blocks: {where_clause_blocks}")
-        print(f"base_table._delete() where_clause_vals: {delete_cql_vals}")
-
         assert rest_kwargs == {}
         where_clause = "WHERE " + " AND ".join(where_clause_blocks)
         delete_cql = DELETE_CQL_TEMPLATE.format(
@@ -361,8 +346,6 @@ class BaseTable:
     def _put(self, is_async: bool, **kwargs: Any) -> Union[None, ResponseFuture]:
         n_kwargs = self._normalize_kwargs(kwargs)
         primary_key = self._schema_primary_key()
-        print(f"base_table._put() n_kwargs: {n_kwargs}")
-        print(f"base_table._put() primary_key: {primary_key}")
         assert set(col for col, _ in primary_key) - set(n_kwargs.keys()) == set()
         columns = [col for col, _ in self._schema_collist() if col in n_kwargs]
         columns_desc = ", ".join(columns)
