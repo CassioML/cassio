@@ -19,7 +19,7 @@ class ClusteredMixin(BaseTableMixin):
     ) -> None:
         self.partition_id_type = normalize_type_desc(partition_id_type)
         self.partition_id = partition_id
-        self.ordering_in_partition = ordering_in_partition.upper()
+        self.ordering_in_partition = ordering_in_partition
         super().__init__(*pargs, **kwargs)
 
     def _schema_pk(self) -> List[ColumnSpecType]:
@@ -36,24 +36,57 @@ class ClusteredMixin(BaseTableMixin):
     def _schema_cc(self) -> List[ColumnSpecType]:
         return self._schema_row_id()
 
+    def _allowed_colnames(self) -> List[str]:
+        names = super()._allowed_colnames()
+        names.append("partition_id")
+        return names
+
     def _extract_where_clause_blocks(
         self, args_dict: Any
     ) -> Tuple[Any, List[str], Tuple[Any, ...]]:
+        print(f"clustered._extract_where_clause_blocks() args_dict: {args_dict}")
         """
-        If a null partition_id arrives to WHERE construction, it is silently
+        If a null partition_id or row_id arrives to WHERE construction, it is silently
         discarded from the set of conditions to create.
         This enables e.g. ANN vector search across partitions of a clustered table.
 
         It is the database's responsibility to raise an error if unacceptable.
         """
-        if "partition_id" in args_dict and args_dict["partition_id"] is None:
-            cleaned_args_dict = {
-                k: v for k, v in args_dict.items() if k != "partition_id"
-            }
-        else:
-            cleaned_args_dict = args_dict
-        #
-        return super()._extract_where_clause_blocks(cleaned_args_dict)
+        these_wc_blocks: List[str] = []
+        these_wc_vals_list: List[Any] = []
+        for col in ["row_id", "partition_id"]:
+            if col not in args_dict:
+                print(f"{col} not in args_dict")
+                continue
+
+            value = args_dict[col]
+            del args_dict[col]
+            if value is None:
+                continue
+
+            if not isinstance(value, Tuple):
+                value = (value,)
+
+            if len(value) == 1:
+                these_wc_blocks.append(f"{col} = %s")
+                these_wc_vals_list.append(value[0])
+            else:
+                for i, v in enumerate(value):
+                    these_wc_blocks.append(f"{col}_{i} = %s")
+                    these_wc_vals_list.append(v)
+
+        # no new kwargs keys are created, all goes to WHERE
+        this_args_dict: Dict[str, Any] = {}
+        these_wc_vals = tuple(these_wc_vals_list)
+        # ready to defer to superclass(es), then collate-and-return
+        (s_args_dict, s_wc_blocks, s_wc_vals) = super()._extract_where_clause_blocks(
+            args_dict
+        )
+        return (
+            {**s_args_dict, **this_args_dict},
+             s_wc_blocks + these_wc_blocks,
+            tuple(list(s_wc_vals) + list(these_wc_vals)),
+        )
 
     def _delete_partition(
         self, is_async: bool, partition_id: Optional[str] = None
@@ -118,11 +151,16 @@ class ClusteredMixin(BaseTableMixin):
                 **kwargs,
             }
         )
-        (args_dict, wc_blocks, wc_vals) = self._extract_where_clause_blocks(n_kwargs)
+        (
+            rest_kwargs,
+            where_clause_blocks,
+            select_cql_vals,
+        ) = self._extract_where_clause_blocks(n_kwargs)
+
         # check for exhaustion:
-        assert args_dict == {}
-        where_clause = "WHERE " + " AND ".join(wc_blocks)
-        where_cql_vals = list(wc_vals)
+        assert rest_kwargs == {}
+        where_clause = "WHERE " + " AND ".join(where_clause_blocks)
+        where_cql_vals = list(select_cql_vals)
         #
         if n is None:
             limit_clause = ""

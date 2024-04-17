@@ -232,6 +232,7 @@ class MetadataMixin(BaseTableMixin):
     def _extract_where_clause_blocks(
         self, args_dict: Any
     ) -> Tuple[Any, List[str], Tuple[Any, ...]]:
+        print(f"metadata._extract_where_clause_blocks() args_dict: {args_dict}")
         # This always happens after a corresponding _normalize_kwargs,
         # so the metadata, if present, appears as split-fields.
         assert "metadata" not in args_dict

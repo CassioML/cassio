@@ -65,6 +65,7 @@ class BaseTable:
         skip_provisioning: bool = False,
         async_setup: bool = False,
         body_index_options: Optional[List[Tuple[str, Any]]] = None,
+        comment: Optional[str] = None,
     ) -> None:
         self.session = check_resolve_session(session)
         self.keyspace = check_resolve_keyspace(keyspace)
@@ -75,6 +76,7 @@ class BaseTable:
         self._prepared_statements: Dict[str, PreparedStatement] = {}
         self._body_index_options = body_index_options
         self.db_setup_task: Optional[Task[None]] = None
+        self.comment = comment
         if async_setup:
             self.db_setup_task = asyncio.create_task(self.adb_setup())
         else:
@@ -149,6 +151,7 @@ class BaseTable:
     ) -> Tuple[Any, List[str], Tuple[Any, ...]]:
         # Removes some of the passed kwargs and returns the remaining,
         # plus the pieces for a WHERE
+        print(f"base_table._extract_where_clause_blocks() args_dict: {args_dict}")
         _allowed_colspecs = self._schema_collist()
         passed_columns = sorted(
             [col for col, _ in _allowed_colspecs if col in args_dict]
@@ -156,6 +159,10 @@ class BaseTable:
         residual_args = {k: v for k, v in args_dict.items() if k not in passed_columns}
         where_clause_blocks = [f"{col} = %s" for col in passed_columns]
         where_clause_vals = tuple([args_dict[col] for col in passed_columns])
+
+        print(f"base_table._extract_where_clause_blocks() passed_columns: {passed_columns}")
+        print(f"base_table._extract_where_clause_blocks() where_clause_blocks: {where_clause_blocks}")
+        print(f"base_table._extract_where_clause_blocks() where_clause_vals: {where_clause_vals}")
         return (
             residual_args,
             where_clause_blocks,
@@ -180,6 +187,11 @@ class BaseTable:
             where_clause_blocks,
             delete_cql_vals,
         ) = self._extract_where_clause_blocks(n_kwargs)
+
+        print(f"base_table._delete() rest_kwargs: {rest_kwargs}")
+        print(f"base_table._delete() where_clause_blocks: {where_clause_blocks}")
+        print(f"base_table._delete() where_clause_vals: {delete_cql_vals}")
+
         assert rest_kwargs == {}
         where_clause = "WHERE " + " AND ".join(where_clause_blocks)
         delete_cql = DELETE_CQL_TEMPLATE.format(
@@ -397,18 +409,27 @@ class BaseTable:
         pk_spec = ", ".join(col for col, _ in schema["pk"])
         cc_spec = ", ".join(col for col, _ in schema["cc"])
         primkey_spec = f"( ( {pk_spec} ) {',' if schema['cc'] else ''} {cc_spec} )"
+
+        table_options = []
+
         if schema["cc"]:
             clu_core = ", ".join(
                 f"{col} {self.ordering_in_partition}" for col, _ in schema["cc"]
             )
-            clustering_spec = f"WITH CLUSTERING ORDER BY ({clu_core})"
+            table_options.append(f"CLUSTERING ORDER BY ({clu_core})")
+
+        if self.comment is not None:
+            table_options.append(f"COMMENT = '{self.comment}'")
+
+        if len(table_options) > 0:
+            options_clause = "WITH " + " AND ".join(table_options)
         else:
-            clustering_spec = ""
-        #
+            options_clause = ""
+
         create_table_cql = CREATE_TABLE_CQL_TEMPLATE.format(
             columns_spec=" ".join(f"  {cs}," for cs in column_specs),
             primkey_spec=primkey_spec,
-            clustering_spec=clustering_spec,
+            options_clause=options_clause,
         )
         return create_table_cql
 
