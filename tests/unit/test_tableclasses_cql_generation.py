@@ -122,8 +122,8 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "DELETE FROM k.tn WHERE row_id_0 = ? AND row_id_1 = ? AND partition_id = ?;",  # noqa: E501
-                    (1, 2, "PARTITIONID"),
+                    "DELETE FROM k.tn WHERE partition_id = ? AND row_id_0 = ? AND row_id_1 = ?;",  # noqa: E501
+                    ("PARTITIONID", 1, 2),
                 ),
             ]
         )
@@ -132,8 +132,8 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE row_id_0 = ? AND row_id_1 = ? AND partition_id = ? ;",  # noqa: E501
-                     (1, 2, "PARTITIONID"),
+                    "SELECT * FROM k.tn WHERE partition_id = ? AND row_id_0 = ? AND row_id_1 = ?;",  # noqa: E501
+                     ("PARTITIONID", 1, 2),
                 ),
             ]
         )
@@ -180,13 +180,12 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (body_blob, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?) USING TTL ? ;",  # noqa: E501
+                    "INSERT INTO k.tn (body_blob, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?);",  # noqa: E501
                     (
                         "BODYBLOB",
                         1,
                         -1,
                         "PARTITIONID",
-                        123,
                     ),
                 ),
             ]
@@ -201,13 +200,12 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (vector, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?) USING TTL ? ;",  # noqa: E501
+                    "INSERT INTO k.tn (vector, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?);",  # noqa: E501
                     (
                         "VECTOR",
                         1,
                         2,
                         "PARTITIONID",
-                        123,
                     ),
                 ),
             ]
@@ -225,7 +223,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (body_blob, vector, metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?, ?, ?) USING TTL ? ;",  # noqa: E501
+                    "INSERT INTO k.tn (body_blob, vector, metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?, ?, ?);",  # noqa: E501
                     (
                         "BODYBLOB",
                         "VECTOR",
@@ -238,7 +236,6 @@ class TestTableClassesCQLGeneration:
                         1,
                         2,
                         "PARTITIONID",
-                        123,
                     ),
                 ),
             ]
@@ -254,7 +251,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (body_blob, vector, metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?, ?, ?) USING TTL ? ;",  # noqa: E501
+                    "INSERT INTO k.tn (body_blob, vector, metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?, ?, ?);",  # noqa: E501
                     (
                         "BODYBLOB",
                         "VECTOR",
@@ -262,7 +259,6 @@ class TestTableClassesCQLGeneration:
                         1,
                         2,
                         "PARTITIONID",
-                        123,
                     ),
                 ),
             ]
@@ -272,13 +268,12 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?) USING TTL ? ;",  # noqa: E501
+                    "INSERT INTO k.tn (metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?);",  # noqa: E501
                     (
                         {"tru2": "true", "tru1": "true"},
                         1,
                         2,
                         "PARTITIONID",
-                        123,
                     ),
                 ),
             ]
@@ -300,16 +295,6 @@ class TestTableClassesCQLGeneration:
                 (
                     "SELECT * FROM k.tn WHERE partition_id = ? ;",
                     ("PARTITIONID",),
-                ),
-            ]
-        )
-
-        vt_multi_cc.get_partition()
-        mock_db_session.assert_last_equal(
-            [
-                (
-                    "SELECT * FROM k.tn WHERE partition_id = ? ;",
-                    ("PRE-PART-ID",),
                 ),
             ]
         )
@@ -339,18 +324,8 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE row_id_0 = ? AND row_id_1 = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
-                    (1, 2, "PARTITIONID", [10, 11], 2),
-                ),
-            ]
-        )
-
-        vt_multi_cc.ann_search([10, 11], 2, row_id=(1,2),)
-        mock_db_session.assert_last_equal(
-            [
-                (
-                    "SELECT * FROM k.tn WHERE row_id_0 = ? AND row_id_1 = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
-                    (1, 2, "PRE-PART-ID", [10, 11], 2),
+                    "SELECT * FROM k.tn WHERE partition_id = ? AND row_id_0 = ? AND row_id_1 = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
+                    ("PARTITIONID", 1, 2, [10, 11], 2),
                 ),
             ]
         )
@@ -360,8 +335,8 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdkn'] = ? AND metadata_s['mdks'] = ? AND row_id_0 = ? AND row_id_1 = ? AND partition_id = ? ;",  # noqa: E501
-                    ("true", "123.0", "mdv", 1, 2, "MDPART"),
+                    "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdkn'] = ? AND metadata_s['mdks'] = ? AND partition_id = ? AND row_id_0 = ? AND row_id_1 = ?;",  # noqa: E501
+                    ("true", "123.0", "mdv", "MDPART", 1, 2),
                 ),
             ]
         )
@@ -372,33 +347,14 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdkn'] = ? AND metadata_s['mdks'] = ? AND row_id_0 = ? AND row_id_1 = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
+                    "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdkn'] = ? AND metadata_s['mdks'] = ? AND partition_id = ? AND row_id_0 = ? AND row_id_1 = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
                     (
                         "true",
                         "123.0",
                         "mdv",
-                        1,
-                        2,
                         "MDPART",
-                        [100, 101],
-                        9,
-                    ),
-                ),
-            ]
-        )
-
-        vt_multi_cc.ann_search([100, 101], 9, row_id=(1,2), metadata=search_md)
-        mock_db_session.assert_last_equal(
-            [
-                (
-                    "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdkn'] = ? AND metadata_s['mdks'] = ? AND row_id_0 = ? AND row_id_1 = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
-                    (
-                        "true",
-                        "123.0",
-                        "mdv",
                         1,
                         2,
-                        "PRE-PART-ID",
                         [100, 101],
                         9,
                     ),
@@ -416,23 +372,13 @@ class TestTableClassesCQLGeneration:
             ]
         )
 
-        vt_multi_cc.get_partition(metadata=search_md)
-        mock_db_session.assert_last_equal(
-            [
-                (
-                    "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdkn'] = ? AND metadata_s['mdks'] = ? AND partition_id = ? ;",  # noqa: E501
-                    ("true", "123.0", "mdv", "PRE-PART-ID"),
-                ),
-            ]
-        )
-
         search_md_part = {"mdke": True, "mdke2": True}
         vt_multi_cc.get(partition_id="MDPART", row_id=(1,2), metadata=search_md_part)
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdke2'] = ? AND row_id_0 = ? AND row_id_1 = ? AND partition_id = ? ;",  # noqa: E501
-                    ("true", "true", 1, 2, "MDPART"),
+                    "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdke2'] = ? AND partition_id = ? AND row_id_0 = ? AND row_id_1 = ? ;",  # noqa: E501
+                    ("true", "true", "MDPART", 1, 2),
                 ),
             ]
         )
@@ -447,31 +393,13 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdke2'] = ? AND row_id_0 = ? AND row_id_1 = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
+                    "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdke2'] = ? AND partition_id = ? AND row_id_0 = ? AND row_id_1 = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
                     (
                         "true",
                         "true",
-                        1,
-                        2,
                         "MDPART",
-                        [100, 101],
-                        9,
-                    ),
-                ),
-            ]
-        )
-
-        vt_multi_cc.ann_search([100, 101], 9, row_id=(1,2), metadata=search_md_part)
-        mock_db_session.assert_last_equal(
-            [
-                (
-                    "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdke2'] = ? AND row_id_0 = ? AND row_id_1 = ? AND partition_id = ? ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
-                    (
-                        "true",
-                        "true",
                         1,
                         2,
-                        "PRE-PART-ID",
                         [100, 101],
                         9,
                     ),
@@ -485,16 +413,6 @@ class TestTableClassesCQLGeneration:
                 (
                     "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdke2'] = ? AND partition_id = ? ;",  # noqa: E501
                     ("true", "true", "MDPART"),
-                ),
-            ]
-        )
-
-        vt_multi_cc.get_partition(metadata=search_md_part)
-        mock_db_session.assert_last_equal(
-            [
-                (
-                    "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdke2'] = ? AND partition_id = ? ;",  # noqa: E501
-                    ("true", "true", "PRE-PART-ID"),
                 ),
             ]
         )

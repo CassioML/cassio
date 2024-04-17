@@ -356,6 +356,8 @@ class BaseTable:
     def _put(self, is_async: bool, **kwargs: Any) -> Union[None, ResponseFuture]:
         n_kwargs = self._normalize_kwargs(kwargs)
         primary_key = self._schema_primary_key()
+        print(f"base_table._put() n_kwargs: {n_kwargs}")
+        print(f"base_table._put() primary_key: {primary_key}")
         assert set(col for col, _ in primary_key) - set(n_kwargs.keys()) == set()
         columns = [col for col, _ in self._schema_collist() if col in n_kwargs]
         columns_desc = ", ".join(columns)
