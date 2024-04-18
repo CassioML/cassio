@@ -13,9 +13,9 @@ from cassio.table.tables import MetadataCassandraTable  # noqa: F401
 from cassio.table.tables import MetadataVectorCassandraTable  # noqa: F401
 from cassio.table.tables import PlainCassandraTable  # noqa: F401
 from cassio.table.tables import VectorCassandraTable  # noqa: F401
-from cassio.table.tables import (
+from cassio.table.tables import (  # noqa: F401
     ClusteredElasticMetadataVectorCassandraTable,
-)  # noqa: F401
+)
 
 __all__ = [
     "PlainCassandraTable",

@@ -10,13 +10,13 @@ format: format-src format-tests
 
 format-tests:
 	poetry run ruff tests
-	poetry run isort tests $(FMT_FLAGS)
+	poetry run isort tests $(FMT_FLAGS) --profile black
 	poetry run black tests $(FMT_FLAGS)
 	poetry run mypy tests
 
 format-src:
 	poetry run ruff src
-	poetry run isort src $(FMT_FLAGS)
+	poetry run isort src $(FMT_FLAGS) --profile black
 	poetry run black src $(FMT_FLAGS)
 	poetry run mypy src
 
