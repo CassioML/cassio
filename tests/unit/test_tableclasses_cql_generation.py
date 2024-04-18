@@ -103,12 +103,11 @@ class TestTableClassesCQLGeneration:
             vector_dimension=128,
             vector_similarity_function="DOT_PRODUCT",
             vector_source_model="bert",
-            comment="Descriptive comment here",
         )
         mock_db_session.assert_last_equal(
             [
                 (
-                    "CREATE TABLE IF NOT EXISTS k.tn ( partition_id TEXT, row_id_0 INT, row_id_1 INT, body_blob TEXT, vector VECTOR<FLOAT,128>, attributes_blob TEXT, metadata_s MAP<TEXT,TEXT>, PRIMARY KEY ( ( partition_id ) , row_id_0, row_id_1 )) WITH CLUSTERING ORDER BY (row_id_0 ASC, row_id_1 ASC) AND COMMENT = 'Descriptive comment here';",  # noqa: E501
+                    "CREATE TABLE IF NOT EXISTS k.tn ( partition_id TEXT, row_id_0 INT, row_id_1 INT, body_blob TEXT, vector VECTOR<FLOAT,128>, attributes_blob TEXT, metadata_s MAP<TEXT,TEXT>, PRIMARY KEY ( ( partition_id ) , row_id_0, row_id_1 )) WITH CLUSTERING ORDER BY (row_id_0 ASC, row_id_1 ASC);",  # noqa: E501
                     tuple(),
                 ),
                 (

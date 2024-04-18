@@ -55,7 +55,6 @@ class BaseTable:
         skip_provisioning: bool = False,
         async_setup: bool = False,
         body_index_options: Optional[List[Tuple[str, Any]]] = None,
-        comment: Optional[str] = None,
     ) -> None:
         self.session = check_resolve_session(session)
         self.keyspace = check_resolve_keyspace(keyspace)
@@ -66,7 +65,6 @@ class BaseTable:
         self._prepared_statements: Dict[str, PreparedStatement] = {}
         self._body_index_options = body_index_options
         self.db_setup_task: Optional[Task[None]] = None
-        self.comment = comment
         if async_setup:
             self.db_setup_task = asyncio.create_task(self.adb_setup())
         else:
@@ -407,9 +405,6 @@ class BaseTable:
                 f"{col} {self.ordering_in_partition}" for col, _ in schema["cc"]
             )
             table_options.append(f"CLUSTERING ORDER BY ({clu_core})")
-
-        if self.comment is not None:
-            table_options.append(f"COMMENT = '{self.comment}'")
 
         if len(table_options) > 0:
             options_clause = "WITH " + " AND ".join(table_options)
