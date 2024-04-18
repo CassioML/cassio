@@ -76,7 +76,6 @@ catch versions-specific issues
 - `git tag v<x.y.z>; git push origin v<x.y.z>`
 
 ```
-rm dist/cassio*
 make build
 poetry publish  # (login to PyPI ...)
 ```

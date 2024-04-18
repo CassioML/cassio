@@ -34,7 +34,7 @@ test-testcontainerscassandra-integration:
 	TEST_DB_MODE="TESTCONTAINERS_CASSANDRA" poetry run pytest tests/integration -vv
 
 build:
-	rm dist/*
+	rm -f dist/cassio*
 	poetry build
 
 help:
