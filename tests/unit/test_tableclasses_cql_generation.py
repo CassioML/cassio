@@ -142,7 +142,7 @@ class TestTableClassesCQLGeneration:
         )
 
         # colbert retrieval step 2
-        vt_multi_cc.get(
+        vt_multi_cc.get_partition(
             partition_id="PARTITIONID",
             row_id=(1, RangeOperator(RangeOperator.Operator.GT, -1)),
         )
@@ -154,28 +154,6 @@ class TestTableClassesCQLGeneration:
                 ),
             ]
         )
-
-        # # colbert retrieval step 2
-        # vt_multi_cc.get(partition_id="PARTITIONID", row_id=(1,Not(-1)), columns=[SelectColumn.PARTITION_ID, SelectColumn.ROW_ID, SelectColumn.VECTOR])
-        # mock_db_session.assert_last_equal(
-        #     [
-        #         (
-        #             "SELECT partition_id, row_id_0, row_id_1, vector FROM k.tn WHERE partition_id = ? AND row_id_0 = ? AND row_id_1 = ?;",  # noqa: E501
-        #              ("PARTITIONID", 1, -1),
-        #         ),
-        #     ]
-        # )
-
-        # # colbert retrieval step 3
-        # vt_multi_cc.get(partition_id="PARTITIONID", row_id=(1,-1), columns=[SelectColumn.BODY, SelectColumn.METADATA])
-        # mock_db_session.assert_last_equal(
-        #     [
-        #         (
-        #             "SELECT body_blob, attributes_blob, metadata_s FROM k.tn WHERE partition_id = ? AND row_id_0 = ? AND row_id_1 = ?;",  # noqa: E501
-        #              ("PARTITIONID", 1, -1),
-        #         ),
-        #     ]
-        # )
 
         # colbert delete
         vt_multi_cc.delete_partition(partition_id="PARTITIONID")
@@ -325,17 +303,6 @@ class TestTableClassesCQLGeneration:
                 ),
             ]
         )
-
-        # # colbert retrieval step 1
-        # vt_multi_cc.ann_search([10, 11], 2, columns=[SelectColumn.PARTITION_ID, SelectColumn.ROW_ID])
-        # mock_db_session.assert_last_equal(
-        #     [
-        #         (
-        #             "SELECT partition_id, row_id_0, row_id_1 FROM k.tn ORDER BY vector ANN OF ? LIMIT ?;",  # noqa: E501
-        #             ([10, 11], 2),
-        #         ),
-        #     ]
-        # )
 
         vt_multi_cc.ann_search([10, 11], 2, row_id=(1, 2), partition_id="PARTITIONID")
         mock_db_session.assert_last_equal(
