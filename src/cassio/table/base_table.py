@@ -17,7 +17,7 @@ from cassio.table.cql import (
     TRUNCATE_TABLE_CQL_TEMPLATE,
     CQLOpType,
 )
-from cassio.table.range_operator import RangeOperator
+from cassio.table.query import Predicate, PredicateOperator
 from cassio.table.table_types import (
     ColumnSpecType,
     RowType,
@@ -149,9 +149,10 @@ class BaseTable:
         where_clause_vals = []
         for col in passed_columns:
             value = args_dict[col]
-            if isinstance(value, RangeOperator):
-                where_clause_blocks.append(f"{col} {value.operator()} %s")
-                where_clause_vals.append(value.value())
+            if isinstance(value, Predicate):
+                pred_op_name, pred_value = value.render()
+                where_clause_blocks.append(f"{col} {pred_op_name} %s")
+                where_clause_vals.append(pred_value)
             else:
                 where_clause_blocks.append(f"{col} = %s")
                 where_clause_vals.append(value)

@@ -2,7 +2,7 @@
 CQL for mixin-based table classes tests
 """
 from cassio.table.cql import MockDBSession
-from cassio.table.range_operator import RangeOperator
+from cassio.table.query import Predicate, PredicateOperator
 from cassio.table.tables import (
     ClusteredElasticMetadataVectorCassandraTable,
     ClusteredMetadataVectorCassandraTable,
@@ -144,7 +144,7 @@ class TestTableClassesCQLGeneration:
         # colbert retrieval step 2
         vt_multi_cc.get_partition(
             partition_id="PARTITIONID",
-            row_id=(1, RangeOperator(RangeOperator.Operator.GT, -1)),
+            row_id=(1, Predicate(PredicateOperator.GT, -1)),
         )
         mock_db_session.assert_last_equal(
             [
