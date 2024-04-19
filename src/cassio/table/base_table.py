@@ -17,7 +17,7 @@ from cassio.table.cql import (
     TRUNCATE_TABLE_CQL_TEMPLATE,
     CQLOpType,
 )
-from cassio.table.query import Predicate, PredicateOperator
+from cassio.table.query import Predicate
 from cassio.table.table_types import (
     ColumnSpecType,
     RowType,

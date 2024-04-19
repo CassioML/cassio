@@ -5,6 +5,7 @@ Correct renormalization of multicolumn primary key into schema
 
 from cassio.table import ClusteredCassandraTable
 from cassio.table.cql import MockDBSession
+from cassio.table.query import Predicate, PredicateOperator
 
 
 class TestMulticolumnPrimaryKey:
@@ -79,7 +80,7 @@ class TestMulticolumnPrimaryKey:
         assert sch["pk"] == [("partition_id_0", "COL1"), ("partition_id_1", "COL2")]
         assert sch["cc"] == [("row_id", "COL3")]
 
-    def test_22_pkt(self) -> None:
+    def test_22_pkt(self, mock_db_session: MockDBSession) -> None:
         """
         The only difference w.r.t test_12_pkt is the `num_partition_keys`
         """
@@ -87,13 +88,109 @@ class TestMulticolumnPrimaryKey:
             "table",
             primary_key_type=["COL1", "COL2", "COL3", "COL4"],
             num_partition_keys=2,
-            session="s",
+            session=mock_db_session,
             keyspace="k",
             skip_provisioning=True,
         )
         sch = clu21._schema()
         assert sch["pk"] == [("partition_id_0", "COL1"), ("partition_id_1", "COL2")]
         assert sch["cc"] == [("row_id_0", "COL3"), ("row_id_1", "COL4")]
+
+        clu21.put(partition_id=("pk0", "pk1"), row_id=("ri0", "ri1"), body_blob="bb")
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    (
+                        "INSERT INTO k.table (body_blob, row_id_0, row_id_1, partition_id_0, partition_id_1) VALUES (?, ?, ?, ?, ?)  ;"
+                    ),
+                    ("bb", "ri0", "ri1", "pk0", "pk1"),
+                ),
+            ]
+        )
+        clu21.get(partition_id=("pk0", "pk1"), row_id=("ri0", "ri1"), body_blob="bb")
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    (
+                        "SELECT * FROM k.table WHERE body_blob = ? AND partition_id_0 = ? AND partition_id_1 = ? AND row_id_0 = ? AND row_id_1 = ? ;"
+                    ),
+                    ("bb", "pk0", "pk1", "ri0", "ri1"),
+                ),
+            ]
+        )
+
+        clu21.get_partition(partition_id=("pk0", "pk1"), row_id=("ri0", "ri1"))
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    (
+                        "SELECT * FROM k.table WHERE partition_id_0 = ? AND partition_id_1 = ? AND row_id_0 = ? AND row_id_1 = ? ;"
+                    ),
+                    ("pk0", "pk1", "ri0", "ri1"),
+                ),
+            ]
+        )
+
+        clu21.get_partition(partition_id=("pk0", "pk1"), row_id=tuple())
+        clu21.get_partition(partition_id=("pk0", "pk1"))
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    (
+                        "SELECT * FROM k.table WHERE partition_id_0 = ? AND partition_id_1 = ? ;"
+                    ),
+                    ("pk0", "pk1"),
+                ),
+                (
+                    (
+                        "SELECT * FROM k.table WHERE partition_id_0 = ? AND partition_id_1 = ? ;"
+                    ),
+                    ("pk0", "pk1"),
+                ),
+            ]
+        )
+
+        # partial clustering supplied
+        clu21.get_partition(partition_id=("pk0", "pk1"), row_id=("ri0",))
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    (
+                        "SELECT * FROM k.table WHERE partition_id_0 = ? AND partition_id_1 = ? AND row_id_0 = ? ;"
+                    ),
+                    ("pk0", "pk1", "ri0"),
+                ),
+            ]
+        )
+
+        # non-equalities on clustering
+        TEST_GTE = Predicate(PredicateOperator.GTE, "x")
+
+        clu21.get_partition(partition_id=("pk0", "pk1"), row_id=(TEST_GTE,))
+        clu21.get_partition(partition_id=("pk0", "pk1"), row_id=(TEST_GTE, TEST_GTE))
+        clu21.get_partition(partition_id=("pk0", "pk1"), row_id=("ri0", TEST_GTE))
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    (
+                        "SELECT * FROM k.table WHERE partition_id_0 = ? AND partition_id_1 = ? AND row_id_0 >= ? ;"
+                    ),
+                    ("pk0", "pk1", "x"),
+                ),
+                (
+                    (
+                        "SELECT * FROM k.table WHERE partition_id_0 = ? AND partition_id_1 = ? AND row_id_0 >= ? AND row_id_1 >= ? ;"
+                    ),
+                    ("pk0", "pk1", "x", "x"),
+                ),
+                (
+                    (
+                        "SELECT * FROM k.table WHERE partition_id_0 = ? AND partition_id_1 = ? AND row_id_0 = ? AND row_id_1 >= ? ;"
+                    ),
+                    ("pk0", "pk1", "ri0", "x"),
+                ),
+            ]
+        )
 
     def test_22_pkt_create_table_cql(self, mock_db_session: MockDBSession) -> None:
         ClusteredCassandraTable(

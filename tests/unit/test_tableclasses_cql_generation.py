@@ -9,8 +9,6 @@ from cassio.table.tables import (
     VectorCassandraTable,
 )
 
-# from cassio.table.table_types import Not, SelectColumn
-
 
 class TestTableClassesCQLGeneration:
     def test_vector_cassandra_table(self, mock_db_session: MockDBSession) -> None:
