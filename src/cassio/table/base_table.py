@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseTable:
-    ordering_in_partition: Optional[str] = None
+    ordering_in_partition: Optional[Union[str, List[str]]] = None
 
     def __init__(
         self,
@@ -402,8 +402,17 @@ class BaseTable:
         table_options = []
 
         if schema["cc"]:
+            if self.ordering_in_partition is None:
+                raise ValueError("Unspecified ordering for clustering column(s)")
+            if isinstance(self.ordering_in_partition, str):
+                _cc_orderings = [self.ordering_in_partition for _ in schema["cc"]]
+            else:
+                # must be a list
+                assert len(self.ordering_in_partition) == len(schema["cc"])
+                _cc_orderings = self.ordering_in_partition
             clu_core = ", ".join(
-                f"{col} {self.ordering_in_partition}" for col, _ in schema["cc"]
+                f"{col} {ordering}"
+                for (col, _), ordering in zip(schema["cc"], _cc_orderings)
             )
             table_options.append(f"CLUSTERING ORDER BY ({clu_core})")
 

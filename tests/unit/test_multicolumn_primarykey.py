@@ -90,11 +90,23 @@ class TestMulticolumnPrimaryKey:
             num_partition_keys=2,
             session=mock_db_session,
             keyspace="k",
-            skip_provisioning=True,
+            ordering_in_partition=["ORD3", "ORD4"],
+            skip_provisioning=False,
         )
         sch = clu21._schema()
         assert sch["pk"] == [("partition_id_0", "COL1"), ("partition_id_1", "COL2")]
         assert sch["cc"] == [("row_id_0", "COL3"), ("row_id_1", "COL4")]
+
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    (
+                        "CREATE TABLE IF NOT EXISTS k.table ( partition_id_0 COL1, partition_id_1 COL2, row_id_0 COL3, row_id_1 COL4, body_blob TEXT, PRIMARY KEY ( ( partition_id_0, partition_id_1 ) , row_id_0, row_id_1 ) ) WITH CLUSTERING ORDER BY ( row_id_0 ORD3, row_id_1 ORD4 )"
+                    ),
+                    (),
+                ),
+            ]
+        )
 
         clu21.put(partition_id=("pk0", "pk1"), row_id=("ri0", "ri1"), body_blob="bb")
         mock_db_session.assert_last_equal(

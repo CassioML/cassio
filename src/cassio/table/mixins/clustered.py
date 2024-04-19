@@ -17,12 +17,17 @@ class ClusteredMixin(BaseTableMixin):
         *pargs: Any,
         partition_id_type: Union[str, List[str]] = ["TEXT"],
         partition_id: Optional[PARTITION_ID_TYPE] = None,
-        ordering_in_partition: str = "ASC",
+        ordering_in_partition: Union[str, List[str]] = "ASC",
         **kwargs: Any,
     ) -> None:
         self.partition_id_type = normalize_type_desc(partition_id_type)
         self.partition_id = partition_id
-        self.ordering_in_partition = ordering_in_partition.upper()
+        if isinstance(ordering_in_partition, str):
+            self.ordering_in_partition = ordering_in_partition.upper()
+        else:
+            self.ordering_in_partition = [
+                ordering.upper() for ordering in ordering_in_partition
+            ]
         super().__init__(*pargs, **kwargs)
 
     def _schema_pk(self) -> List[ColumnSpecType]:
