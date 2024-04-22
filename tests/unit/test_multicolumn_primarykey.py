@@ -3,7 +3,7 @@ Correct renormalization of multicolumn primary key into schema
 (by which we mean multiple partition- and/or multiple clustering-key)
 """
 
-from cassio.table import ClusteredCassandraTable
+from cassio.table import ClusteredCassandraTable, PlainCassandraTable
 from cassio.table.cql import MockDBSession
 from cassio.table.query import Predicate, PredicateOperator
 
@@ -82,7 +82,7 @@ class TestMulticolumnPrimaryKey:
 
     def test_22_pkt(self, mock_db_session: MockDBSession) -> None:
         """
-        The only difference w.r.t test_12_pkt is the `num_partition_keys`
+        Everything is multicolumn here
         """
         clu21 = ClusteredCassandraTable(
             "table",
@@ -224,6 +224,61 @@ class TestMulticolumnPrimaryKey:
                         ") WITH CLUSTERING ORDER BY (row_id_0 ASC, row_id_1 ASC);"
                     ),
                     tuple(),
+                ),
+            ]
+        )
+
+    def test_multirowid_basetable_pit(self, mock_db_session: MockDBSession) -> None:
+        """
+        Support for multiple row_id in the BaseTable,
+        i.e. independent of clustering logic.
+        The table is created through `row_id_type` i.e.
+        """
+        pla21 = PlainCassandraTable(
+            session=mock_db_session,
+            keyspace="k",
+            table="table",
+            row_id_type=["R0", "R1"],
+        )
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    (
+                        "CREATE TABLE IF NOT EXISTS k.table (  row_id_0 R0,   row_id_1 R1,   body_blob TEXT, PRIMARY KEY ( ( row_id_0, row_id_1 )   )) ;"
+                    ),
+                    tuple(),
+                ),
+            ]
+        )
+
+        pla21.put(row_id=("a", "b"), body_blob="x")
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    (
+                        "INSERT INTO k.table (body_blob, row_id_0, row_id_1) VALUES (?, ?, ?)  ;"
+                    ),
+                    ("x", "a", "b"),
+                ),
+            ]
+        )
+
+        pla21.delete(row_id=("a", "b"))
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    ("DELETE FROM k.table WHERE row_id_0 = ? AND row_id_1 = ?;"),
+                    ("a", "b"),
+                ),
+            ]
+        )
+
+        pla21.get(row_id=("a", "b"))
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    ("SELECT * FROM k.table WHERE row_id_0 = ? AND row_id_1 = ? ;"),
+                    ("a", "b"),
                 ),
             ]
         )
