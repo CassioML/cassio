@@ -9,7 +9,6 @@ from cassio.table.cql import (
     SELECT_CQL_TEMPLATE,
     CQLOpType,
 )
-from .base_table import BaseTableMixin
 from cassio.table.table_types import (
     ColumnSpecType,
     MetadataIndexingMode,
@@ -17,6 +16,8 @@ from cassio.table.table_types import (
     RowType,
     is_metadata_field_indexed,
 )
+
+from .base_table import BaseTableMixin
 
 
 class MetadataMixin(BaseTableMixin):

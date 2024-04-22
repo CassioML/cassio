@@ -3,9 +3,16 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from cassandra.cluster import ResponseFuture
 
 from cassio.table.cql import DELETE_CQL_TEMPLATE, SELECT_CQL_TEMPLATE, CQLOpType
-from .base_table import BaseTableMixin
 from cassio.table.table_types import ColumnSpecType, RowType, normalize_type_desc
-from cassio.table.utils import call_wrapped_async
+from cassio.table.utils import (
+    call_wrapped_async,
+    handle_multicolumn_packing,
+    handle_multicolumn_unpacking,
+)
+
+from .base_table import BaseTableMixin
+
+PARTITION_ID_TYPE = Union[Any, Tuple[Any]]
 
 
 class ClusteredMixin(BaseTableMixin):
@@ -13,50 +20,51 @@ class ClusteredMixin(BaseTableMixin):
         self,
         *pargs: Any,
         partition_id_type: Union[str, List[str]] = ["TEXT"],
-        partition_id: Optional[Any] = None,
-        ordering_in_partition: str = "ASC",
+        partition_id: Optional[PARTITION_ID_TYPE] = None,
+        ordering_in_partition: Union[str, List[str]] = "ASC",
         **kwargs: Any,
     ) -> None:
         self.partition_id_type = normalize_type_desc(partition_id_type)
         self.partition_id = partition_id
-        self.ordering_in_partition = ordering_in_partition.upper()
+        if isinstance(ordering_in_partition, str):
+            self.ordering_in_partition = ordering_in_partition.upper()
+        else:
+            self.ordering_in_partition = [
+                ordering.upper() for ordering in ordering_in_partition
+            ]
         super().__init__(*pargs, **kwargs)
 
     def _schema_pk(self) -> List[ColumnSpecType]:
-        assert len(self.partition_id_type) == 1
-        return [
-            ("partition_id", self.partition_id_type[0]),
-        ]
+        if len(self.partition_id_type) == 1:
+            return [
+                ("partition_id", self.partition_id_type[0]),
+            ]
+        else:
+            return [
+                (f"partition_id_{pk_i}", pk_typ)
+                for pk_i, pk_typ in enumerate(self.partition_id_type)
+            ]
 
     def _schema_cc(self) -> List[ColumnSpecType]:
         return self._schema_row_id()
 
-    def _extract_where_clause_blocks(
-        self, args_dict: Any
-    ) -> Tuple[Any, List[str], Tuple[Any, ...]]:
-        """
-        If a null partition_id arrives to WHERE construction, it is silently
-        discarded from the set of conditions to create.
-        This enables e.g. ANN vector search across partitions of a clustered table.
-
-        It is the database's responsibility to raise an error if unacceptable.
-        """
-        if "partition_id" in args_dict and args_dict["partition_id"] is None:
-            cleaned_args_dict = {
-                k: v for k, v in args_dict.items() if k != "partition_id"
-            }
-        else:
-            cleaned_args_dict = args_dict
-        #
-        return super()._extract_where_clause_blocks(cleaned_args_dict)
-
     def _delete_partition(
-        self, is_async: bool, partition_id: Optional[str] = None
+        self, is_async: bool, partition_id: Optional[PARTITION_ID_TYPE] = None
     ) -> Union[None, ResponseFuture]:
         _partition_id = self.partition_id if partition_id is None else partition_id
         #
-        where_clause = "WHERE " + "partition_id = %s"
-        delete_cql_vals = (_partition_id,)
+        _pid_dict = handle_multicolumn_unpacking(
+            {"partition_id": _partition_id},
+            "partition_id",
+            [col for col, _ in self._schema_pk()],
+        )
+        (
+            rest_kwargs,
+            where_clause_blocks,
+            delete_cql_vals,
+        ) = self._extract_where_clause_blocks(_pid_dict)
+        assert rest_kwargs == {}
+        where_clause = "WHERE " + " AND ".join(where_clause_blocks)
         delete_cql = DELETE_CQL_TEMPLATE.format(
             where_clause=where_clause,
         )
@@ -68,16 +76,20 @@ class ClusteredMixin(BaseTableMixin):
             self.execute_cql(delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE)
             return None
 
-    def delete_partition(self, partition_id: Optional[str] = None) -> None:
+    def delete_partition(
+        self, partition_id: Optional[PARTITION_ID_TYPE] = None
+    ) -> None:
         self._delete_partition(is_async=False, partition_id=partition_id)
         return None
 
     def delete_partition_async(
-        self, partition_id: Optional[str] = None
+        self, partition_id: Optional[PARTITION_ID_TYPE] = None
     ) -> ResponseFuture:
         return self._delete_partition(is_async=True, partition_id=partition_id)
 
-    async def adelete_partition(self, partition_id: Optional[str] = None) -> None:
+    async def adelete_partition(
+        self, partition_id: Optional[PARTITION_ID_TYPE] = None
+    ) -> None:
         await call_wrapped_async(self.delete_partition_async, partition_id=partition_id)
 
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
@@ -85,14 +97,33 @@ class ClusteredMixin(BaseTableMixin):
         arg_pid = args_dict.get("partition_id")
         instance_pid = self.partition_id
         _partition_id = instance_pid if arg_pid is None else arg_pid
-        new_args_dict = {
+        new_args_dict0 = {
             **{"partition_id": _partition_id},
             **args_dict,
         }
+        # in case of multicolumn-key schema, do the tuple unpacking:
+        new_args_dict = handle_multicolumn_unpacking(
+            new_args_dict0,
+            "partition_id",
+            [col for col, _ in self._schema_pk()],
+        )
+
         return super()._normalize_kwargs(new_args_dict)
 
+    def _normalize_row(self, raw_row: Any) -> Dict[str, Any]:
+        pre_normalized = super()._normalize_row(raw_row)
+        repacked_row = handle_multicolumn_packing(
+            unpacked_row=pre_normalized,
+            key_name="partition_id",
+            unpacked_keys=[col for col, _ in self._schema_pk()],
+        )
+        return repacked_row
+
     def _get_get_partition_cql(
-        self, partition_id: Optional[str] = None, n: Optional[int] = None, **kwargs: Any
+        self,
+        partition_id: Optional[PARTITION_ID_TYPE] = None,
+        n: Optional[int] = None,
+        **kwargs: Any,
     ) -> Tuple[str, Tuple[Any, ...]]:
         _partition_id = self.partition_id if partition_id is None else partition_id
         #
@@ -113,11 +144,16 @@ class ClusteredMixin(BaseTableMixin):
                 **kwargs,
             }
         )
-        (args_dict, wc_blocks, wc_vals) = self._extract_where_clause_blocks(n_kwargs)
+        (
+            rest_kwargs,
+            where_clause_blocks,
+            select_cql_vals,
+        ) = self._extract_where_clause_blocks(n_kwargs)
+
         # check for exhaustion:
-        assert args_dict == {}
-        where_clause = "WHERE " + " AND ".join(wc_blocks)
-        where_cql_vals = list(wc_vals)
+        assert rest_kwargs == {}
+        where_clause = "WHERE " + " AND ".join(where_clause_blocks)
+        where_cql_vals = list(select_cql_vals)
         #
         if n is None:
             limit_clause = ""
@@ -135,7 +171,10 @@ class ClusteredMixin(BaseTableMixin):
         return select_cql, get_p_cql_vals
 
     def get_partition(
-        self, partition_id: Optional[str] = None, n: Optional[int] = None, **kwargs: Any
+        self,
+        partition_id: Optional[PARTITION_ID_TYPE] = None,
+        n: Optional[int] = None,
+        **kwargs: Any,
     ) -> Iterable[RowType]:
         select_cql, get_p_cql_vals = self._get_get_partition_cql(
             partition_id, n, **kwargs
@@ -150,12 +189,18 @@ class ClusteredMixin(BaseTableMixin):
         )
 
     def get_partition_async(
-        self, partition_id: Optional[str] = None, n: Optional[int] = None, **kwargs: Any
+        self,
+        partition_id: Optional[PARTITION_ID_TYPE] = None,
+        n: Optional[int] = None,
+        **kwargs: Any,
     ) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
 
     async def aget_partition(
-        self, partition_id: Optional[str] = None, n: Optional[int] = None, **kwargs: Any
+        self,
+        partition_id: Optional[PARTITION_ID_TYPE] = None,
+        n: Optional[int] = None,
+        **kwargs: Any,
     ) -> Iterable[RowType]:
         select_cql, get_p_cql_vals = self._get_get_partition_cql(
             partition_id, n, **kwargs

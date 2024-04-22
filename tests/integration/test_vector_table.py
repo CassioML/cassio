@@ -3,6 +3,7 @@ Vector search tests
 """
 
 import time
+
 import pytest
 from cassandra.cluster import Session
 

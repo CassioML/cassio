@@ -4,21 +4,18 @@ fixtures for testing
 
 import os
 from tempfile import TemporaryDirectory
-from typing import Dict, List, Iterator, Optional, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 
 import pytest
-
-from cassandra.cluster import Cluster, Session
 from cassandra.auth import PlainTextAuthProvider
+from cassandra.cluster import Cluster, Session
+from dotenv import load_dotenv
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
+import cassio
 from cassio.config import download_astra_bundle_url  # type: ignore[attr-defined]
 from cassio.table.cql import MockDBSession
-
-import cassio
-
-from dotenv import load_dotenv
 
 load_dotenv()
 

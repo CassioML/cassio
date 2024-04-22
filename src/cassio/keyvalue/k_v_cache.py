@@ -3,8 +3,8 @@ handling of key-value storage on a Cassandra table.
 One row per partition, serializes a multiple partition key into a string
 """
 
+from typing import Any, Dict, List, Optional, cast
 from warnings import warn
-from typing import Any, cast, Dict, List, Optional
 
 from cassandra.cluster import Session
 

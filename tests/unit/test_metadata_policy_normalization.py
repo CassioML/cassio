@@ -2,11 +2,8 @@
 Normalization of metadata policy specification options
 """
 
-from cassio.table.table_types import (
-    MetadataIndexingMode,
-)
-
 from cassio.table.mixins.metadata import MetadataMixin
+from cassio.table.table_types import MetadataIndexingMode
 
 
 class TestNormalizeMetadataPolicy:

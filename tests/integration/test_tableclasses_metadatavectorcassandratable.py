@@ -2,12 +2,11 @@
 Table classes integration test - MetadataVectorCassandraTable
 """
 import math
+
 import pytest
 from cassandra.cluster import Session
 
-from cassio.table.tables import (
-    MetadataVectorCassandraTable,
-)
+from cassio.table.tables import MetadataVectorCassandraTable
 from cassio.table.utils import call_wrapped_async
 
 N = 16

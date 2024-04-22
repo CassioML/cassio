@@ -1,40 +1,34 @@
 import asyncio
 import json
-from asyncio import InvalidStateError, Task
 import logging
-from typing import (
-    Any,
-    cast,
-    Dict,
-    List,
-    Iterable,
-    Optional,
-    Set,
-    Tuple,
-    Union,
+from asyncio import InvalidStateError, Task
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
+
+from cassandra.cluster import ResponseFuture, ResultSet
+from cassandra.query import PreparedStatement, SimpleStatement
+
+from cassio.config import check_resolve_keyspace, check_resolve_session
+from cassio.table.cql import (
+    CREATE_INDEX_CQL_TEMPLATE,
+    CREATE_TABLE_CQL_TEMPLATE,
+    DELETE_CQL_TEMPLATE,
+    INSERT_ROW_CQL_TEMPLATE,
+    SELECT_CQL_TEMPLATE,
+    TRUNCATE_TABLE_CQL_TEMPLATE,
+    CQLOpType,
 )
-
-from cassandra.query import SimpleStatement, PreparedStatement
-from cassandra.cluster import ResultSet
-from cassandra.cluster import ResponseFuture
-
-from cassio.config import check_resolve_session, check_resolve_keyspace
+from cassio.table.query import Predicate
 from cassio.table.table_types import (
     ColumnSpecType,
     RowType,
     SessionType,
     normalize_type_desc,
 )
-from cassio.table.cql import (
-    CQLOpType,
-    CREATE_TABLE_CQL_TEMPLATE,
-    TRUNCATE_TABLE_CQL_TEMPLATE,
-    DELETE_CQL_TEMPLATE,
-    SELECT_CQL_TEMPLATE,
-    INSERT_ROW_CQL_TEMPLATE,
-    CREATE_INDEX_CQL_TEMPLATE,
+from cassio.table.utils import (
+    call_wrapped_async,
+    handle_multicolumn_packing,
+    handle_multicolumn_unpacking,
 )
-from cassio.table.utils import call_wrapped_async
 
 
 class CustomLogger(logging.Logger):
@@ -53,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseTable:
-    ordering_in_partition: Optional[str] = None
+    ordering_in_partition: Optional[Union[str, List[str]]] = None
 
     def __init__(
         self,
@@ -81,10 +75,15 @@ class BaseTable:
             self.db_setup()
 
     def _schema_row_id(self) -> List[ColumnSpecType]:
-        assert len(self.row_id_type) == 1
-        return [
-            ("row_id", self.row_id_type[0]),
-        ]
+        if len(self.row_id_type) == 1:
+            return [
+                ("row_id", self.row_id_type[0]),
+            ]
+        else:
+            return [
+                (f"row_id_{row_i}", row_typ)
+                for row_i, row_typ in enumerate(self.row_id_type)
+            ]
 
     def _schema_pk(self) -> List[ColumnSpecType]:
         return self._schema_row_id()
@@ -149,16 +148,32 @@ class BaseTable:
             [col for col, _ in _allowed_colspecs if col in args_dict]
         )
         residual_args = {k: v for k, v in args_dict.items() if k not in passed_columns}
-        where_clause_blocks = [f"{col} = %s" for col in passed_columns]
-        where_clause_vals = tuple([args_dict[col] for col in passed_columns])
+
+        where_clause_blocks = []
+        where_clause_vals = []
+        for col in passed_columns:
+            value = args_dict[col]
+            if isinstance(value, Predicate):
+                pred_op_name, pred_value = value.render()
+                where_clause_blocks.append(f"{col} {pred_op_name} %s")
+                where_clause_vals.append(pred_value)
+            else:
+                where_clause_blocks.append(f"{col} = %s")
+                where_clause_vals.append(value)
+
         return (
             residual_args,
             where_clause_blocks,
-            where_clause_vals,
+            tuple(where_clause_vals),
         )
 
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
-        return args_dict
+        new_args_dict = handle_multicolumn_unpacking(
+            args_dict,
+            "row_id",
+            [col for col, _ in self._schema_row_id()],
+        )
+        return new_args_dict
 
     def _normalize_row(self, raw_row: Any) -> Dict[str, Any]:
         if isinstance(raw_row, dict):
@@ -166,7 +181,12 @@ class BaseTable:
         else:
             dict_row = raw_row._asdict()
         #
-        return dict_row
+        repacked_row = handle_multicolumn_packing(
+            unpacked_row=dict_row,
+            key_name="row_id",
+            unpacked_keys=[col for col, _ in self._schema_row_id()],
+        )
+        return repacked_row
 
     def _delete(self, is_async: bool, **kwargs: Any) -> Union[None, ResponseFuture]:
         n_kwargs = self._normalize_kwargs(kwargs)
@@ -392,18 +412,33 @@ class BaseTable:
         pk_spec = ", ".join(col for col, _ in schema["pk"])
         cc_spec = ", ".join(col for col, _ in schema["cc"])
         primkey_spec = f"( ( {pk_spec} ) {',' if schema['cc'] else ''} {cc_spec} )"
+
+        table_options = []
+
         if schema["cc"]:
+            if self.ordering_in_partition is None:
+                raise ValueError("Unspecified ordering for clustering column(s)")
+            if isinstance(self.ordering_in_partition, str):
+                _cc_orderings = [self.ordering_in_partition for _ in schema["cc"]]
+            else:
+                # must be a list
+                assert len(self.ordering_in_partition) == len(schema["cc"])
+                _cc_orderings = self.ordering_in_partition
             clu_core = ", ".join(
-                f"{col} {self.ordering_in_partition}" for col, _ in schema["cc"]
+                f"{col} {ordering}"
+                for (col, _), ordering in zip(schema["cc"], _cc_orderings)
             )
-            clustering_spec = f"WITH CLUSTERING ORDER BY ({clu_core})"
+            table_options.append(f"CLUSTERING ORDER BY ({clu_core})")
+
+        if len(table_options) > 0:
+            options_clause = "WITH " + " AND ".join(table_options)
         else:
-            clustering_spec = ""
-        #
+            options_clause = ""
+
         create_table_cql = CREATE_TABLE_CQL_TEMPLATE.format(
             columns_spec=" ".join(f"  {cs}," for cs in column_specs),
             primkey_spec=primkey_spec,
-            clustering_spec=clustering_spec,
+            options_clause=options_clause,
         )
         return create_table_cql
 

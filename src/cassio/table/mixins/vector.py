@@ -5,13 +5,11 @@ from typing import Any, Awaitable, Iterable, List, Optional, Tuple, Union
 from cassandra.cluster import ResponseFuture
 
 from cassio.table.base_table import BaseTable
-from cassio.table.cql import (
-    SELECT_ANN_CQL_TEMPLATE,
-    CQLOpType,
-)
-from .base_table import BaseTableMixin
+from cassio.table.cql import SELECT_ANN_CQL_TEMPLATE, CQLOpType
 from cassio.table.table_types import ColumnSpecType, RowType, RowWithDistanceType
 from cassio.utils.vector.distance_metrics import distance_metrics
+
+from .base_table import BaseTableMixin
 
 
 class VectorMixin(BaseTableMixin):

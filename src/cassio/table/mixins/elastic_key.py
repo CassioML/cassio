@@ -1,8 +1,9 @@
 import json
 from typing import Any, Dict, List, cast
 
-from .base_table import BaseTableMixin
 from cassio.table.table_types import ColumnSpecType
+
+from .base_table import BaseTableMixin
 
 
 class ElasticKeyMixin(BaseTableMixin):
@@ -27,27 +28,22 @@ class ElasticKeyMixin(BaseTableMixin):
         return cast(List[Any], json.loads(keys_str))
 
     def _normalize_row(self, raw_row: Any) -> Dict[str, Any]:
-        key_fields = {"key_desc", "key_vals"}
         pre_normalized = super()._normalize_row(raw_row)
-        row_key = {k: v for k, v in pre_normalized.items() if k in key_fields}
-        row_rest = {k: v for k, v in pre_normalized.items() if k not in key_fields}
-        if row_key == {}:
-            key_dict = {}
-        else:
-            # unpack the keys
-            assert len(row_key) == 2
-            assert self._deserialize_key_list(row_key["key_desc"]) == self.keys
-            key_dict = {
-                k: v
-                for k, v in zip(
-                    self.keys,
-                    self._deserialize_key_list(row_key["key_vals"]),
-                )
+        # after BaseTable unpacks this, pre_normalized contains
+        # {"row_id": (serialized_keys, serialized_values), ...}
+        if "row_id" in pre_normalized:
+            keys_s, vals_s = pre_normalized["row_id"]
+            keys = self._deserialize_key_list(keys_s)
+            vals = self._deserialize_key_list(vals_s)
+            assert keys == self.keys
+            assert len(keys) == len(vals)
+            restored_keys = {k: v for k, v in zip(keys, vals)}
+            return {
+                **restored_keys,
+                **{k: v for k, v in pre_normalized.items() if k != "row_id"},
             }
-        return {
-            **key_dict,
-            **row_rest,
-        }
+        else:
+            return pre_normalized
 
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
         # transform provided "keys" into the elastic-representation two-val form

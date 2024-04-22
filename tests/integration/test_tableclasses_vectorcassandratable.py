@@ -8,10 +8,7 @@ import pytest
 from cassandra.cluster import Session
 
 from cassio.table.cql import STANDARD_ANALYZER
-from cassio.table.tables import (
-    VectorCassandraTable,
-)
-
+from cassio.table.tables import VectorCassandraTable
 
 N = 8
 

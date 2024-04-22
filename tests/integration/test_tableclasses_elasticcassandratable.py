@@ -5,9 +5,7 @@ Table classes integration test - ElasticCassandraTable
 import pytest
 from cassandra.cluster import Session
 
-from cassio.table.tables import (
-    ElasticCassandraTable,
-)
+from cassio.table.tables import ElasticCassandraTable
 
 
 @pytest.mark.usefixtures("db_session", "db_keyspace")

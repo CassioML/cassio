@@ -7,9 +7,7 @@ import pytest
 from cassandra.cluster import Session
 
 from cassio.table.cql import STANDARD_ANALYZER
-from cassio.table.tables import (
-    PlainCassandraTable,
-)
+from cassio.table.tables import PlainCassandraTable
 
 
 @pytest.mark.usefixtures("db_session", "db_keyspace")
