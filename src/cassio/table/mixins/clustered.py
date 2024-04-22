@@ -53,7 +53,18 @@ class ClusteredMixin(BaseTableMixin):
     ) -> Union[None, ResponseFuture]:
         _partition_id = self.partition_id if partition_id is None else partition_id
         #
-        where_clause = "WHERE " + "partition_id = %s"
+        _pid_dict = handle_multicolumn_unpacking(
+            {"partition_id": _partition_id},
+            "partition_id",
+            [col for col, _ in self._schema_pk()],
+        )
+        (
+            rest_kwargs,
+            where_clause_blocks,
+            delete_cql_vals,
+        ) = self._extract_where_clause_blocks(_pid_dict)
+        assert rest_kwargs == {}
+        where_clause = "WHERE " + " AND ".join(where_clause_blocks)
         delete_cql_vals = (_partition_id,)
         delete_cql = DELETE_CQL_TEMPLATE.format(
             where_clause=where_clause,
