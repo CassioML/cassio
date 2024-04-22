@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, Iterable
 
 from cassandra.cluster import ResponseFuture
 
@@ -24,7 +24,7 @@ async def call_wrapped_async(
 def handle_multicolumn_unpacking(
     args_dict: Dict[str, Any],
     key_name: str,
-    unpacked_keys: List[str],
+    unpacked_keys: Iterable[str],
 ) -> Dict[str, Any]:
     """
     Given a dictionary of "args", handle if necessary the replacement of one of its items
@@ -56,6 +56,8 @@ def handle_multicolumn_unpacking(
     _unp_keys = list(unpacked_keys)
     if args_dict.get(key_name) is not None:
         if _unp_keys != [key_name]:
+            # passing a longer tuple than the keys is meaningless:
+            assert len(_unp_keys) >= len(args_dict[key_name])
             # unpack the tuple
             split_part = {
                 unp_k: tuple_v for unp_k, tuple_v in zip(_unp_keys, args_dict[key_name])
@@ -75,20 +77,21 @@ def handle_multicolumn_unpacking(
 def handle_multicolumn_packing(
     unpacked_row: Dict[str, Any],
     key_name: str,
-    unpacked_keys: List[str],
+    unpacked_keys: Iterable[str],
 ) -> Dict[str, Any]:
-    if unpacked_keys != [key_name]:
-        packed_keys = {k: v for k, v in unpacked_row.items() if k in unpacked_keys}
+    _unp_keys = list(unpacked_keys)
+    if _unp_keys != [key_name]:
+        packed_keys = {k: v for k, v in unpacked_row.items() if k in _unp_keys}
         if packed_keys == {}:
             return unpacked_row
         else:
-            pk_tuple = tuple(packed_keys[pk_k] for pk_k in unpacked_keys)
+            pk_tuple = tuple(packed_keys[pk_k] for pk_k in _unp_keys)
             packed_row_portion = {
                 key_name: pk_tuple,
             }
             return {
                 **packed_row_portion,
-                **{k: v for k, v in unpacked_row.items() if k not in unpacked_keys},
+                **{k: v for k, v in unpacked_row.items() if k not in _unp_keys},
             }
     else:
         return unpacked_row
