@@ -90,11 +90,16 @@ class ClusteredMixin(BaseTableMixin):
         # in case of multicolumn-key schema, do the tuple unpacking:
         new_args_dict = handle_multicolumn_unpacking(
             new_args_dict0,
-            self.partition_id_type,
             "partition_id",
+            [col for col, _ in self._schema_pk()],
         )
 
         return super()._normalize_kwargs(new_args_dict)
+
+    # def _normalize_row(self, raw_row: Any) -> Dict[str, Any]:
+    #     if len(self.partition_id_type) == 1:
+    #         return raw_row
+    #     else:
 
     def _get_get_partition_cql(
         self,

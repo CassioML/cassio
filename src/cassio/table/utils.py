@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List
 
 from cassandra.cluster import ResponseFuture
 
@@ -23,28 +23,27 @@ async def call_wrapped_async(
 
 def handle_multicolumn_unpacking(
     args_dict: Dict[str, Any],
-    id_type: List[str],
     key_name: str,
-    unpacked_prefix: Optional[str] = None,
+    unpacked_keys: List[str],
 ) -> Dict[str, Any]:
     """
     Given a dictionary of "args", handle if necessary the replacement of one of its items
     with corresponding split-tuple version if the type structure requires it.
-    So if id_type is a one-element list, do nothing.
-    If the key_name is None, remove it from the mapping.
+    So if unpacked_keys is == [key_name], do nothing.
+    If the key_name is None, remove it from the mapping altogether.
     Returns the modified dictionary.
 
     Example:
         args_dict = {"k": (1, 20), "x": "..."}
-        id__type = ["T0", "T1"]
         key_name = "k"
+        unpacked_keys = ["k_0", "k_1"]
     results in
         {"k_0": 1, "k_1": 20, "x": "..."}
 
     Example:
         args_dict = {"k": "k_val", "x": "..."}
-        id__type = ["T1"]
         key_name = "k"
+        unpacked_keys = ["k"]
     results in (unchanged)
         {"k": "k_val", "x": "..."}
 
@@ -54,14 +53,12 @@ def handle_multicolumn_unpacking(
     both result in
         {"x": "..."}
     """
-    if unpacked_prefix is None:
-        unpacked_prefix = f"{key_name}_"
+    _unp_keys = list(unpacked_keys)
     if args_dict.get(key_name) is not None:
-        if len(id_type) > 1:
+        if _unp_keys != [key_name]:
             # unpack the tuple
             split_part = {
-                f"{unpacked_prefix}{tuple_i}": tuple_v
-                for tuple_i, tuple_v in enumerate(args_dict[key_name])
+                unp_k: tuple_v for unp_k, tuple_v in zip(_unp_keys, args_dict[key_name])
             }
         else:
             split_part = {key_name: args_dict[key_name]}

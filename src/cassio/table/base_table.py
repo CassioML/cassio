@@ -166,8 +166,8 @@ class BaseTable:
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
         new_args_dict = handle_multicolumn_unpacking(
             args_dict,
-            self.row_id_type,
             "row_id",
+            [col for col, _ in self._schema_row_id()],
         )
         return new_args_dict
 
