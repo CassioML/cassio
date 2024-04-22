@@ -4,7 +4,7 @@ from cassandra.cluster import ResponseFuture
 
 from cassio.table.cql import DELETE_CQL_TEMPLATE, SELECT_CQL_TEMPLATE, CQLOpType
 from cassio.table.table_types import ColumnSpecType, RowType, normalize_type_desc
-from cassio.table.utils import call_wrapped_async
+from cassio.table.utils import call_wrapped_async, handle_multicolumn_unpacking
 
 from .base_table import BaseTableMixin
 
@@ -83,27 +83,16 @@ class ClusteredMixin(BaseTableMixin):
         arg_pid = args_dict.get("partition_id")
         instance_pid = self.partition_id
         _partition_id = instance_pid if arg_pid is None else arg_pid
-        new_args_dict = {
+        new_args_dict0 = {
             **{"partition_id": _partition_id},
             **args_dict,
         }
-
-        # replace arguments if tuples (multicolumn-key schema)
-        for col in ["row_id", "partition_id"]:
-            if col not in new_args_dict:
-                continue
-
-            value = new_args_dict[col]
-            del new_args_dict[col]
-
-            if value is None:
-                continue
-
-            if isinstance(value, tuple):
-                for i, v in enumerate(value):
-                    new_args_dict[f"{col}_{i}"] = v
-            else:
-                new_args_dict[col] = value
+        # in case of multicolumn-key schema, do the tuple unpacking:
+        new_args_dict = handle_multicolumn_unpacking(
+            new_args_dict0,
+            self.partition_id_type,
+            "partition_id",
+        )
 
         return super()._normalize_kwargs(new_args_dict)
 

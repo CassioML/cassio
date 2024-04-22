@@ -24,7 +24,7 @@ from cassio.table.table_types import (
     SessionType,
     normalize_type_desc,
 )
-from cassio.table.utils import call_wrapped_async
+from cassio.table.utils import call_wrapped_async, handle_multicolumn_unpacking
 
 
 class CustomLogger(logging.Logger):
@@ -164,7 +164,12 @@ class BaseTable:
         )
 
     def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
-        return args_dict
+        new_args_dict = handle_multicolumn_unpacking(
+            args_dict,
+            self.row_id_type,
+            "row_id",
+        )
+        return new_args_dict
 
     def _normalize_row(self, raw_row: Any) -> Dict[str, Any]:
         if isinstance(raw_row, dict):

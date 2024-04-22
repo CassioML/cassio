@@ -261,7 +261,11 @@ class TestClusteredMetadataVectorCassandraTable:
 
         t.clear()
 
-def test_crud_multi_cc(self, db_session: Session, db_keyspace: str) -> None:
+    @pytest.mark.skipif(
+        TEST_DB_MODE in {"LOCAL_CASSANDRA", "TESTCONTAINERS_CASSANDRA"},
+        reason="fails in Cassandra 5-beta1. To be reactivated once Cassandra is fixed.",
+    )
+    def test_crud_multi_cc(self, db_session: Session, db_keyspace: str) -> None:
         table_name = "c_m_v_ct_multi_cc"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #
@@ -274,7 +278,7 @@ def test_crud_multi_cc(self, db_session: Session, db_keyspace: str) -> None:
             vector_similarity_function="DOT_PRODUCT",
             primary_key_type=["INT"],
             row_id_type=["TEXT", "INT"],
-            partition_id = 0,
+            partition_id=0,
         )
 
         for n_theta in range(N):
@@ -314,7 +318,7 @@ def test_crud_multi_cc(self, db_session: Session, db_keyspace: str) -> None:
         assert theta_1 is not None
         assert abs(theta_1["vector"][0] - math.cos(math.pi * 2 / N)) < 3.0e-8
         assert abs(theta_1["vector"][1] - math.sin(math.pi * 2 / N)) < 3.0e-8
-        assert theta_1["partition_id"] == 10
+        assert theta_1["partition_id"] == 0
         assert "row_id" in theta_1
         assert isinstance(theta_1["row_id"], tuple)
         assert theta_1["row_id"][0] == "theta_1"
@@ -331,13 +335,24 @@ def test_crud_multi_cc(self, db_session: Session, db_keyspace: str) -> None:
         query_theta = 1 * math.pi * 2 / (2 * N)
         ref_vector = [math.cos(query_theta), math.sin(query_theta)]
         ann_results1 = list(t.ann_search(ref_vector, n=4))
-        assert {r["row_id"] for r in ann_results1[:2]} == {("theta_1", 2), ("theta_0", 1)}
-        assert {r["row_id"] for r in ann_results1[2:4]} == {("theta_2", 3), ("theta_15", 16)}
+        assert {r["row_id"] for r in ann_results1[:2]} == {
+            ("theta_1", 2),
+            ("theta_0", 1),
+        }
+        assert {r["row_id"] for r in ann_results1[2:4]} == {
+            ("theta_2", 3),
+            ("theta_15", 16),
+        }
         # ANN with metadata filtering
         ann_results_md1 = list(t.ann_search(ref_vector, n=4, metadata={"odd": True}))
-        assert {r["row_id"] for r in ann_results_md1[:2]} == {("theta_1", 2), ("theta_15", 16)}
-        assert {r["row_id"] for r in ann_results_md1[2:4]} == {("theta_3", 4), ("theta_13", 14)}
-
+        assert {r["row_id"] for r in ann_results_md1[:2]} == {
+            ("theta_1", 2),
+            ("theta_15", 16),
+        }
+        assert {r["row_id"] for r in ann_results_md1[2:4]} == {
+            ("theta_3", 4),
+            ("theta_13", 14),
+        }
 
         # retrieval on 999
         row_id = ("Z_theta_1", 2)
