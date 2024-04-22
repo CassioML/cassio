@@ -24,7 +24,11 @@ from cassio.table.table_types import (
     SessionType,
     normalize_type_desc,
 )
-from cassio.table.utils import call_wrapped_async, handle_multicolumn_unpacking
+from cassio.table.utils import (
+    call_wrapped_async,
+    handle_multicolumn_packing,
+    handle_multicolumn_unpacking,
+)
 
 
 class CustomLogger(logging.Logger):
@@ -177,7 +181,12 @@ class BaseTable:
         else:
             dict_row = raw_row._asdict()
         #
-        return dict_row
+        repacked_row = handle_multicolumn_packing(
+            unpacked_row=dict_row,
+            key_name="row_id",
+            unpacked_keys=[col for col, _ in self._schema_row_id()],
+        )
+        return repacked_row
 
     def _delete(self, is_async: bool, **kwargs: Any) -> Union[None, ResponseFuture]:
         n_kwargs = self._normalize_kwargs(kwargs)

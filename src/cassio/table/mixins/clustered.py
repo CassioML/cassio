@@ -4,7 +4,11 @@ from cassandra.cluster import ResponseFuture
 
 from cassio.table.cql import DELETE_CQL_TEMPLATE, SELECT_CQL_TEMPLATE, CQLOpType
 from cassio.table.table_types import ColumnSpecType, RowType, normalize_type_desc
-from cassio.table.utils import call_wrapped_async, handle_multicolumn_unpacking
+from cassio.table.utils import (
+    call_wrapped_async,
+    handle_multicolumn_packing,
+    handle_multicolumn_unpacking,
+)
 
 from .base_table import BaseTableMixin
 
@@ -96,10 +100,14 @@ class ClusteredMixin(BaseTableMixin):
 
         return super()._normalize_kwargs(new_args_dict)
 
-    # def _normalize_row(self, raw_row: Any) -> Dict[str, Any]:
-    #     if len(self.partition_id_type) == 1:
-    #         return raw_row
-    #     else:
+    def _normalize_row(self, raw_row: Any) -> Dict[str, Any]:
+        pre_normalized = super()._normalize_row(raw_row)
+        repacked_row = handle_multicolumn_packing(
+            unpacked_row=pre_normalized,
+            key_name="partition_id",
+            unpacked_keys=[col for col, _ in self._schema_pk()],
+        )
+        return repacked_row
 
     def _get_get_partition_cql(
         self,

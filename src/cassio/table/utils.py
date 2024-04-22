@@ -70,3 +70,25 @@ def handle_multicolumn_unpacking(
         **{k: v for k, v in args_dict.items() if k != key_name},
     }
     return new_args_dict
+
+
+def handle_multicolumn_packing(
+    unpacked_row: Dict[str, Any],
+    key_name: str,
+    unpacked_keys: List[str],
+) -> Dict[str, Any]:
+    if unpacked_keys != [key_name]:
+        packed_keys = {k: v for k, v in unpacked_row.items() if k in unpacked_keys}
+        if packed_keys == {}:
+            return unpacked_row
+        else:
+            pk_tuple = tuple(packed_keys[pk_k] for pk_k in unpacked_keys)
+            packed_row_portion = {
+                key_name: pk_tuple,
+            }
+            return {
+                **packed_row_portion,
+                **{k: v for k, v in unpacked_row.items() if k not in unpacked_keys},
+            }
+    else:
+        return unpacked_row
