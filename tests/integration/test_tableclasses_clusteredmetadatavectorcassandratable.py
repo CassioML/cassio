@@ -396,7 +396,7 @@ class TestClusteredMetadataVectorCassandraTable:
                 |       * A.0.0
                 |       * A.1.10
             ----0-------* A.0.-1 ----(x axis)--->
-                |       * B.2.100    
+                |       * B.2.100
         and we'll do ANN queries with a query vector "just above A.0.-1"
         """
         table_name = "c_m_v_colbert"
