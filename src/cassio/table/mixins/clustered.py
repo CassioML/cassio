@@ -65,7 +65,6 @@ class ClusteredMixin(BaseTableMixin):
         ) = self._extract_where_clause_blocks(_pid_dict)
         assert rest_kwargs == {}
         where_clause = "WHERE " + " AND ".join(where_clause_blocks)
-        delete_cql_vals = (_partition_id,)
         delete_cql = DELETE_CQL_TEMPLATE.format(
             where_clause=where_clause,
         )

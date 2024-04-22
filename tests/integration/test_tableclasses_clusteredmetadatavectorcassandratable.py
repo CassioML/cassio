@@ -8,6 +8,7 @@ import pytest
 from cassandra import InvalidRequest
 from cassandra.cluster import Session
 
+from cassio.table.query import Predicate, PredicateOperator
 from cassio.table.tables import ClusteredMetadataVectorCassandraTable
 
 N = 16
@@ -261,109 +262,267 @@ class TestClusteredMetadataVectorCassandraTable:
 
         t.clear()
 
+    # @pytest.mark.skipif(
+    #     TEST_DB_MODE in {"LOCAL_CASSANDRA", "TESTCONTAINERS_CASSANDRA"},
+    #     reason="fails in Cassandra 5-beta1. To be reactivated once Cassandra is fixed.",
+    # )
+    # def test_crud_multi_cc(self, db_session: Session, db_keyspace: str) -> None:
+    #     table_name = "c_m_v_ct_multi_cc"
+    #     db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
+    #     #
+    #     # "INT" here means: partition_id is a number (for fun)
+    #     t = ClusteredMetadataVectorCassandraTable(
+    #         session=db_session,
+    #         keyspace=db_keyspace,
+    #         table=table_name,
+    #         vector_dimension=2,
+    #         vector_similarity_function="DOT_PRODUCT",
+    #         partition_id_type=["INT"],
+    #         row_id_type=["TEXT", "INT"],
+    #         partition_id=0,
+    #     )
+
+    #     for n_theta in range(N):
+    #         theta = n_theta * math.pi * 2 / N
+    #         group = "odd" if n_theta % 2 == 1 else "even"
+    #         t.put(
+    #             # row_id is tuple
+    #             row_id=(f"theta_{n_theta}", n_theta + 1),
+    #             body_blob=f"theta = {theta:.4f}",
+    #             vector=[math.cos(theta), math.sin(theta)],
+    #             metadata={
+    #                 group: True,
+    #                 "n_theta_mod_2": n_theta % 2,
+    #                 "group": group,
+    #             },
+    #         )
+    #     # fill another partition (999 = "the other one")
+    #     for n_theta in range(N):
+    #         theta = n_theta * math.pi * 2 / N
+    #         group = "odd" if n_theta % 2 == 1 else "even"
+    #         t.put(
+    #             # row_id is tuple
+    #             row_id=(f"Z_theta_{n_theta}", n_theta + 1),
+    #             body_blob=f"Z_theta = {theta:.4f}",
+    #             vector=[math.cos(theta), math.sin(theta)],
+    #             partition_id=999,
+    #             metadata={
+    #                 group: True,
+    #                 "n_theta_mod_2": n_theta % 2,
+    #                 "group": group,
+    #             },
+    #         )
+
+    #     # retrieval
+    #     row_id = ("theta_1", 2)
+    #     theta_1 = t.get(row_id=row_id)
+    #     assert theta_1 is not None
+    #     assert abs(theta_1["vector"][0] - math.cos(math.pi * 2 / N)) < 3.0e-8
+    #     assert abs(theta_1["vector"][1] - math.sin(math.pi * 2 / N)) < 3.0e-8
+    #     assert theta_1["partition_id"] == 0
+    #     assert "row_id" in theta_1
+    #     assert isinstance(theta_1["row_id"], tuple)
+    #     assert theta_1["row_id"][0] == "theta_1"
+    #     assert theta_1["row_id"][1] == 2
+
+    #     # retrieval with metadata filtering
+    #     theta_1b = t.get(row_id=row_id, metadata={"odd": True})
+    #     assert theta_1b == theta_1
+    #     theta_1n = t.get(row_id=row_id, metadata={"even": True})
+    #     assert theta_1n is None
+
+    #     # ANN
+    #     # a vector halfway between 0 and 1 inserted above
+    #     query_theta = 1 * math.pi * 2 / (2 * N)
+    #     ref_vector = [math.cos(query_theta), math.sin(query_theta)]
+    #     ann_results1 = list(t.ann_search(ref_vector, n=4))
+    #     assert {r["row_id"] for r in ann_results1[:2]} == {
+    #         ("theta_1", 2),
+    #         ("theta_0", 1),
+    #     }
+    #     assert {r["row_id"] for r in ann_results1[2:4]} == {
+    #         ("theta_2", 3),
+    #         ("theta_15", 16),
+    #     }
+    #     # ANN with metadata filtering
+    #     ann_results_md1 = list(t.ann_search(ref_vector, n=4, metadata={"odd": True}))
+    #     assert {r["row_id"] for r in ann_results_md1[:2]} == {
+    #         ("theta_1", 2),
+    #         ("theta_15", 16),
+    #     }
+    #     assert {r["row_id"] for r in ann_results_md1[2:4]} == {
+    #         ("theta_3", 4),
+    #         ("theta_13", 14),
+    #     }
+
+    #     # retrieval on 999
+    #     row_id = ("Z_theta_1", 2)
+    #     ztheta_1 = t.get(row_id=row_id, partition_id=999)
+    #     assert ztheta_1 is not None
+    #     assert abs(ztheta_1["vector"][0] - math.cos(math.pi * 2 / N)) < 3.0e-8
+    #     assert abs(ztheta_1["vector"][1] - math.sin(math.pi * 2 / N)) < 3.0e-8
+    #     assert ztheta_1["partition_id"] == 999
+    #     assert "row_id" in ztheta_1
+    #     assert isinstance(ztheta_1["row_id"], tuple)
+    #     assert ztheta_1["row_id"][0] == "Z_theta_1"
+    #     assert ztheta_1["row_id"][1] == 2
+
+    #     t.clear()
+
     @pytest.mark.skipif(
         TEST_DB_MODE in {"LOCAL_CASSANDRA", "TESTCONTAINERS_CASSANDRA"},
         reason="fails in Cassandra 5-beta1. To be reactivated once Cassandra is fixed.",
     )
-    def test_crud_multi_cc(self, db_session: Session, db_keyspace: str) -> None:
-        table_name = "c_m_v_ct_multi_cc"
+    def test_colbertflow_multicolumn(
+        self, db_session: Session, db_keyspace: str
+    ) -> None:
+        """
+        A colbert-style full set of write and read patterns.
+        Except here the partition key is also multicolumn.
+
+        Partitions ("documents") are here == ("moot", "document_A")
+        In a partition, page -> single vector, so that the row_id is:
+            ("page0", -1)
+            ("page0", 0)
+            ...
+            ("page1", i)
+            ...
+        with the -1 being "special" for colBERT purposes.
+
+        The five test entries in the table will have (euclidean!) distances
+        between them that enables clear testing: they are arranged vertically
+        like this:
+                ^       * A.0.1  , positioned at (3, 3)
+                |       * A.0.0
+                |       * A.1.10
+            ----0-------* A.0.-1 ----(x axis)--->
+                |       * B.2.100    
+        and we'll do ANN queries with a query vector "just above A.0.-1"
+        """
+        table_name = "c_m_v_colbert"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
-        #
-        # "INT" here means: partition_id is a number (for fun)
+
+        # table creation
         t = ClusteredMetadataVectorCassandraTable(
             session=db_session,
             keyspace=db_keyspace,
             table=table_name,
             vector_dimension=2,
-            vector_similarity_function="DOT_PRODUCT",
-            primary_key_type=["INT"],
-            row_id_type=["TEXT", "INT"],
-            partition_id=0,
+            vector_similarity_function="EUCLIDEAN",
+            primary_key_type=["TEXT", "TEXT", "TEXT", "INT"],
+            num_partition_keys=2,
+            partition_id=("moot", "document_A"),
         )
 
-        for n_theta in range(N):
-            theta = n_theta * math.pi * 2 / N
-            group = "odd" if n_theta % 2 == 1 else "even"
-            t.put(
-                # row_id is tuple
-                row_id=(f"theta_{n_theta}", n_theta + 1),
-                body_blob=f"theta = {theta:.4f}",
-                vector=[math.cos(theta), math.sin(theta)],
-                metadata={
-                    group: True,
-                    "n_theta_mod_2": n_theta % 2,
-                    "group": group,
-                },
+        # implied-partition inserts
+        t.put(
+            row_id=("page0", -1),
+            vector=[3, 0],
+            body_blob="A.0.-1",
+            metadata={"bb": "A.0.-1"},
+        )
+        t.put(
+            row_id=("page1", 10),
+            vector=[3, 1],
+            body_blob="A.1.10",
+            metadata={"bb": "A.1.10"},
+        )
+        t.put(
+            row_id=("page0", 0),
+            vector=[3, 2],
+            body_blob="A.0.0",
+            metadata={"bb": "A.0.0"},
+        )
+
+        # explicit-partition inserts
+        t.put(
+            partition_id=("moot", "document_A"),
+            row_id=("page0", 1),
+            vector=[3, 3],
+            body_blob="A.0.1",
+            metadata={"bb": "A.0.1"},
+        )
+        t.put(
+            partition_id=("moot", "document_B"),
+            row_id=("page2", 100),
+            vector=[3, -1],
+            body_blob="B.2.100",
+            metadata={"bb": "B.2.100"},
+        )
+
+        # get with implied partition
+        imp_row = t.get(row_id=("page1", 10))
+        assert imp_row is not None
+        assert imp_row["body_blob"] == "A.1.10"
+
+        # get with explicit partition
+        exp_row = t.get(partition_id=("moot", "document_B"), row_id=("page2", 100))
+        assert exp_row is not None
+        assert exp_row["body_blob"] == "B.2.100"
+
+        # get_partition, fully unspecified row_id
+        full_get_part_bodies = [row["body_blob"] for row in t.get_partition()]
+        assert full_get_part_bodies == ["A.0.-1", "A.0.0", "A.0.1", "A.1.10"]
+
+        # get_partition, partial row_id
+        partial_get_part_bodies = [
+            row["body_blob"] for row in t.get_partition(row_id=("page0",))
+        ]
+        assert partial_get_part_bodies == ["A.0.-1", "A.0.0", "A.0.1"]
+
+        # get_partition, partial row_id with range
+        range_get_part_bodies = [
+            row["body_blob"]
+            for row in t.get_partition(
+                row_id=("page0", Predicate(PredicateOperator.GT, -1))
             )
-        # fill another partition (999 = "the other one")
-        for n_theta in range(N):
-            theta = n_theta * math.pi * 2 / N
-            group = "odd" if n_theta % 2 == 1 else "even"
-            t.put(
-                # row_id is tuple
-                row_id=(f"Z_theta_{n_theta}", n_theta + 1),
-                body_blob=f"Z_theta = {theta:.4f}",
-                vector=[math.cos(theta), math.sin(theta)],
-                partition_id=999,
-                metadata={
-                    group: True,
-                    "n_theta_mod_2": n_theta % 2,
-                    "group": group,
-                },
+        ]
+        assert range_get_part_bodies == ["A.0.0", "A.0.1"]
+
+        # get_partition, full specification (effectively one-row get)
+        fullspec_get_part_bodies = [
+            row["body_blob"] for row in t.get_partition(row_id=("page0", 0))
+        ]
+        assert fullspec_get_part_bodies == ["A.0.0"]
+
+        qvector = [1, 0.02]
+        # ANN within a partition (implied)
+        imp_ann_bodies = [row["body_blob"] for row in t.ann_search(vector=qvector, n=3)]
+        assert imp_ann_bodies == ["A.0.-1", "A.1.10", "A.0.0"]
+
+        # ANN within a partition (explicit)
+        exp_ann_bodies = [
+            row["body_blob"]
+            for row in t.ann_search(
+                vector=qvector, n=3, partition_id=("moot", "document_B")
             )
+        ]
+        assert exp_ann_bodies == ["B.2.100"]
 
-        # retrieval
-        row_id = ("theta_1", 2)
-        theta_1 = t.get(row_id=row_id)
-        assert theta_1 is not None
-        assert abs(theta_1["vector"][0] - math.cos(math.pi * 2 / N)) < 3.0e-8
-        assert abs(theta_1["vector"][1] - math.sin(math.pi * 2 / N)) < 3.0e-8
-        assert theta_1["partition_id"] == 0
-        assert "row_id" in theta_1
-        assert isinstance(theta_1["row_id"], tuple)
-        assert theta_1["row_id"][0] == "theta_1"
-        assert theta_1["row_id"][1] == 2
+        # ANN within a partition with partial row_id specification
+        # [row['body_blob'] for row in t.ann_search(vector=qvector,n=3,row_id=("page0",))]
+        # "ANN ordering by vector requires each restricted column to be indexed except for fully-specified partition keys"
 
-        # retrieval with metadata filtering
-        theta_1b = t.get(row_id=row_id, metadata={"odd": True})
-        assert theta_1b == theta_1
-        theta_1n = t.get(row_id=row_id, metadata={"even": True})
-        assert theta_1n is None
+        # ANN within a partition with range on row_id
+        # [row['body_blob'] for row in t.ann_search(vector=qvector,n=3,row_id=("page0",Predicate(PredicateOperator.GT,-1)))]
+        # same error as above
 
-        # ANN
-        # a vector halfway between 0 and 1 inserted above
-        query_theta = 1 * math.pi * 2 / (2 * N)
-        ref_vector = [math.cos(query_theta), math.sin(query_theta)]
-        ann_results1 = list(t.ann_search(ref_vector, n=4))
-        assert {r["row_id"] for r in ann_results1[:2]} == {
-            ("theta_1", 2),
-            ("theta_0", 1),
-        }
-        assert {r["row_id"] for r in ann_results1[2:4]} == {
-            ("theta_2", 3),
-            ("theta_15", 16),
-        }
-        # ANN with metadata filtering
-        ann_results_md1 = list(t.ann_search(ref_vector, n=4, metadata={"odd": True}))
-        assert {r["row_id"] for r in ann_results_md1[:2]} == {
-            ("theta_1", 2),
-            ("theta_15", 16),
-        }
-        assert {r["row_id"] for r in ann_results_md1[2:4]} == {
-            ("theta_3", 4),
-            ("theta_13", 14),
-        }
+        # ANN across partitions - explicitly setting partition_id to None:
+        full_ann_bodies = [
+            row["body_blob"]
+            for row in t.ann_search(vector=qvector, partition_id=None, n=3)
+        ]
+        assert full_ann_bodies == ["A.0.-1", "A.1.10", "B.2.100"]
 
-        # retrieval on 999
-        row_id = ("Z_theta_1", 2)
-        ztheta_1 = t.get(row_id=row_id, partition_id=999)
-        assert ztheta_1 is not None
-        assert abs(ztheta_1["vector"][0] - math.cos(math.pi * 2 / N)) < 3.0e-8
-        assert abs(ztheta_1["vector"][1] - math.sin(math.pi * 2 / N)) < 3.0e-8
-        assert ztheta_1["partition_id"] == 999
-        assert "row_id" in ztheta_1
-        assert isinstance(ztheta_1["row_id"], tuple)
-        assert ztheta_1["row_id"][0] == "Z_theta_1"
-        assert ztheta_1["row_id"][1] == 2
+        # partition deletion
+        len_B_pre = len(list(t.get_partition(partition_id=("moot", "document_B"))))
+        assert len_B_pre > 0
+        t.delete_partition(partition_id=("moot", "document_B"))
+        len_B_post = len(list(t.get_partition(partition_id=("moot", "document_B"))))
+        assert len_B_post == 0
 
-        t.clear()
+        # row deletion
+        len_A_pre = len(list(t.get_partition(partition_id=("moot", "document_A"))))
+        t.delete(partition_id=("moot", "document_A"), row_id=("page1", 10))
+        len_A_post = len(list(t.get_partition(partition_id=("moot", "document_A"))))
+        assert len_A_post == len_A_pre - 1

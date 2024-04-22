@@ -11,6 +11,12 @@ class TypeNormalizerMixin(BaseTableMixin):
 
     def __init__(self, *pargs: Any, **kwargs: Any) -> None:
         if "primary_key_type" in kwargs:
+            if "row_id_type" in kwargs:
+                raise ValueError(
+                    "Use of 'row_id_type' not allowed with 'primary_key_type'. "
+                    "Please pass 'partition_id_type' instead of 'primary_key_type', "
+                    "or specify 'num_partition_keys' to cut the primary key."
+                )
             pk_arg = kwargs["primary_key_type"]
             num_elastic_keys = len(kwargs["keys"]) if self.elastic else None
             num_partition_keys = kwargs.get("num_partition_keys")
