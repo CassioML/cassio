@@ -62,3 +62,17 @@ class TestPlainCassandraTable:
         assert gotten2 == {"row_id": "full_row", "body_blob": "body blob foo"}
         gotten3 = t.get(body_search=["blob", "bar"])
         assert gotten3 is None
+
+    def test_body_type(self, db_session: Session, db_keyspace: str) -> None:
+        table_name = "ct_body_type"
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
+        t = PlainCassandraTable(
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name,
+            primary_key_type="TEXT",
+            body_type="INT"
+        )
+        t.put(row_id="row", body_blob=42)
+        gotten = t.get(row_id="row")
+        assert gotten == {'row_id': 'row', 'body_blob': 42}
