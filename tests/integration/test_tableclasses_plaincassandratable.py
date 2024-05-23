@@ -69,8 +69,8 @@ class TestPlainCassandraTable:
             keyspace=db_keyspace,
             table=table_name,
             primary_key_type="TEXT",
-            body_type="INT"
+            body_type="INT",
         )
         t.put(row_id="row", body_blob=42)
         gotten = t.get(row_id="row")
-        assert gotten == {'row_id': 'row', 'body_blob': 42}
+        assert gotten == {"row_id": "row", "body_blob": 42}
