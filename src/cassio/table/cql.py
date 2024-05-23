@@ -1,7 +1,7 @@
-from typing import Any, List, Tuple, Union
 from enum import Enum
+from typing import Any, List, Tuple, Union
 
-from cassandra.query import SimpleStatement, PreparedStatement
+from cassandra.query import PreparedStatement, SimpleStatement
 
 
 class CQLOpType(Enum):
@@ -10,7 +10,7 @@ class CQLOpType(Enum):
     READ = 3
 
 
-CREATE_TABLE_CQL_TEMPLATE = """CREATE TABLE IF NOT EXISTS {{table_fqname}} ({columns_spec} PRIMARY KEY {primkey_spec}) {clustering_spec};"""  # noqa: E501
+CREATE_TABLE_CQL_TEMPLATE = """CREATE TABLE IF NOT EXISTS {{table_fqname}} ({columns_spec} PRIMARY KEY {primkey_spec}) {options_clause};"""  # noqa: E501
 
 TRUNCATE_TABLE_CQL_TEMPLATE = """TRUNCATE TABLE {{table_fqname}};"""
 

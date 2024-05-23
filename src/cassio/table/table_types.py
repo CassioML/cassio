@@ -34,13 +34,20 @@ def normalize_type_desc(type_desc: Union[str, List[str]]) -> List[str]:
 
 def rearrange_pk_type(
     pk_type: Union[str, List[str]],
-    clustered: bool = False,
-    num_elastic_keys: Optional[int] = None,
+    clustered: bool,
+    num_partition_keys: Optional[int],
+    num_elastic_keys: Optional[int],
 ) -> Dict[str, List[str]]:
     """A compatibility layer with the 'primary_key_type' specifier on init."""
     _pk_type = normalize_type_desc(pk_type)
     if clustered:
-        pk_type, rest_type = _pk_type[0:1], _pk_type[1:]
+        _num_partition_keys = (
+            num_partition_keys if num_partition_keys is not None else 1
+        )
+        pk_type, rest_type = (
+            _pk_type[0:_num_partition_keys],
+            _pk_type[_num_partition_keys:],
+        )
         if num_elastic_keys:
             assert len(rest_type) == num_elastic_keys
             return {
@@ -52,6 +59,10 @@ def rearrange_pk_type(
                 "partition_id_type": pk_type,
             }
     else:
+        if num_partition_keys is not None:
+            raise ValueError(
+                "Cannot specify `num_partition_keys` unless Clustered table"
+            )
         if num_elastic_keys:
             assert len(_pk_type) == num_elastic_keys
             return {}

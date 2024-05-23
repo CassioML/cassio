@@ -5,9 +5,7 @@ Table classes integration test - ClusteredCassandraTable
 import pytest
 from cassandra.cluster import Session
 
-from cassio.table.tables import (
-    ClusteredCassandraTable,
-)
+from cassio.table.tables import ClusteredCassandraTable
 from cassio.table.utils import call_wrapped_async
 
 

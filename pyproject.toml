@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cassio"
-version = "0.1.5"
+version = "0.1.7"
 description = """A framework-agnostic Python library to seamlessly integrate \
                  Apache Cassandra(R) with ML/LLM/genAI workloads."""
 authors = [
@@ -15,7 +15,7 @@ keywords = ["cassandra", "ai", "llm", "genai", "astradb"]
 homepage = "https://cassio.org"
 repository = "https://github.com/CassioML/cassio"
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
@@ -44,6 +44,7 @@ pytest = "~7.4.3"
 types-requests = "^2.31.0.20240311"
 testcontainers = "~3.7.1"
 python-dotenv = "~1.0.1"
+isort = "^5.13.2"
 
 [tool.poetry.scripts]
 cassio-create-init-string = "cassio.config.bundle_management:create_init_string_utility"

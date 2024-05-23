@@ -5,14 +5,11 @@ import math
 import os
 
 import pytest
-
 from cassandra import InvalidRequest
 from cassandra.cluster import Session
 
-from cassio.table.tables import (
-    ClusteredMetadataVectorCassandraTable,
-)
-
+from cassio.table.query import Predicate, PredicateOperator
+from cassio.table.tables import ClusteredMetadataVectorCassandraTable
 
 N = 16
 
@@ -264,3 +261,169 @@ class TestClusteredMetadataVectorCassandraTable:
         }
 
         t.clear()
+
+    @pytest.mark.skipif(
+        TEST_DB_MODE in {"LOCAL_CASSANDRA", "TESTCONTAINERS_CASSANDRA"},
+        reason="fails in Cassandra 5-beta1. To be reactivated once Cassandra is fixed.",
+    )
+    def test_colbertflow_multicolumn(
+        self, db_session: Session, db_keyspace: str
+    ) -> None:
+        """
+        A colbert-style full set of write and read patterns.
+        Except here the partition key is also multicolumn.
+
+        Partitions ("documents") are here == ("moot", "document_A")
+        In a partition, page -> single vector, so that the row_id is:
+            ("page0", -1)
+            ("page0", 0)
+            ...
+            ("page1", i)
+            ...
+        with the -1 being "special" for colBERT purposes.
+
+        The five test entries in the table will have (euclidean!) distances
+        between them that enables clear testing: they are arranged vertically
+        like this:
+                ^       * A.0.1  , positioned at (3, 3)
+                |       * A.0.0
+                |       * A.1.10
+            ----0-------* A.0.-1 ----(x axis)--->
+                |       * B.2.100
+        and we'll do ANN queries with a query vector "just above A.0.-1"
+        """
+        table_name = "c_m_v_colbert"
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
+
+        # table creation
+        t = ClusteredMetadataVectorCassandraTable(
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name,
+            vector_dimension=2,
+            vector_similarity_function="EUCLIDEAN",
+            primary_key_type=["TEXT", "TEXT", "TEXT", "INT"],
+            num_partition_keys=2,
+            partition_id=("moot", "document_A"),
+        )
+
+        # implied-partition inserts
+        t.put(
+            row_id=("page0", -1),
+            vector=[3, 0],
+            body_blob="A.0.-1",
+            metadata={"bb": "A.0.-1"},
+        )
+        t.put(
+            row_id=("page1", 10),
+            vector=[3, 1],
+            body_blob="A.1.10",
+            metadata={"bb": "A.1.10"},
+        )
+        t.put(
+            row_id=("page0", 0),
+            vector=[3, 2],
+            body_blob="A.0.0",
+            metadata={"bb": "A.0.0"},
+        )
+
+        # explicit-partition inserts
+        t.put(
+            partition_id=("moot", "document_A"),
+            row_id=("page0", 1),
+            vector=[3, 3],
+            body_blob="A.0.1",
+            metadata={"bb": "A.0.1"},
+        )
+        t.put(
+            partition_id=("moot", "document_B"),
+            row_id=("page2", 100),
+            vector=[3, -1],
+            body_blob="B.2.100",
+            metadata={"bb": "B.2.100"},
+        )
+
+        # get with implied partition
+        imp_row = t.get(row_id=("page1", 10))
+        assert imp_row is not None
+        assert imp_row["body_blob"] == "A.1.10"
+
+        # get with explicit partition
+        exp_row = t.get(partition_id=("moot", "document_B"), row_id=("page2", 100))
+        assert exp_row is not None
+        assert exp_row["body_blob"] == "B.2.100"
+        assert exp_row["partition_id"] == ("moot", "document_B")
+        assert exp_row["row_id"] == ("page2", 100)
+
+        # get_partition, fully unspecified row_id
+        full_get_part_bodies = [row["body_blob"] for row in t.get_partition()]
+        assert full_get_part_bodies == ["A.0.-1", "A.0.0", "A.0.1", "A.1.10"]
+
+        # get_partition, partial row_id
+        partial_get_part_bodies = [
+            row["body_blob"] for row in t.get_partition(row_id=("page0",))
+        ]
+        assert partial_get_part_bodies == ["A.0.-1", "A.0.0", "A.0.1"]
+
+        # get_partition, partial row_id with range
+        range_get_part_bodies = [
+            row["body_blob"]
+            for row in t.get_partition(
+                row_id=("page0", Predicate(PredicateOperator.GT, -1))
+            )
+        ]
+        assert range_get_part_bodies == ["A.0.0", "A.0.1"]
+
+        # get_partition, full specification (effectively one-row get)
+        fullspec_get_part_bodies = [
+            row["body_blob"] for row in t.get_partition(row_id=("page0", 0))
+        ]
+        assert fullspec_get_part_bodies == ["A.0.0"]
+
+        qvector = [1, 0.02]
+        # ANN within a partition (implied)
+        ann_rows = list(t.ann_search(vector=qvector, n=3))
+        assert [row["body_blob"] for row in ann_rows] == ["A.0.-1", "A.1.10", "A.0.0"]
+        assert [row["partition_id"] for row in ann_rows] == [("moot", "document_A")] * 3
+        assert [row["row_id"] for row in ann_rows] == [
+            ("page0", -1),
+            ("page1", 10),
+            ("page0", 0),
+        ]
+
+        # ANN within a partition (explicit)
+        exp_ann_bodies = [
+            row["body_blob"]
+            for row in t.ann_search(
+                vector=qvector, n=3, partition_id=("moot", "document_B")
+            )
+        ]
+        assert exp_ann_bodies == ["B.2.100"]
+
+        # ANN within a partition with partial row_id specification
+        # [row['body_blob'] for row in t.ann_search(vector=qvector,n=3,row_id=("page0",))]
+        # "ANN ordering by vector requires each restricted column to be indexed except for fully-specified partition keys"
+
+        # ANN within a partition with range on row_id
+        # [row['body_blob'] for row in t.ann_search(vector=qvector,n=3,row_id=("page0",Predicate(PredicateOperator.GT,-1)))]
+        # same error as above
+
+        # ANN across partitions - explicitly setting partition_id to None:
+        full_ann_bodies = [
+            row["body_blob"]
+            for row in t.ann_search(vector=qvector, partition_id=None, n=3)
+        ]
+        assert full_ann_bodies == ["A.0.-1", "A.1.10", "B.2.100"]
+
+        # partition deletion
+        len_B_pre = len(list(t.get_partition(partition_id=("moot", "document_B"))))
+        assert len_B_pre > 0
+        t.delete_partition(partition_id=("moot", "document_B"))
+        len_B_post = len(list(t.get_partition(partition_id=("moot", "document_B"))))
+        assert len_B_post == 0
+
+        # row deletion
+        len_A_pre = len(list(t.get_partition(partition_id=("moot", "document_A"))))
+        t.delete(partition_id=("moot", "document_A"), row_id=("page1", 10))
+        len_A_post = len(list(t.get_partition(partition_id=("moot", "document_A"))))
+        assert len_A_post == len_A_pre - 1

@@ -1,12 +1,9 @@
 from cassio.table.base_table import BaseTable
-from cassio.table.mixins import (
-    ClusteredMixin,
-    MetadataMixin,
-    VectorMixin,
-    ElasticKeyMixin,
-    #
-    TypeNormalizerMixin,
-)
+from cassio.table.mixins.clustered import ClusteredMixin
+from cassio.table.mixins.elastic_key import ElasticKeyMixin
+from cassio.table.mixins.metadata import MetadataMixin
+from cassio.table.mixins.type_normalizer import TypeNormalizerMixin
+from cassio.table.mixins.vector import VectorMixin
 
 
 class PlainCassandraTable(TypeNormalizerMixin, BaseTable):

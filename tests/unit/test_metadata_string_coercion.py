@@ -2,7 +2,7 @@
 Stringification of everything in the simple metadata handling
 """
 
-from cassio.table.mixins import MetadataMixin
+from cassio.table.mixins.metadata import MetadataMixin
 
 
 class TestNormalizeMetadataPolicy:
