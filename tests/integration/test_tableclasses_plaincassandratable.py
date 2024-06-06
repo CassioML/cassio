@@ -2,7 +2,7 @@
 Table classes integration test - PlainCassandraTable
 """
 import os
-from typing import Tuple, Any
+from typing import Any, Tuple
 
 import pytest
 from cassandra.cluster import Session
