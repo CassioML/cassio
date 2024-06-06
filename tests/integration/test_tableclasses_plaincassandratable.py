@@ -2,6 +2,7 @@
 Table classes integration test - PlainCassandraTable
 """
 import os
+from typing import Tuple, Any
 
 import pytest
 from cassandra.cluster import Session
@@ -42,7 +43,40 @@ class TestPlainCassandraTable:
         os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA") != "ASTRA_DB",
         reason="requires a test Astra DB instance",
     )
-    def test_index_analyzers(self, db_session: Session, db_keyspace: str) -> None:
+    @pytest.mark.parametrize(
+        "body_index_option",
+        [
+            STANDARD_ANALYZER,
+            (
+                "index_analyzer",
+                """
+                {
+                  "tokenizer" : {"name" : "standard"},
+                  "filters" : [{"name" : "porterstem"}]
+                }
+                """,
+            ),
+            (
+                "index_analyzer",
+                """
+                {{
+                  "tokenizer" : {{"name" : "standard"}},
+                  "filters" : [{{"name" : "porterstem"}}]
+                }}
+                """,
+            ),
+            (
+                "index_analyzer",
+                {
+                    "tokenizer": {"name": "standard"},
+                    "filters": [{"name": "porterstem"}],
+                },
+            ),
+        ],
+    )
+    def test_index_analyzers(
+        self, db_session: Session, db_keyspace: str, body_index_option: Tuple[str, Any]
+    ) -> None:
         table_name = "ct_analyzers"
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
         #
@@ -51,7 +85,7 @@ class TestPlainCassandraTable:
             keyspace=db_keyspace,
             table=table_name,
             primary_key_type="TEXT",
-            body_index_options=[STANDARD_ANALYZER],
+            body_index_options=[body_index_option],
         )
         t.put(row_id="full_row", body_blob="body blob foo")
         gotten = t.get(body_search="blob")
