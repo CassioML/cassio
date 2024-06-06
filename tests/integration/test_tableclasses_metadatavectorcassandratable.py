@@ -1,6 +1,7 @@
 """
 Table classes integration test - MetadataVectorCassandraTable
 """
+import datetime
 import math
 
 import pytest
@@ -199,3 +200,34 @@ class TestMetadataVectorCassandraTable:
         assert [r["row_id"] for r in ann_results_mt_l2] == ["theta_1", "theta_15"]
         assert ann_results_mt_l2[0]["distance"] < ann_results_mt_l2[1]["distance"]
         await t.aclear()
+
+    def test_body_type(self, db_session: Session, db_keyspace: str) -> None:
+        table_name = "m_v_ct_bt"
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
+        #
+        t = MetadataVectorCassandraTable(
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name,
+            vector_dimension=2,
+            primary_key_type="TEXT",
+            body_type="TIMESTAMP",
+        )
+
+        bblob = datetime.datetime(2024, 5, 23, 14, 58, 8)
+        t.put(
+            row_id="ts_id",
+            body_blob=bblob,
+            vector=[0.1, 0.2],
+            metadata={
+                "body_is_timestamp": True,
+            },
+        )
+
+        # reading
+        results = list(t.ann_search([0.11, 0.19], n=2))
+        assert results != []
+        result = results[0]
+        assert result["body_blob"] == bblob
+
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")

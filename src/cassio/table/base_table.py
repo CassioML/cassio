@@ -59,12 +59,14 @@ class BaseTable:
         skip_provisioning: bool = False,
         async_setup: bool = False,
         body_index_options: Optional[List[Tuple[str, Any]]] = None,
+        body_type: str = "TEXT",
     ) -> None:
         self.session = check_resolve_session(session)
         self.keyspace = check_resolve_keyspace(keyspace)
         self.table = table
         self.ttl_seconds = ttl_seconds
         self.row_id_type = normalize_type_desc(row_id_type)
+        self.body_type = body_type
         self.skip_provisioning = skip_provisioning
         self._prepared_statements: Dict[str, PreparedStatement] = {}
         self._body_index_options = body_index_options
@@ -93,7 +95,7 @@ class BaseTable:
 
     def _schema_da(self) -> List[ColumnSpecType]:
         return [
-            ("body_blob", "TEXT"),
+            ("body_blob", self.body_type),
         ]
 
     async def _aschema_da(self) -> List[ColumnSpecType]:

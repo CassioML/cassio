@@ -1,3 +1,8 @@
+v 0.1.8
+=======
+Add support for arbitrary CQL type in the 'body_blob' column (body_type init parameter)
+Fix formatting of analyzer configuration involving stringy JSON objects with '{' and '}'
+
 v 0.1.7
 =======
 Add support for multi-column partition/clustering keys
