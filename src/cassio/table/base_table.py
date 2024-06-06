@@ -454,8 +454,22 @@ class BaseTable:
             for option in index_options:
                 key, value = option
                 if isinstance(value, dict):
-                    formatted_options.append(f"'{key}': '{json.dumps(value)}'")
+                    value = json.dumps(value).replace("{", "{{").replace("}", "}}")
+                    formatted_options.append(f"'{key}': '{value}'")
                 elif isinstance(value, str):
+                    try:
+                        json.loads(value)
+                        value = value.replace("{", "{{").replace("}", "}}")
+                    except ValueError:
+                        pass
+                    try:
+                        unescaped = value.replace("{{", "{").replace("}}", "}")
+                        json.loads(unescaped)
+                        logger.warning(
+                            "Escaping JSON values with double braces is not needed anymore"
+                        )
+                    except ValueError:
+                        pass
                     formatted_options.append(f"'{key}': '{value}'")
                 elif isinstance(value, bool):
                     if value:
