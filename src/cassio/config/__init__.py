@@ -4,7 +4,8 @@ import tempfile
 from typing import Any, Dict, List, Optional, Union
 
 from cassandra.auth import PlainTextAuthProvider
-from cassandra.cluster import Cluster, Session
+from cassandra.cluster import Cluster, NoHostAvailable, Session
+from cassandra.protocol import ProtocolVersion
 
 from cassio.config.bundle_download import download_astra_bundle_url
 from cassio.config.bundle_management import (
@@ -14,6 +15,9 @@ from cassio.config.bundle_management import (
 
 ASTRA_CLOUD_AUTH_USERNAME = "token"
 DOWNLOADED_BUNDLE_FILE_NAME = "secure-connect-bundle_devopsapi.zip"
+
+DEFAULT_ASTRA_DB_PROTOCOL_VERSION = ProtocolVersion.V4
+
 
 default_session: Optional[Session] = None
 default_keyspace: Optional[str] = None
@@ -71,7 +75,7 @@ def init(
         ASTRA_DB_INIT_STRING
         ASTRA_DB_SECURE_BUNDLE_PATH
         ASTRA_DB_KEYSPACE
-        ASTRA_DB_DATABASE_ID
+        ASTRA_DB_DATABASE_ID / ASTRA_DB_ID (equivalently)
 
     PARAMETERS:
         `auto`: (bool = False), whether to auto-guess all connection params.
@@ -165,7 +169,9 @@ def init(
             init_string = os.environ.get("ASTRA_DB_INIT_STRING")
             secure_connect_bundle = os.environ.get("ASTRA_DB_SECURE_BUNDLE_PATH")
             keyspace = os.environ.get("ASTRA_DB_KEYSPACE")
-            database_id = os.environ.get("ASTRA_DB_DATABASE_ID")
+            database_id = os.environ.get(
+                "ASTRA_DB_ID", os.environ.get("ASTRA_DB_DATABASE_ID")
+            )
     #
     try:
         # process init_string
@@ -292,18 +298,47 @@ def init(
                 #
                 if chosen_bundle:
                     keyspace_from_bundle = infer_keyspace_from_bundle(chosen_bundle)
-                    cluster = Cluster(
-                        cloud={
-                            "secure_connect_bundle": chosen_bundle,
-                            **(cloud_kwargs if cloud_kwargs is not None else {}),
-                        },
-                        auth_provider=PlainTextAuthProvider(
-                            ASTRA_CLOUD_AUTH_USERNAME,
-                            chosen_token,
-                        ),
-                        **(cluster_kwargs if cluster_kwargs is not None else {}),
-                    )
-                    default_session = cluster.connect()
+                    try:
+                        cluster = Cluster(
+                            cloud={
+                                "secure_connect_bundle": chosen_bundle,
+                                **(cloud_kwargs if cloud_kwargs is not None else {}),
+                            },
+                            auth_provider=PlainTextAuthProvider(
+                                ASTRA_CLOUD_AUTH_USERNAME,
+                                chosen_token,
+                            ),
+                            **(
+                                {
+                                    **(
+                                        {
+                                            "protocol_version": DEFAULT_ASTRA_DB_PROTOCOL_VERSION
+                                        }
+                                    ),
+                                    **(
+                                        cluster_kwargs
+                                        if cluster_kwargs is not None
+                                        else {}
+                                    ),
+                                }
+                            ),
+                        )
+                        default_session = cluster.connect()
+                    except NoHostAvailable:
+                        # this is how a mismatched explicitly-set protocol version
+                        # manifests itself. If the V4 guess fails, retry w/out version
+                        cluster = Cluster(
+                            cloud={
+                                "secure_connect_bundle": chosen_bundle,
+                                **(cloud_kwargs if cloud_kwargs is not None else {}),
+                            },
+                            auth_provider=PlainTextAuthProvider(
+                                ASTRA_CLOUD_AUTH_USERNAME,
+                                chosen_token,
+                            ),
+                            **(cluster_kwargs if cluster_kwargs is not None else {}),
+                        )
+                        default_session = cluster.connect()
                 else:
                     raise ValueError("No secure-connect-bundle was available.")
         # keyspace to be resolved in any case

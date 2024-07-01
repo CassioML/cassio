@@ -109,12 +109,12 @@ class TestInitAstra:
         assert resolve_session() is not None
 
     @pytest.mark.skipif(
-        os.environ.get("ASTRA_DB_DATABASE_ID") is None,
+        os.environ.get("ASTRA_DB_ID") is None,
         reason="requires the database ID to download the secure bundle",
     )
     def test_init_download_scb(self) -> None:
         _reset_cassio_globals()
-        dbid = os.environ["ASTRA_DB_DATABASE_ID"]
+        dbid = os.environ["ASTRA_DB_ID"]
         tok = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
         kys = os.environ["ASTRA_DB_KEYSPACE"]
         cassio.init(database_id=dbid, token=tok, keyspace=kys)
@@ -122,12 +122,12 @@ class TestInitAstra:
         assert resolve_keyspace() is not None
 
     @pytest.mark.skipif(
-        os.environ.get("ASTRA_DB_DATABASE_ID") is None,
+        os.environ.get("ASTRA_DB_ID") is None,
         reason="requires the database ID to download the secure bundle",
     )
     def test_init_download_scb_url_template(self) -> None:
         _reset_cassio_globals()
-        dbid = os.environ["ASTRA_DB_DATABASE_ID"]
+        dbid = os.environ["ASTRA_DB_ID"]
         tok = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
         kys = os.environ["ASTRA_DB_KEYSPACE"]
         with pytest.raises(Exception):
