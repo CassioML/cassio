@@ -143,7 +143,7 @@ class TestInitCassandra:
                 "ASTRA_DB_INIT_STRING",
                 "ASTRA_DB_SECURE_BUNDLE_PATH",
                 "ASTRA_DB_KEYSPACE",
-                "ASTRA_DB_DATABASE_ID",
+                "ASTRA_DB_ID",
             ]
         )
         cassio.init(auto=True, cluster_kwargs={"port": cassandra_port})

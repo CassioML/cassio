@@ -60,14 +60,14 @@ def db_session(cassandra_port: int) -> Iterator[Session]:
         ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
         if "ASTRA_DB_SECURE_BUNDLE_PATH" in os.environ:
             ASTRA_DB_SECURE_BUNDLE_PATH = os.environ["ASTRA_DB_SECURE_BUNDLE_PATH"]
-        elif "ASTRA_DB_DATABASE_ID" in os.environ:
+        elif "ASTRA_DB_ID" in os.environ:
             secure_bundle_dir = TemporaryDirectory()
-            ASTRA_DB_DATABASE_ID = os.environ["ASTRA_DB_DATABASE_ID"]
+            ASTRA_DB_ID = os.environ["ASTRA_DB_ID"]
             ASTRA_DB_SECURE_BUNDLE_PATH = os.path.join(
                 secure_bundle_dir.name, "secure-connect-bundle_devopsapi.zip"
             )
             download_astra_bundle_url(
-                ASTRA_DB_DATABASE_ID,
+                ASTRA_DB_ID,
                 ASTRA_DB_APPLICATION_TOKEN,
                 ASTRA_DB_SECURE_BUNDLE_PATH,
             )
