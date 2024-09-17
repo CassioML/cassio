@@ -262,10 +262,6 @@ class TestClusteredMetadataVectorCassandraTable:
 
         t.clear()
 
-    @pytest.mark.skipif(
-        TEST_DB_MODE in {"LOCAL_CASSANDRA", "TESTCONTAINERS_CASSANDRA"},
-        reason="fails in Cassandra 5-beta1. To be reactivated once Cassandra is fixed.",
-    )
     def test_colbertflow_multicolumn(
         self, db_session: Session, db_keyspace: str
     ) -> None:
