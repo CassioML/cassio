@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cassio"
-version = "0.1.8"
+version = "0.1.9"
 description = """A framework-agnostic Python library to seamlessly integrate \
                  Apache Cassandra(R) with ML/LLM/genAI workloads."""
 authors = [
