@@ -2,6 +2,7 @@
 CQL for mixin-based table classes tests
 """
 import json
+
 from cassio.table.cql import MockDBSession
 from cassio.table.query import Predicate, PredicateOperator
 from cassio.table.tables import (
@@ -280,7 +281,7 @@ class TestTableClassesCQLGeneration:
                 (
                     "INSERT INTO k.tn (metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?);",  # noqa: E501
                     (
-                        {"link_{\"kind\": \"kw\"}": "link"},
+                        {'link_{"kind": "kw"}': "link"},
                         1,
                         2,
                         "PARTITIONID",
@@ -420,7 +421,7 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "SELECT * FROM k.tn WHERE metadata_s['link_{\"kind\": \"kw\"}'] = ? AND partition_id = ? ;",  # noqa: E501
+                    'SELECT * FROM k.tn WHERE metadata_s[\'link_{"kind": "kw"}\'] = ? AND partition_id = ? ;',  # noqa: E501
                     ("link", "MD_JSON_KEY"),
                 ),
             ]
