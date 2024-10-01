@@ -66,11 +66,8 @@ class TestInitAstra:
         assert resolve_keyspace() is None
         assert resolve_session("s") == "s"
         assert resolve_keyspace("k") == "k"
-        cassio.init()
-        assert resolve_session() is None
-        assert resolve_keyspace() is None
-        assert resolve_session("s") == "s"
-        assert resolve_keyspace("k") == "k"
+        with pytest.raises(ValueError, match="Insufficient parameters to connect"):
+            cassio.init()
 
     def test_init_session(self) -> None:
         _reset_cassio_globals()
