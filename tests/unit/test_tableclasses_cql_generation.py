@@ -1,6 +1,8 @@
 """
 CQL for mixin-based table classes tests
 """
+import json
+
 from cassio.table.cql import MockDBSession
 from cassio.table.query import Predicate, PredicateOperator
 from cassio.table.tables import (
@@ -206,6 +208,7 @@ class TestTableClassesCQLGeneration:
 
         md1 = {"num1": 123, "num2": 456, "str1": "STR1", "tru1": True}
         md2 = {"tru1": True, "tru2": True}
+        md_json_key = {"link_" + json.dumps({"kind": "kw"}): "link"}
         vt_multi_cc.put(
             partition_id="PARTITIONID",
             row_id=(1, 2),
@@ -264,6 +267,21 @@ class TestTableClassesCQLGeneration:
                     "INSERT INTO k.tn (metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?);",  # noqa: E501
                     (
                         {"tru2": "true", "tru1": "true"},
+                        1,
+                        2,
+                        "PARTITIONID",
+                    ),
+                ),
+            ]
+        )
+
+        vt_multi_cc.put(partition_id="PARTITIONID", row_id=(1, 2), metadata=md_json_key)
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    "INSERT INTO k.tn (metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?);",  # noqa: E501
+                    (
+                        {'link_{"kind": "kw"}': "link"},
                         1,
                         2,
                         "PARTITIONID",
@@ -395,6 +413,16 @@ class TestTableClassesCQLGeneration:
                 (
                     "SELECT * FROM k.tn WHERE metadata_s['mdke'] = ? AND metadata_s['mdke2'] = ? AND partition_id = ? ;",  # noqa: E501
                     ("true", "true", "MDPART"),
+                ),
+            ]
+        )
+
+        vt_multi_cc.get_partition(partition_id="MD_JSON_KEY", metadata=md_json_key)
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    'SELECT * FROM k.tn WHERE metadata_s[\'link_{"kind": "kw"}\'] = ? AND partition_id = ? ;',  # noqa: E501
+                    ("link", "MD_JSON_KEY"),
                 ),
             ]
         )
