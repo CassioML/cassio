@@ -1,7 +1,11 @@
 v 0.1.10
-=======
+========
 Add method to get session and keyspace from parameters.
 Calling `cassio.init()` with insufficient arguments now raises an exception.
+
+v 0.1.9
+=======
+introduce default proto version 4 for Astra (w/ fallback); alias ASTRA_DB_ID (#164)
 
 v 0.1.8
 =======
