@@ -3,6 +3,7 @@ v 0.1.10
 Add method to get session and keyspace from parameters.
 Calling `cassio.init()` with insufficient arguments now raises an exception.
 Fixed: bug when metadata key contains json and, in general, curly braces (by @epinzur)
+Remove support for (EOL'd) python 3.8
 
 v 0.1.9
 =======
