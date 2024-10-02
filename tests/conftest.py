@@ -9,6 +9,7 @@ from typing import Dict, Iterator, List, Optional, Tuple
 import pytest
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import Cluster, Session
+from cassandra.protocol import ProtocolVersion
 from dotenv import load_dotenv
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
@@ -82,6 +83,7 @@ def db_session(cassandra_port: int) -> Iterator[Session]:
                 ASTRA_DB_CLIENT_ID,
                 ASTRA_DB_APPLICATION_TOKEN,
             ),
+            protocol_version=ProtocolVersion.V4,
         )
         yield cluster.connect()
     elif mode in ["LOCAL_CASSANDRA", "TESTCONTAINERS_CASSANDRA"]:

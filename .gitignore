@@ -3,6 +3,7 @@
 # Environments
 .env
 .testing.env
+.local.testing.env
 env
 
 ### (abridged) BOILERPLATE STARTS HERE
