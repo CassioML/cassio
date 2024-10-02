@@ -279,22 +279,48 @@ class MetadataMixin(BaseTableMixin):
         )
         return select_cql, select_vals
 
-    def find_entries(self, n: int, **kwargs: Any) -> Iterable[RowType]:
+    def _find_unnormalized_entries(self, n: int, **kwargs: Any) -> Iterable[RowType]:
         select_cql, select_vals = self._get_find_entries_cql(n, **kwargs)
         result_set = self.execute_cql(
             select_cql, args=select_vals, op_type=CQLOpType.READ
         )
-        return (self._normalize_row(result) for result in result_set)
+        return (
+            raw_row if isinstance(raw_row, dict) else raw_row._asdict()  # type: ignore[attr-defined]
+            for raw_row in result_set
+        )
+
+    def find_entries(self, n: int, **kwargs: Any) -> Iterable[RowType]:
+        return (
+            self._normalize_row(result)
+            for result in self._find_unnormalized_entries(
+                n=n,
+                **kwargs,
+            )
+        )
 
     def find_entries_async(self, n: int, **kwargs: Any) -> ResponseFuture:
         raise NotImplementedError("Asynchronous reads are not supported.")
 
-    async def afind_entries(self, n: int, **kwargs: Any) -> Iterable[RowType]:
+    async def _afind_unnormalized_entries(
+        self, n: int, **kwargs: Any
+    ) -> Iterable[RowType]:
         select_cql, select_vals = self._get_find_entries_cql(n, **kwargs)
         result_set = await self.aexecute_cql(
             select_cql, args=select_vals, op_type=CQLOpType.READ
         )
-        return (self._normalize_row(result) for result in result_set)
+        return (
+            raw_row if isinstance(raw_row, dict) else raw_row._asdict()  # type: ignore[attr-defined]
+            for raw_row in result_set
+        )
+
+    async def afind_entries(self, n: int, **kwargs: Any) -> Iterable[RowType]:
+        return (
+            self._normalize_row(result)
+            for result in await self._afind_unnormalized_entries(
+                n=n,
+                **kwargs,
+            )
+        )
 
     @staticmethod
     def _get_to_delete_and_visited(
@@ -322,15 +348,13 @@ class MetadataMixin(BaseTableMixin):
         # TODO: Use the 'columns' for a narrowed projection
         # TODO: decouple finding and deleting (streaming) for faster performance
         primary_key_cols = [col for col, _ in self._schema_primary_key()]
-        #
-        batch_size = 20
         to_delete, visited_tuples = self._get_to_delete_and_visited(
             n, batch_size, set()
         )
         while to_delete > 0:
             del_pkargs = [
                 [found_row[pkc] for pkc in primary_key_cols]
-                for found_row in self.find_entries(n=to_delete, **kwargs)
+                for found_row in self._find_unnormalized_entries(n=to_delete, **kwargs)
             ]
             if del_pkargs == []:
                 break
@@ -366,7 +390,9 @@ class MetadataMixin(BaseTableMixin):
         while to_delete > 0:
             del_pkargs = [
                 [found_row[pkc] for pkc in primary_key_cols]
-                for found_row in await self.afind_entries(n=to_delete, **kwargs)
+                for found_row in await self._afind_unnormalized_entries(
+                    n=to_delete, **kwargs
+                )
             ]
             delete_coros = [
                 self.adelete(

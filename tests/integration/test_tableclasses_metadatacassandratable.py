@@ -160,11 +160,13 @@ class TestMetadataCassandraTable:
         assert gotten_deny["metadata"] == test_md_allowdeny_string
         t_deny.clear()
 
-    def test_find_and_delete_entries(
+    def test_find_and_delete_entries_sync(
         self, db_session: Session, db_keyspace: str
     ) -> None:
         table_name_fad = "m_ct"
-        N_ROWS = 128
+        HALF_N_ROWS = 128
+        FAD_MAX_COUNT = 30  # must be < HALF_N_ROWS for full testing
+        FAD_BATCH_SIZE = 25  # must be < FAD_MAX_COUNT-1 for full testing
         db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_fad};")
         t_fad = MetadataCassandraTable(
             session=db_session,
@@ -179,28 +181,61 @@ class TestMetadataCassandraTable:
                 body_blob=f"r_{row_i}_md_{mdf}",
                 metadata={"field": mdf},
             )
-            for row_i in range(N_ROWS)
+            for row_i in range(HALF_N_ROWS)
             for mdf in ["alpha", "omega"]
         ]
         for f in futures:
             _ = f.result()
         #
         q_md = {"field": "alpha"}
-        #
-        num_found_items = len(list(t_fad.find_entries(n=N_ROWS + 1, metadata=q_md)))
-        assert num_found_items == N_ROWS
-        #
-        num_deleted = t_fad.find_and_delete_entries(metadata=q_md, batch_size=120)
-        num_found_items = len(list(t_fad.find_entries(n=N_ROWS + 1, metadata=q_md)))
-        assert num_deleted == N_ROWS
-        assert num_found_items == 0
+
+        num_found_items_0 = len(
+            list(t_fad.find_entries(n=HALF_N_ROWS + 1, metadata=q_md))
+        )
+        assert num_found_items_0 == HALF_N_ROWS
+
+        # find_and_delete entries with a primary key specified, matching/nonmatching
+        num_deleted1 = t_fad.find_and_delete_entries(
+            metadata=q_md, row_id="r_0_md_alpha"
+        )
+        assert num_deleted1 == 1
+        num_deleted0 = t_fad.find_and_delete_entries(
+            metadata=q_md, row_id="r_0_md_omega"
+        )
+        assert num_deleted0 == 0
+        num_found_items_a = len(
+            list(t_fad.find_entries(n=HALF_N_ROWS + 1, metadata=q_md))
+        )
+        assert num_found_items_a == HALF_N_ROWS - 1
+
+        # find_and_delete entries with a max count
+        num_deleted_m = t_fad.find_and_delete_entries(
+            metadata=q_md, batch_size=FAD_BATCH_SIZE, n=FAD_MAX_COUNT
+        )
+        assert num_deleted_m == FAD_MAX_COUNT
+        num_found_items_b = len(
+            list(t_fad.find_entries(n=HALF_N_ROWS + 1, metadata=q_md))
+        )
+        assert num_found_items_b == HALF_N_ROWS - 1 - FAD_MAX_COUNT
+
+        # find_and_delete entries, all remaining items
+        num_deleted_c = t_fad.find_and_delete_entries(
+            metadata=q_md, batch_size=FAD_BATCH_SIZE
+        )
+        assert num_deleted_c == HALF_N_ROWS - 1 - FAD_MAX_COUNT
+        num_found_items_c = len(
+            list(t_fad.find_entries(n=HALF_N_ROWS + 1, metadata=q_md))
+        )
+        assert num_found_items_c == 0
 
     @pytest.mark.asyncio
     async def test_find_and_delete_entries_asyncio(
         self, db_session: Session, db_keyspace: str
     ) -> None:
         table_name_fad = "m_ct"
-        N_ROWS = 128
+        HALF_N_ROWS = 128
+        FAD_MAX_COUNT = 30  # must be < HALF_N_ROWS for full testing
+        FAD_BATCH_SIZE = 25  # must be < FAD_MAX_COUNT-1 for full testing
         await call_wrapped_async(
             db_session.execute_async,
             f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_fad};",
@@ -218,26 +253,51 @@ class TestMetadataCassandraTable:
                 body_blob=f"r_{row_i}_md_{mdf}",
                 metadata={"field": mdf},
             )
-            for row_i in range(N_ROWS)
+            for row_i in range(HALF_N_ROWS)
             for mdf in ["alpha", "omega"]
         ]
         await asyncio.gather(*coros)
         #
         q_md = {"field": "alpha"}
         #
-        num_found_items = len(
-            list(await t_fad.afind_entries(n=N_ROWS + 1, metadata=q_md))
+        num_found_items_0 = len(
+            list(await t_fad.afind_entries(n=HALF_N_ROWS + 1, metadata=q_md))
         )
-        assert num_found_items == N_ROWS
-        #
-        num_deleted = await t_fad.afind_and_delete_entries(
-            metadata=q_md, batch_size=120
+        assert num_found_items_0 == HALF_N_ROWS
+
+        # find_and_delete entries with a primary key specified, matching/nonmatching
+        num_deleted1 = await t_fad.afind_and_delete_entries(
+            metadata=q_md, row_id="r_0_md_alpha"
         )
-        num_found_items = len(
-            list(await t_fad.afind_entries(n=N_ROWS + 1, metadata=q_md))
+        assert num_deleted1 == 1
+        num_deleted0 = await t_fad.afind_and_delete_entries(
+            metadata=q_md, row_id="r_0_md_omega"
         )
-        assert num_deleted == N_ROWS
-        assert num_found_items == 0
+        assert num_deleted0 == 0
+        num_found_items_a = len(
+            list(await t_fad.afind_entries(n=HALF_N_ROWS + 1, metadata=q_md))
+        )
+        assert num_found_items_a == HALF_N_ROWS - 1
+
+        # find_and_delete entries with a max count
+        num_deleted_m = await t_fad.afind_and_delete_entries(
+            metadata=q_md, batch_size=FAD_BATCH_SIZE, n=FAD_MAX_COUNT
+        )
+        assert num_deleted_m == FAD_MAX_COUNT
+        num_found_items_b = len(
+            list(await t_fad.afind_entries(n=HALF_N_ROWS + 1, metadata=q_md))
+        )
+        assert num_found_items_b == HALF_N_ROWS - 1 - FAD_MAX_COUNT
+
+        # find_and_delete entries, all remaining items
+        num_deleted_c = await t_fad.afind_and_delete_entries(
+            metadata=q_md, batch_size=FAD_BATCH_SIZE
+        )
+        assert num_deleted_c == HALF_N_ROWS - 1 - FAD_MAX_COUNT
+        num_found_items_c = len(
+            list(await t_fad.afind_entries(n=HALF_N_ROWS + 1, metadata=q_md))
+        )
+        assert num_found_items_c == 0
 
     @pytest.mark.skipif(
         os.getenv("TEST_DB_MODE", "LOCAL_CASSANDRA") != "ASTRA_DB",
