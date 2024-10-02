@@ -160,6 +160,152 @@ class TestMetadataCassandraTable:
         assert gotten_deny["metadata"] == test_md_allowdeny_string
         t_deny.clear()
 
+    def test_metadata_update_sync(self, db_session: Session, db_keyspace: str) -> None:
+        """Consistent behaviour when writing new metadata to an existing row."""
+        table_name_fad = "m_ct"
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_fad};")
+        t_fad = MetadataCassandraTable(
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name_fad,
+            primary_key_type="TEXT",
+            metadata_indexing=("allow", {"idx", "idx2"}),
+        )
+        row_id_to_put_args = {
+            f"{'I' if has_idx else '_'}{'U' if has_uid else '_'}": {
+                "row_id": f"{'I' if has_idx else '_'}{'U' if has_uid else '_'}",
+                "body_blob": f"has_idx={has_idx}, has_uid={has_uid}",
+                "metadata": {
+                    k: v
+                    for k, v in {
+                        "idx": "I" if has_idx else None,
+                        "uid": "U" if has_uid else None,
+                    }.items()
+                    if v is not None
+                },
+            }
+            for has_idx in [True, False]
+            for has_uid in [True, False]
+        }
+
+        # check that updates without 'metadata' at all leave the rest unchanged
+        t_fad.clear()
+        futures = [t_fad.put_async(**pa) for pa in row_id_to_put_args.values()]
+        for f in futures:
+            _ = f.result()
+        for row_id, orig_row in row_id_to_put_args.items():
+            retrieved = t_fad.get(row_id=row_id)
+            assert retrieved is not None
+            assert retrieved["metadata"] == orig_row["metadata"]
+        for row_id, orig_row in row_id_to_put_args.items():
+            new_bb = f"Updated: {orig_row['body_blob']}"
+            t_fad.put(row_id=row_id, body_blob=new_bb)
+        for row_id, orig_row in row_id_to_put_args.items():
+            retrieved = t_fad.get(row_id=row_id)
+            assert retrieved is not None
+            assert retrieved["metadata"] == orig_row["metadata"]
+
+        # check before-and-after various types of metadata overwrite
+        new_metadatas = [
+            {"idx": "newI", "idx2": "newI2", "uid": "newU", "uid2": "newU2"},
+            {"idx": "newI", "idx2": "newI2"},
+            {"uid": "newU", "uid2": "newU2"},
+            {},
+        ]
+        for new_md in new_metadatas:
+            # reset:
+            t_fad.clear()
+            futures = [t_fad.put_async(**pa) for pa in row_id_to_put_args.values()]
+            for f in futures:
+                _ = f.result()
+            # check 0:
+            for row_id, orig_row in row_id_to_put_args.items():
+                retrieved = t_fad.get(row_id=row_id)
+                assert retrieved is not None
+                assert retrieved["metadata"] == orig_row["metadata"]
+            # alter metadata:
+            for row_id in row_id_to_put_args.keys():
+                t_fad.put(row_id=row_id, metadata=new_md)
+            # check after the fact
+            for row_id, orig_row in row_id_to_put_args.items():
+                retrieved = t_fad.get(row_id=row_id)
+                assert retrieved is not None
+                assert retrieved["metadata"] == new_md
+
+    @pytest.mark.asyncio
+    async def test_metadata_update_asyncio(
+        self, db_session: Session, db_keyspace: str
+    ) -> None:
+        """Consistent behaviour when writing new metadata to an existing row."""
+        table_name_fad = "m_ct"
+        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_fad};")
+        t_fad = MetadataCassandraTable(
+            session=db_session,
+            keyspace=db_keyspace,
+            table=table_name_fad,
+            primary_key_type="TEXT",
+            metadata_indexing=("allow", {"idx", "idx2"}),
+        )
+        row_id_to_put_args = {
+            f"{'I' if has_idx else '_'}{'U' if has_uid else '_'}": {
+                "row_id": f"{'I' if has_idx else '_'}{'U' if has_uid else '_'}",
+                "body_blob": f"has_idx={has_idx}, has_uid={has_uid}",
+                "metadata": {
+                    k: v
+                    for k, v in {
+                        "idx": "I" if has_idx else None,
+                        "uid": "U" if has_uid else None,
+                    }.items()
+                    if v is not None
+                },
+            }
+            for has_idx in [True, False]
+            for has_uid in [True, False]
+        }
+
+        # check that updates without 'metadata' at all leave the rest unchanged
+        await t_fad.aclear()
+        futures = [t_fad.put_async(**pa) for pa in row_id_to_put_args.values()]
+        for f in futures:
+            _ = f.result()
+        for row_id, orig_row in row_id_to_put_args.items():
+            retrieved = t_fad.get(row_id=row_id)
+            assert retrieved is not None
+            assert retrieved["metadata"] == orig_row["metadata"]
+        for row_id, orig_row in row_id_to_put_args.items():
+            new_bb = f"Updated: {orig_row['body_blob']}"
+            await t_fad.aput(row_id=row_id, body_blob=new_bb)
+        for row_id, orig_row in row_id_to_put_args.items():
+            retrieved = t_fad.get(row_id=row_id)
+            assert retrieved is not None
+            assert retrieved["metadata"] == orig_row["metadata"]
+
+        # check before-and-after various types of metadata overwrite
+        new_metadatas = [
+            {"idx": "newI", "idx2": "newI2", "uid": "newU", "uid2": "newU2"},
+            {"idx": "newI", "idx2": "newI2"},
+            {"uid": "newU", "uid2": "newU2"},
+            {},
+        ]
+        for new_md in new_metadatas:
+            # reset:
+            await t_fad.aclear()
+            coros = [t_fad.aput(**pa) for pa in row_id_to_put_args.values()]
+            await asyncio.gather(*coros)
+            # check 0:
+            for row_id, orig_row in row_id_to_put_args.items():
+                retrieved = t_fad.get(row_id=row_id)
+                assert retrieved is not None
+                assert retrieved["metadata"] == orig_row["metadata"]
+            # alter metadata:
+            for row_id in row_id_to_put_args.keys():
+                await t_fad.aput(row_id=row_id, metadata=new_md)
+            # check after the fact
+            for row_id, orig_row in row_id_to_put_args.items():
+                retrieved = t_fad.get(row_id=row_id)
+                assert retrieved is not None
+                assert retrieved["metadata"] == new_md
+
     def test_find_and_delete_entries_sync(
         self, db_session: Session, db_keyspace: str
     ) -> None:

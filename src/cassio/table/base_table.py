@@ -169,7 +169,9 @@ class BaseTable:
             tuple(where_clause_vals),
         )
 
-    def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalize_kwargs(
+        self, args_dict: Dict[str, Any], is_write: bool
+    ) -> Dict[str, Any]:
         new_args_dict = handle_multicolumn_unpacking(
             args_dict,
             "row_id",
@@ -191,7 +193,7 @@ class BaseTable:
         return repacked_row
 
     def _delete(self, is_async: bool, **kwargs: Any) -> Union[None, ResponseFuture]:
-        n_kwargs = self._normalize_kwargs(kwargs)
+        n_kwargs = self._normalize_kwargs(kwargs, is_write=False)
         (
             rest_kwargs,
             where_clause_blocks,
@@ -277,7 +279,7 @@ class BaseTable:
     def _parse_select_core_params(
         self, **kwargs: Any
     ) -> Tuple[str, str, Tuple[Any, ...]]:
-        n_kwargs = self._normalize_kwargs(kwargs)
+        n_kwargs = self._normalize_kwargs(kwargs, is_write=False)
         # TODO: work on a columns: Optional[List[str]] = None
         # (but with nuanced handling of the column-magic we have here)
         columns = None
@@ -359,7 +361,7 @@ class BaseTable:
         return self._normalize_result_set(result_set)
 
     def _put(self, is_async: bool, **kwargs: Any) -> Union[None, ResponseFuture]:
-        n_kwargs = self._normalize_kwargs(kwargs)
+        n_kwargs = self._normalize_kwargs(kwargs, is_write=True)
         primary_key = self._schema_primary_key()
         assert set(col for col, _ in primary_key) - set(n_kwargs.keys()) == set()
         columns = [col for col, _ in self._schema_collist() if col in n_kwargs]

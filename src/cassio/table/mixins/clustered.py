@@ -92,7 +92,9 @@ class ClusteredMixin(BaseTableMixin):
     ) -> None:
         await call_wrapped_async(self.delete_partition_async, partition_id=partition_id)
 
-    def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalize_kwargs(
+        self, args_dict: Dict[str, Any], is_write: bool
+    ) -> Dict[str, Any]:
         # if partition id provided in call, takes precedence over instance value
         arg_pid = args_dict.get("partition_id")
         instance_pid = self.partition_id
@@ -108,7 +110,7 @@ class ClusteredMixin(BaseTableMixin):
             [col for col, _ in self._schema_pk()],
         )
 
-        return super()._normalize_kwargs(new_args_dict)
+        return super()._normalize_kwargs(new_args_dict, is_write=is_write)
 
     def _normalize_row(self, raw_row: Any) -> Dict[str, Any]:
         pre_normalized = super()._normalize_row(raw_row)
@@ -142,7 +144,8 @@ class ClusteredMixin(BaseTableMixin):
             {
                 **{"partition_id": _partition_id},
                 **kwargs,
-            }
+            },
+            is_write=False,
         )
         (
             rest_kwargs,

@@ -45,7 +45,9 @@ class ElasticKeyMixin(BaseTableMixin):
         else:
             return pre_normalized
 
-    def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalize_kwargs(
+        self, args_dict: Dict[str, Any], is_write: bool
+    ) -> Dict[str, Any]:
         # transform provided "keys" into the elastic-representation two-val form
         key_args = {k: v for k, v in args_dict.items() if k in self.keys}
         # the "key" is passed all-or-nothing:
@@ -66,7 +68,7 @@ class ElasticKeyMixin(BaseTableMixin):
             }
         else:
             new_args_dict = args_dict
-        return super()._normalize_kwargs(new_args_dict)
+        return super()._normalize_kwargs(new_args_dict, is_write=is_write)
 
     @staticmethod
     def _schema_row_id() -> List[ColumnSpecType]:

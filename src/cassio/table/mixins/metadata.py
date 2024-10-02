@@ -196,7 +196,10 @@ class MetadataMixin(BaseTableMixin):
         }
         return normalized
 
-    def _normalize_kwargs(self, args_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalize_kwargs(
+        self, args_dict: Dict[str, Any], is_write: bool
+    ) -> Dict[str, Any]:
+        _force_md_columns = "metadata" in args_dict and is_write
         _metadata_input_dict = args_dict.get("metadata", {})
         # separate indexed and non-indexed (=attributes) as per indexing policy
         metadata_indexed_dict = {
@@ -210,25 +213,32 @@ class MetadataMixin(BaseTableMixin):
             if not is_metadata_field_indexed(k, self.metadata_indexing_policy)
         }
         #
+        attributes_fields: Dict[str, Any]
         if attributes_dict != {}:
             attributes_fields = {
                 "attributes_blob": self._serialize_md_dict(attributes_dict)
             }
         else:
-            attributes_fields = {}
+            attributes_fields = {"attributes_blob": None} if _force_md_columns else {}
         #
-        new_metadata_fields = {
-            k: v
-            for k, v in self._split_metadata_fields(metadata_indexed_dict).items()
-            if v != {} and v != set()
-        }
+        if _force_md_columns:
+            new_metadata_fields = {
+                k: v
+                for k, v in self._split_metadata_fields(metadata_indexed_dict).items()
+            }
+        else:
+            new_metadata_fields = {
+                k: v
+                for k, v in self._split_metadata_fields(metadata_indexed_dict).items()
+                if v != {} and v != set()
+            }
         #
         new_args_dict = {
             **{k: v for k, v in args_dict.items() if k != "metadata"},
             **attributes_fields,
             **new_metadata_fields,
         }
-        return super()._normalize_kwargs(new_args_dict)
+        return super()._normalize_kwargs(new_args_dict, is_write=is_write)
 
     def _extract_where_clause_blocks(
         self, args_dict: Any
