@@ -30,7 +30,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<4.0"
+python = ">=3.9,<4.0"
 cassandra-driver = "^3.28.0"
 requests = "^2.31.0"
 numpy = ">=1.0"
