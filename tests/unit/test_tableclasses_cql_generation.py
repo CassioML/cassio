@@ -529,7 +529,7 @@ class TestTableClassesCQLGeneration:
             [
                 (
                     "SELECT * FROM k.tn WHERE metadata_s[?] = ? AND partition_id = ? ;",  # noqa: E501
-                    ("link_{\"kind\": \"kw\"}", "link", "MD_JSON_KEY"),
+                    ('link_{"kind": "kw"}', "link", "MD_JSON_KEY"),
                 ),
             ]
         )
@@ -759,7 +759,17 @@ class TestTableClassesCQLGeneration:
             [
                 (
                     "SELECT * FROM k.tn WHERE metadata_s[?] = ? AND metadata_s[?] = ? AND metadata_s[?] = ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ;",  # noqa: E501
-                    ("mdke", "true", "mdkn", "123.0", "mdks", "mdv", '["a","b"]', '["MDA","MDB"]', "MDPART"),
+                    (
+                        "mdke",
+                        "true",
+                        "mdkn",
+                        "123.0",
+                        "mdks",
+                        "mdv",
+                        '["a","b"]',
+                        '["MDA","MDB"]',
+                        "MDPART",
+                    ),
                 ),
             ]
         )
@@ -836,7 +846,15 @@ class TestTableClassesCQLGeneration:
             [
                 (
                     "SELECT * FROM k.tn WHERE metadata_s[?] = ? AND metadata_s[?] = ? AND key_desc = ? AND key_vals = ? AND partition_id = ? ;",  # noqa: E501
-                    ("mdke", "true", "mdke2", "true", '["a","b"]', '["MDA","MDB"]', "MDPART"),
+                    (
+                        "mdke",
+                        "true",
+                        "mdke2",
+                        "true",
+                        '["a","b"]',
+                        '["MDA","MDB"]',
+                        "MDPART",
+                    ),
                 ),
             ]
         )
