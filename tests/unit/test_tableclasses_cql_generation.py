@@ -8,11 +8,109 @@ from cassio.table.query import Predicate, PredicateOperator
 from cassio.table.tables import (
     ClusteredElasticMetadataVectorCassandraTable,
     ClusteredMetadataVectorCassandraTable,
+    MetadataCassandraTable,
     VectorCassandraTable,
 )
 
 
 class TestTableClassesCQLGeneration:
+    def test_metadata_routing(self, mock_db_session: MockDBSession) -> None:
+        """Metadata routing and presence/absence of parts
+        of the metadata for read/write paths.
+        """
+        mt = MetadataCassandraTable(
+            session=mock_db_session,
+            keyspace="k",
+            table="tn",
+            metadata_indexing=("allow", {"indexed"}),
+        )
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    "CREATE TABLE IF NOT EXISTS k.tn (  row_id TEXT,   body_blob TEXT, attributes_blob TEXT, metadata_s MAP<TEXT,TEXT>, PRIMARY KEY ( ( row_id )   )) ;",  # noqa: E501
+                    tuple(),
+                ),
+                (
+                    "CREATE CUSTOM INDEX IF NOT EXISTS eidx_metadata_s_tn ON k.tn (ENTRIES(metadata_s)) USING 'org.apache.cassandra.index.sai.StorageAttachedIndex';",  # noqa: E501
+                    tuple(),
+                ),
+            ]
+        )
+
+        # WRITE PATH: various insertions (with/out indexed/nonindexed parts)
+        mt.put(row_id="ROWID", metadata={})
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    "INSERT INTO k.tn (attributes_blob, metadata_s, row_id) VALUES (?, ?, ?)  ;",
+                    (
+                        None,
+                        {},
+                        "ROWID",
+                    ),
+                ),
+            ]
+        )
+        mt.put(row_id="ROWID", metadata={"indexed": "i"})
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    "INSERT INTO k.tn (attributes_blob, metadata_s, row_id) VALUES (?, ?, ?)  ;",
+                    (
+                        None,
+                        {"indexed": "i"},
+                        "ROWID",
+                    ),
+                ),
+            ]
+        )
+        mt.put(row_id="ROWID", metadata={"blobby": "b"})
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    "INSERT INTO k.tn (attributes_blob, metadata_s, row_id) VALUES (?, ?, ?)  ;",
+                    (
+                        '{"blobby":"b"}',
+                        {},
+                        "ROWID",
+                    ),
+                ),
+            ]
+        )
+        mt.put(row_id="ROWID", metadata={"indexed": "i", "blobby": "b"})
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    "INSERT INTO k.tn (attributes_blob, metadata_s, row_id) VALUES (?, ?, ?)  ;",
+                    (
+                        '{"blobby":"b"}',
+                        {"indexed": "i"},
+                        "ROWID",
+                    ),
+                ),
+            ]
+        )
+
+        # READ PATH: various reads (with/out indexed part)
+        mt.get(row_id="ROWID")
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    "SELECT * FROM k.tn WHERE row_id = ?;",  # noqa: E501
+                    ("ROWID",),
+                )
+            ]
+        )
+        mt.get(row_id="ROWID", metadata={"indexed": "i"})
+        mock_db_session.assert_last_equal(
+            [
+                (
+                    "SELECT * FROM k.tn WHERE metadata_s['indexed'] = ? AND row_id = ?;",  # noqa: E501
+                    ("i", "ROWID"),
+                ),
+            ]
+        )
+
     def test_vector_cassandra_table(self, mock_db_session: MockDBSession) -> None:
         vt = VectorCassandraTable(
             session=mock_db_session,
@@ -219,10 +317,11 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (body_blob, vector, metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?, ?, ?);",  # noqa: E501
+                    "INSERT INTO k.tn (body_blob, vector, attributes_blob, metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?, ?, ?, ?);",  # noqa: E501
                     (
                         "BODYBLOB",
                         "VECTOR",
+                        None,
                         {
                             "str1": "STR1",
                             "num1": "123.0",
@@ -247,10 +346,11 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (body_blob, vector, metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?, ?, ?);",  # noqa: E501
+                    "INSERT INTO k.tn (body_blob, vector, attributes_blob, metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?, ?, ?, ?);",  # noqa: E501
                     (
                         "BODYBLOB",
                         "VECTOR",
+                        None,
                         {"tru2": "true", "tru1": "true"},
                         1,
                         2,
@@ -264,8 +364,9 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?);",  # noqa: E501
+                    "INSERT INTO k.tn (attributes_blob, metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?, ?);",  # noqa: E501
                     (
+                        None,
                         {"tru2": "true", "tru1": "true"},
                         1,
                         2,
@@ -279,8 +380,9 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?);",  # noqa: E501
+                    "INSERT INTO k.tn (attributes_blob, metadata_s, row_id_0, row_id_1, partition_id) VALUES (?, ?, ?, ?, ?);",  # noqa: E501
                     (
+                        None,
                         {'link_{"kind": "kw"}': "link"},
                         1,
                         2,
@@ -533,10 +635,11 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (body_blob, vector, metadata_s, key_desc, key_vals, partition_id) VALUES (?, ?, ?, ?, ?, ?) USING TTL ? ;",  # noqa: E501
+                    "INSERT INTO k.tn (body_blob, vector, attributes_blob, metadata_s, key_desc, key_vals, partition_id) VALUES (?, ?, ?, ?, ?, ?, ?) USING TTL ? ;",  # noqa: E501
                     (
                         "BODYBLOB",
                         "VECTOR",
+                        None,
                         {
                             "str1": "STR1",
                             "num1": "123.0",
@@ -563,10 +666,11 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (body_blob, vector, metadata_s, key_desc, key_vals, partition_id) VALUES (?, ?, ?, ?, ?, ?) USING TTL ? ;",  # noqa: E501
+                    "INSERT INTO k.tn (body_blob, vector, attributes_blob, metadata_s, key_desc, key_vals, partition_id) VALUES (?, ?, ?, ?, ?, ?, ?) USING TTL ? ;",  # noqa: E501
                     (
                         "BODYBLOB",
                         "VECTOR",
+                        None,
                         {"tru2": "true", "tru1": "true"},
                         '["a","b"]',
                         '["A","B"]',
@@ -581,8 +685,9 @@ class TestTableClassesCQLGeneration:
         mock_db_session.assert_last_equal(
             [
                 (
-                    "INSERT INTO k.tn (metadata_s, key_desc, key_vals, partition_id) VALUES (?, ?, ?, ?) USING TTL ? ;",  # noqa: E501
+                    "INSERT INTO k.tn (attributes_blob, metadata_s, key_desc, key_vals, partition_id) VALUES (?, ?, ?, ?, ?) USING TTL ? ;",  # noqa: E501
                     (
+                        None,
                         {"tru2": "true", "tru1": "true"},
                         '["a","b"]',
                         '["A","B"]',

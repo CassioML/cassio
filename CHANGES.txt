@@ -9,6 +9,8 @@ Bugfix: find_and_delete_entries (metadata mixin) made compatible with clustered 
 Added testing for find_and_delete_entries:
   - with clustered mixin and all call patterns (w/out partition, w/out row_id)
   - enhanced testing on simple metadata table (with counting checks, all call patterns)
+Bugfix: metadata updates completely replace, consistently, the preexisting metadata
+  - with specific tests
 
 v 0.1.9
 =======

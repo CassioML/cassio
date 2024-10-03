@@ -75,7 +75,7 @@ class VectorMixin(BaseTableMixin):
     def _get_ann_search_cql(
         self, vector: List[float], n: int, **kwargs: Any
     ) -> Tuple[str, Tuple[Any, ...]]:
-        n_kwargs = self._normalize_kwargs(kwargs)
+        n_kwargs = self._normalize_kwargs(kwargs, is_write=False)
         # TODO: work on a columns: Optional[List[str]] = None
         # (but with nuanced handling of the column-magic we have here)
         columns = None
