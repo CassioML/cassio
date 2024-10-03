@@ -2,6 +2,7 @@ v 0.1.10
 ========
 Add method to get session and keyspace from parameters.
 Calling `cassio.init()` with insufficient arguments now raises an exception.
+Improved prepared-statement management with metadata WHERE clauses (by @epinzur)
 Fixed: bug when metadata key contains json and, in general, curly braces (by @epinzur)
 Remove support for (EOL'd) python 3.8
 Bugfix: find_and_delete_entries (metadata mixin) now uses the provided batch_size
