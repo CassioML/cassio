@@ -256,8 +256,8 @@ class MetadataMixin(BaseTableMixin):
         these_wc_vals_list: List[Any] = []
         # WHERE creation:
         for k, v in sorted(split_metadata.get("metadata_s", {}).items()):
-            escaped_k = k.replace("{", "{{").replace("}", "}}")
-            these_wc_blocks.append(f"metadata_s['{escaped_k}'] = %s")
+            these_wc_blocks.append(f"metadata_s[%s] = %s")
+            these_wc_vals_list.append(k)
             these_wc_vals_list.append(v)
         # no new kwargs keys are created, all goes to WHERE
         this_args_dict: Dict[str, Any] = {}
