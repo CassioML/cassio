@@ -25,9 +25,9 @@ from cassio.table.table_types import (
     normalize_type_desc,
 )
 from cassio.table.utils import (
-    call_wrapped_async,
     handle_multicolumn_packing,
     handle_multicolumn_unpacking,
+    execute_cql,
 )
 
 
@@ -192,7 +192,7 @@ class BaseTable:
         )
         return repacked_row
 
-    def _delete(self, is_async: bool, **kwargs: Any) -> Union[None, ResponseFuture]:
+    def _get_delete_cql(self, **kwargs: Any) -> Tuple[str, Tuple[Any, ...]]:
         n_kwargs = self._normalize_kwargs(kwargs, is_write=False)
         (
             rest_kwargs,
@@ -204,49 +204,45 @@ class BaseTable:
         delete_cql = DELETE_CQL_TEMPLATE.format(
             where_clause=where_clause,
         )
-        if is_async:
-            return self.execute_cql_async(
-                delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE
-            )
-        else:
-            self.execute_cql(delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE)
-            return None
+        return delete_cql, delete_cql_vals
 
     def delete(self, **kwargs: Any) -> None:
         self._ensure_db_setup()
-        self._delete(is_async=False, **kwargs)
-        return None
+        delete_cql, delete_cql_vals = self._get_delete_cql(**kwargs)
+        self.execute_cql(delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE)
 
     def delete_async(self, **kwargs: Any) -> ResponseFuture:
         self._ensure_db_setup()
-        return self._delete(is_async=True, **kwargs)
+        delete_cql, delete_cql_vals = self._get_delete_cql(**kwargs)
+        return self.execute_cql_async(
+            delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE
+        )
 
     async def adelete(self, **kwargs: Any) -> None:
         await self._aensure_db_setup()
-        await call_wrapped_async(self.delete_async, **kwargs)
-
-    def _clear(self, is_async: bool) -> Union[None, ResponseFuture]:
-        truncate_table_cql = TRUNCATE_TABLE_CQL_TEMPLATE.format()
-        if is_async:
-            return self.execute_cql_async(
-                truncate_table_cql, args=tuple(), op_type=CQLOpType.WRITE
-            )
-        else:
-            self.execute_cql(truncate_table_cql, args=tuple(), op_type=CQLOpType.WRITE)
-            return None
+        delete_cql, delete_cql_vals = self._get_delete_cql(**kwargs)
+        await self.aexecute_cql(
+            delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE
+        )
 
     def clear(self) -> None:
         self._ensure_db_setup()
-        self._clear(is_async=False)
-        return None
+        truncate_table_cql = TRUNCATE_TABLE_CQL_TEMPLATE.format()
+        self.execute_cql(truncate_table_cql, args=tuple(), op_type=CQLOpType.WRITE)
 
     def clear_async(self) -> ResponseFuture:
         self._ensure_db_setup()
-        return self._clear(is_async=True)
+        truncate_table_cql = TRUNCATE_TABLE_CQL_TEMPLATE.format()
+        return self.execute_cql_async(
+            truncate_table_cql, args=tuple(), op_type=CQLOpType.WRITE
+        )
 
     async def aclear(self) -> None:
         await self._aensure_db_setup()
-        await call_wrapped_async(self.clear_async)
+        truncate_table_cql = TRUNCATE_TABLE_CQL_TEMPLATE.format()
+        await self.aexecute_cql(
+            truncate_table_cql, args=tuple(), op_type=CQLOpType.WRITE
+        )
 
     def _has_index_analyzers(self) -> bool:
         if not self._body_index_options:
@@ -360,7 +356,7 @@ class BaseTable:
         )
         return self._normalize_result_set(result_set)
 
-    def _put(self, is_async: bool, **kwargs: Any) -> Union[None, ResponseFuture]:
+    def _get_put_cql(self, **kwargs: Any) -> Tuple[str, Tuple[Any, ...]]:
         n_kwargs = self._normalize_kwargs(kwargs, is_write=True)
         primary_key = self._schema_primary_key()
         assert set(col for col, _ in primary_key) - set(n_kwargs.keys()) == set()
@@ -385,27 +381,26 @@ class BaseTable:
             value_placeholders=value_placeholders,
             ttl_spec=ttl_spec,
         )
-        #
-        if is_async:
-            return self.execute_cql_async(
-                insert_cql, args=insert_cql_args, op_type=CQLOpType.WRITE
-            )
-        else:
-            self.execute_cql(insert_cql, args=insert_cql_args, op_type=CQLOpType.WRITE)
-            return None
+        return insert_cql, insert_cql_args
 
     def put(self, **kwargs: Any) -> None:
         self._ensure_db_setup()
-        self._put(is_async=False, **kwargs)
-        return None
+        insert_cql, insert_cql_args = self._get_put_cql(**kwargs)
+        self.execute_cql(insert_cql, args=insert_cql_args, op_type=CQLOpType.WRITE)
 
     def put_async(self, **kwargs: Any) -> ResponseFuture:
         self._ensure_db_setup()
-        return self._put(is_async=True, **kwargs)
+        insert_cql, insert_cql_args = self._get_put_cql(**kwargs)
+        return self.execute_cql_async(
+            insert_cql, args=insert_cql_args, op_type=CQLOpType.WRITE
+        )
 
     async def aput(self, **kwargs: Any) -> None:
         await self._aensure_db_setup()
-        await call_wrapped_async(self.put_async, **kwargs)
+        insert_cql, insert_cql_args = self._get_put_cql(**kwargs)
+        await self.aexecute_cql(
+            insert_cql, args=insert_cql_args, op_type=CQLOpType.WRITE
+        )
 
     def _get_db_setup_cql(self, schema: Dict[str, List[ColumnSpecType]]) -> str:
         column_specs = [
@@ -612,10 +607,12 @@ class BaseTable:
             statement = SimpleStatement(final_cql)
             logger.debug(f'aExecuting statement "{final_cql}" as simple (unprepared)')
         else:
-            statement = self._obtain_prepared_statement(final_cql)
+            statement = await asyncio.to_thread(
+                self._obtain_prepared_statement, final_cql
+            )
             logger.debug(f'aExecuting statement "{final_cql}" as prepared')
         logger.trace(f'Statement "{final_cql}" has args: "{str(args)}"')  # type: ignore
         return cast(
             Iterable[RowType],
-            await call_wrapped_async(self.session.execute_async, statement, args),
+            await execute_cql(self.session, statement, args),
         )

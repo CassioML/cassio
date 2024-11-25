@@ -5,7 +5,6 @@ from cassandra.cluster import ResponseFuture
 from cassio.table.cql import DELETE_CQL_TEMPLATE, SELECT_CQL_TEMPLATE, CQLOpType
 from cassio.table.table_types import ColumnSpecType, RowType, normalize_type_desc
 from cassio.table.utils import (
-    call_wrapped_async,
     handle_multicolumn_packing,
     handle_multicolumn_unpacking,
 )
@@ -48,9 +47,9 @@ class ClusteredMixin(BaseTableMixin):
     def _schema_cc(self) -> List[ColumnSpecType]:
         return self._schema_row_id()
 
-    def _delete_partition(
-        self, is_async: bool, partition_id: Optional[PARTITION_ID_TYPE] = None
-    ) -> Union[None, ResponseFuture]:
+    def _get_delete_partition_cql(
+        self, partition_id: Optional[PARTITION_ID_TYPE] = None
+    ) -> Tuple[str, Tuple[Any, ...]]:
         _partition_id = self.partition_id if partition_id is None else partition_id
         #
         _pid_dict = handle_multicolumn_unpacking(
@@ -68,29 +67,29 @@ class ClusteredMixin(BaseTableMixin):
         delete_cql = DELETE_CQL_TEMPLATE.format(
             where_clause=where_clause,
         )
-        if is_async:
-            return self.execute_cql_async(
-                delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE
-            )
-        else:
-            self.execute_cql(delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE)
-            return None
+        return delete_cql, delete_cql_vals
 
     def delete_partition(
         self, partition_id: Optional[PARTITION_ID_TYPE] = None
     ) -> None:
-        self._delete_partition(is_async=False, partition_id=partition_id)
-        return None
+        delete_cql, delete_cql_vals = self._get_delete_partition_cql(partition_id)
+        self.execute_cql(delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE)
 
     def delete_partition_async(
         self, partition_id: Optional[PARTITION_ID_TYPE] = None
     ) -> ResponseFuture:
-        return self._delete_partition(is_async=True, partition_id=partition_id)
+        delete_cql, delete_cql_vals = self._get_delete_partition_cql(partition_id)
+        return self.execute_cql_async(
+            delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE
+        )
 
     async def adelete_partition(
         self, partition_id: Optional[PARTITION_ID_TYPE] = None
     ) -> None:
-        await call_wrapped_async(self.delete_partition_async, partition_id=partition_id)
+        delete_cql, delete_cql_vals = self._get_delete_partition_cql(partition_id)
+        await self.aexecute_cql(
+            delete_cql, args=delete_cql_vals, op_type=CQLOpType.WRITE
+        )
 
     def _normalize_kwargs(
         self, args_dict: Dict[str, Any], is_write: bool

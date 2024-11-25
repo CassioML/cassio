@@ -8,6 +8,7 @@ import pytest
 from cassandra.cluster import Session
 
 from cassio.table.tables import ClusteredMetadataCassandraTable
+from cassio.table.utils import execute_cql
 
 
 @pytest.mark.usefixtures("db_session", "db_keyspace")
@@ -157,13 +158,16 @@ class TestClusteredMetadataCassandraTable:
         ONEFOURTH_N_ROWS = 128
         FAD_MAX_COUNT = 30  # must be < ONEFOURTH_N_ROWS for full testing
         FAD_BATCH_SIZE = 25  # must be < FAD_MAX_COUNT-1 for full testing
-        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_fad};")
+        await execute_cql(
+            db_session, f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_fad};"
+        )
         t_fad = ClusteredMetadataCassandraTable(
             session=db_session,
             keyspace=db_keyspace,
             table=table_name_fad,
             primary_key_type=["TEXT", "TEXT", "TEXT", "INT"],
             num_partition_keys=2,
+            async_setup=True,
         )
 
         coros = [

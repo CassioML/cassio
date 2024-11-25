@@ -34,7 +34,7 @@ class MetadataMixin(BaseTableMixin):
 
     @staticmethod
     def _normalize_metadata_indexing_policy(
-        metadata_indexing: Union[Tuple[str, Iterable[str]], str]
+        metadata_indexing: Union[Tuple[str, Iterable[str]], str],
     ) -> MetadataIndexingPolicy:
         mode: MetadataIndexingMode
         fields: Set[str]

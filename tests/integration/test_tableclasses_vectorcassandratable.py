@@ -9,6 +9,7 @@ from cassandra.cluster import Session
 
 from cassio.table.cql import STANDARD_ANALYZER
 from cassio.table.tables import VectorCassandraTable
+from cassio.table.utils import execute_cql
 
 N = 8
 
@@ -97,7 +98,7 @@ def test_index_analyzers(db_session: Session, db_keyspace: str) -> None:
 @pytest.mark.asyncio
 async def test_async_vector_dimension(db_session: Session, db_keyspace: str) -> None:
     table_name = "v_ct"
-    db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
+    await execute_cql(db_session, f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};")
 
     async def get_vector_dimension() -> int:
         return 2

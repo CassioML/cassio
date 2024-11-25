@@ -6,7 +6,7 @@ import pytest
 from cassandra.cluster import Session
 
 from cassio.table.tables import ClusteredCassandraTable
-from cassio.table.utils import call_wrapped_async
+from cassio.table.utils import execute_cql
 
 
 @pytest.mark.usefixtures("db_session", "db_keyspace")
@@ -149,9 +149,8 @@ class TestClusteredCassandraTable:
     @pytest.mark.asyncio
     async def test_crud_asyncio(self, db_session: Session, db_keyspace: str) -> None:
         table_name = "c_ct"
-        await call_wrapped_async(
-            db_session.execute_async,
-            f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};",
+        await execute_cql(
+            db_session, f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};"
         )
         #
         t = ClusteredCassandraTable(
@@ -200,8 +199,8 @@ class TestClusteredCassandraTable:
         self, db_session: Session, db_keyspace: str
     ) -> None:
         table_name_asc = "c_ct"
-        await call_wrapped_async(
-            db_session.execute_async,
+        await execute_cql(
+            db_session,
             f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_asc};",
         )
         t_asc = ClusteredCassandraTable(
@@ -209,6 +208,7 @@ class TestClusteredCassandraTable:
             keyspace=db_keyspace,
             table=table_name_asc,
             partition_id="my_part",
+            async_setup=True,
         )
         await t_asc.aput(row_id="row1", body_blob="blob1")
         await t_asc.aput(row_id="row2", body_blob="blob1")
@@ -220,8 +220,8 @@ class TestClusteredCassandraTable:
         await t_asc.aclear()
         #
         table_name_desc = "c_ct_desc"
-        await call_wrapped_async(
-            db_session.execute_async,
+        await execute_cql(
+            db_session,
             f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_desc};",
         )
         t_desc = ClusteredCassandraTable(
@@ -230,6 +230,7 @@ class TestClusteredCassandraTable:
             table=table_name_desc,
             partition_id="my_part",
             ordering_in_partition="desc",
+            async_setup=True,
         )
         await t_desc.aput(row_id="row1", body_blob="blob1")
         await t_desc.aput(row_id="row2", body_blob="blob1")

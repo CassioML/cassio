@@ -1,12 +1,12 @@
 """
 fixtures for testing
 """
-
 import os
 from tempfile import TemporaryDirectory
 from typing import Dict, Iterator, List, Optional, Tuple
 
 import pytest
+from blockbuster import BlockBuster, blockbuster_ctx
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import Cluster, Session
 from cassandra.protocol import ProtocolVersion
@@ -22,6 +22,12 @@ load_dotenv()
 
 
 # Fixtures
+
+
+@pytest.fixture(autouse=True)
+def blockbuster() -> Iterator[BlockBuster]:
+    with blockbuster_ctx() as bb:
+        yield bb
 
 
 @pytest.fixture(scope="session", autouse=True)
