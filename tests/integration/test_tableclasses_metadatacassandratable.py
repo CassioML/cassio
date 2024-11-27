@@ -9,7 +9,7 @@ from cassandra.cluster import Session
 
 from cassio.table.cql import STANDARD_ANALYZER
 from cassio.table.tables import MetadataCassandraTable
-from cassio.table.utils import call_wrapped_async
+from cassio.table.utils import execute_cql
 
 
 @pytest.mark.usefixtures("db_session", "db_keyspace")
@@ -238,13 +238,17 @@ class TestMetadataCassandraTable:
     ) -> None:
         """Consistent behaviour when writing new metadata to an existing row."""
         table_name_fad = "m_ct"
-        db_session.execute(f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_fad};")
+        await execute_cql(
+            db_session,
+            f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_fad};",
+        )
         t_fad = MetadataCassandraTable(
             session=db_session,
             keyspace=db_keyspace,
             table=table_name_fad,
             primary_key_type="TEXT",
             metadata_indexing=("allow", {"idx", "idx2"}),
+            async_setup=True,
         )
         row_id_to_put_args = {
             f"{'I' if has_idx else '_'}{'U' if has_uid else '_'}": {
@@ -265,18 +269,17 @@ class TestMetadataCassandraTable:
 
         # check that updates without 'metadata' at all leave the rest unchanged
         await t_fad.aclear()
-        futures = [t_fad.put_async(**pa) for pa in row_id_to_put_args.values()]
-        for f in futures:
-            _ = f.result()
+        tasks = [t_fad.aput(**pa) for pa in row_id_to_put_args.values()]
+        await asyncio.gather(*tasks)
         for row_id, orig_row in row_id_to_put_args.items():
-            retrieved = t_fad.get(row_id=row_id)
+            retrieved = await t_fad.aget(row_id=row_id)
             assert retrieved is not None
             assert retrieved["metadata"] == orig_row["metadata"]
         for row_id, orig_row in row_id_to_put_args.items():
             new_bb = f"Updated: {orig_row['body_blob']}"
             await t_fad.aput(row_id=row_id, body_blob=new_bb)
         for row_id, orig_row in row_id_to_put_args.items():
-            retrieved = t_fad.get(row_id=row_id)
+            retrieved = await t_fad.aget(row_id=row_id)
             assert retrieved is not None
             assert retrieved["metadata"] == orig_row["metadata"]
 
@@ -294,7 +297,7 @@ class TestMetadataCassandraTable:
             await asyncio.gather(*coros)
             # check 0:
             for row_id, orig_row in row_id_to_put_args.items():
-                retrieved = t_fad.get(row_id=row_id)
+                retrieved = await t_fad.aget(row_id=row_id)
                 assert retrieved is not None
                 assert retrieved["metadata"] == orig_row["metadata"]
             # alter metadata:
@@ -302,7 +305,7 @@ class TestMetadataCassandraTable:
                 await t_fad.aput(row_id=row_id, metadata=new_md)
             # check after the fact
             for row_id, orig_row in row_id_to_put_args.items():
-                retrieved = t_fad.get(row_id=row_id)
+                retrieved = await t_fad.aget(row_id=row_id)
                 assert retrieved is not None
                 assert retrieved["metadata"] == new_md
 
@@ -382,8 +385,8 @@ class TestMetadataCassandraTable:
         HALF_N_ROWS = 128
         FAD_MAX_COUNT = 30  # must be < HALF_N_ROWS for full testing
         FAD_BATCH_SIZE = 25  # must be < FAD_MAX_COUNT-1 for full testing
-        await call_wrapped_async(
-            db_session.execute_async,
+        await execute_cql(
+            db_session,
             f"DROP TABLE IF EXISTS {db_keyspace}.{table_name_fad};",
         )
         t_fad = MetadataCassandraTable(
@@ -392,6 +395,7 @@ class TestMetadataCassandraTable:
             table=table_name_fad,
             primary_key_type="TEXT",
             metadata_indexing="all",
+            async_setup=True,
         )
         coros = [
             t_fad.aput(

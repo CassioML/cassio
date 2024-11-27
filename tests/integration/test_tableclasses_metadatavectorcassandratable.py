@@ -8,7 +8,7 @@ import pytest
 from cassandra.cluster import Session
 
 from cassio.table.tables import MetadataVectorCassandraTable
-from cassio.table.utils import call_wrapped_async
+from cassio.table.utils import execute_cql
 
 N = 16
 
@@ -107,8 +107,8 @@ class TestMetadataVectorCassandraTable:
     @pytest.mark.asyncio
     async def test_crud_asyncio(self, db_session: Session, db_keyspace: str) -> None:
         table_name = "m_v_ct"
-        await call_wrapped_async(
-            db_session.execute_async,
+        await execute_cql(
+            db_session,
             f"DROP TABLE IF EXISTS {db_keyspace}.{table_name};",
         )
         #
@@ -118,6 +118,7 @@ class TestMetadataVectorCassandraTable:
             table=table_name,
             vector_dimension=2,
             primary_key_type="TEXT",
+            async_setup=True,
         )
 
         for n_theta in range(N):

@@ -1,7 +1,7 @@
 import asyncio
 from typing import Any, Callable, Dict, Iterable
 
-from cassandra.cluster import ResponseFuture
+from cassandra.cluster import ResponseFuture, Session
 
 
 async def call_wrapped_async(
@@ -19,6 +19,10 @@ async def call_wrapped_async(
 
     response_future.add_callbacks(success_handler, error_handler)
     return await asyncio_future
+
+
+async def execute_cql(session: Session, cql: Any, args: Any = None) -> ResponseFuture:
+    return await call_wrapped_async(session.execute_async, cql, args)
 
 
 def handle_multicolumn_unpacking(

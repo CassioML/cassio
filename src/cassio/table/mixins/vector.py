@@ -50,7 +50,7 @@ class VectorMixin(BaseTableMixin):
 
     @staticmethod
     def _get_create_vector_index_cql(
-        vector_index_options: List[Tuple[str, Any]]
+        vector_index_options: List[Tuple[str, Any]],
     ) -> str:
         index_name = "idx_vector"
         index_column = "vector"
