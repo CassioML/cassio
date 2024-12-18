@@ -44,13 +44,13 @@ uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
 name = "blockbuster"
-version = "1.2.0"
+version = "1.5.2"
 description = "Utility to detect blocking calls in the async event loop"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "blockbuster-1.2.0-py3-none-any.whl", hash = "sha256:5210faccc22695bd3c338d3de2ec0581d5a270729e1b18d98d78eefd95eea2c5"},
-    {file = "blockbuster-1.2.0.tar.gz", hash = "sha256:c54f5184debf708488447fec53205274518ec806b9fb551d9e6d489b5a26b703"},
+    {file = "blockbuster-1.5.2-py3-none-any.whl", hash = "sha256:7853b05bf6650c74b2f07324bd56c277f4ef3d7dcc2d4e6b7cf21a758de706bf"},
+    {file = "blockbuster-1.5.2.tar.gz", hash = "sha256:3588dd4d6f18ec1a64e0c9b9fe13eec79e5b16cf4e49504956d8168a33738583"},
 ]
 
 [package.dependencies]
@@ -834,4 +834,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4.0"
-content-hash = "3927818e82f3e2d0ce6d19dbd5f863cea6fbcac7dfd5a5632c5965c78e70140d"
+content-hash = "9713b8d656ebb470de05a8b6e0653d64f03d90c8232151901a2231a89716681f"
