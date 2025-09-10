@@ -42,15 +42,11 @@ def get_astra_bundle_url(
             if any(
                 "jwt not valid" in (err.get("message") or "").lower() for err in errors
             ):
-                raise ValueError(
-                    f"Invalid or insufficient token ({response_json})."
-                )
+                raise ValueError(f"Invalid or insufficient token ({response_json}).")
             elif any(
                 "malformed" in (err.get("message") or "").lower() for err in errors
             ):
-                raise ValueError(
-                    f"Invalid or insufficient token ({response_json})."
-                )
+                raise ValueError(f"Invalid or insufficient token ({response_json}).")
             else:
                 raise ValueError(
                     f"Generic error when fetching the URL to the secure-bundle ({response_json})."
